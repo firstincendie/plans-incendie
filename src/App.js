@@ -22,9 +22,11 @@ const planVide = () => ({ type: "Évacuation", orientation: "Paysage", format: "
 function Badge({ statut }) {
   const s = STATUT_STYLE[statut] || { bg: "#F3F4F6", color: "#374151" };
   return (
-    <span style={{ background: s.bg, color: s.color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
-      {statut}
-    </span>
+    <div>
+      <span style={{ background: s.bg, color: s.color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", display: "inline-block" }}>
+        {statut}
+      </span>
+    </div>
   );
 }
 
@@ -547,6 +549,11 @@ export default function App() {
       console.log("Validation échouée", { batiment: form.batiment, client: form.client, dessinateur: form.dessinateur, delai: form.delai, fichiers: form.fichiersPlan.length });
       return;
     }
+    const aujourd_hui = new Date().toISOString().split("T")[0];
+    if (form.delai < aujourd_hui) {
+      alert("La date ne peut pas être inférieure à aujourd'hui.");
+      return;
+    }
     console.log("Création commande...");
     setSaving(true);
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
@@ -576,7 +583,7 @@ export default function App() {
   async function envoyerMessage(commandeId, auteur, texte) {
     const { data, error } = await supabase.from("messages").insert([{
       commande_id: commandeId, auteur, texte,
-      date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long" }),
+      date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) + " à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
     }]).select().single();
     if (!error && data) {
       setCommandes(prev => prev.map(c =>
@@ -859,6 +866,7 @@ export default function App() {
               if (!form.client)                manque.push("client");
               if (!form.dessinateur)           manque.push("dessinateur");
               if (!form.delai)                 manque.push("délai");
+              else if (form.delai < new Date().toISOString().split("T")[0]) manque.push("délai invalide (date passée)");
               if (form.fichiersPlan.length === 0) manque.push("1 fichier minimum");
               const ok = manque.length === 0;
               return (
