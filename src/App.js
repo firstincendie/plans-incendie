@@ -50,6 +50,41 @@ function getPeriode(created_at) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function ChampCopiable({ valeur, label, style = {} }) {
+  const [copie, setCopie] = useState(false);
+  if (!valeur) return null;
+  function copier() {
+    navigator.clipboard.writeText(valeur).then(() => {
+      setCopie(true);
+      setTimeout(() => setCopie(false), 1500);
+    });
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, ...style }}>
+      <span style={{ fontSize: 13, color: "#374151" }}>{valeur}</span>
+      <button onClick={copier} title={`Copier ${label || ""}`}
+        style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13, padding: "2px 6px", borderRadius: 5, color: copie ? "#059669" : "#9CA3AF", flexShrink: 0, transition: "color 0.2s" }}>
+        {copie ? "✓" : "⎘"}
+      </button>
+    </div>
+  );
+}
+
+function BlocAdresse({ commande, copiable = false }) {
+  const adresse = [commande.adresse1, commande.adresse2, commande.code_postal, commande.ville].filter(Boolean).join(", ");
+  if (!adresse) return null;
+  return (
+    <div style={{ marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #E5E7EB" }}>
+      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 4 }}>📍 Adresse</div>
+      {copiable ? (
+        <ChampCopiable valeur={adresse} label="l'adresse" />
+      ) : (
+        <div style={{ fontSize: 13, color: "#374151" }}>{adresse}</div>
+      )}
+    </div>
+  );
+}
+
 function fichierAvecDate(f) {
   return { ...f, ajouteLe: f.ajouteLe || formatDateMsg() };
 }
@@ -547,7 +582,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
         {[
-          { label: "Client",        val: c.client },
+          { label: "Client",        val: <ChampCopiable valeur={c.client} label="le client" /> },
           { label: "Créé le",       val: formatDateCourt(c.created_at) },
           { label: "Délai",         val: c.delai ? formatDateCourt(c.delai) : "—" },
           { label: "Temps restant", val: tempsRestant(c.delai) ? <span style={{ background: tempsRestant(c.delai).bg, color: tempsRestant(c.delai).color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tempsRestant(c.delai).label}</span> : "—" },
@@ -657,12 +692,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                 )}
                 <InfosDetail c={selected} />
 
-                {/* Adresse */}
-                {(selected.adresse1 || selected.ville) && (
-                  <div style={{ marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151" }}>
-                    📍 {[selected.adresse1, selected.adresse2, selected.code_postal, selected.ville].filter(Boolean).join(", ")}
-                  </div>
-                )}
+                <BlocAdresse commande={selected} copiable={true} />
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans à réaliser</div>
@@ -692,8 +722,6 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                     <LogoCliquable fichier={selected.logoClient[0]} />
                   </div>
                 )}
-
-                {selected.notes && <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>📝 {selected.notes}</div>}
 
                 <HistoriqueVersions versions={versionsCommande} />
 
@@ -824,14 +852,23 @@ export default function App() {
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
     const { data, error } = await supabase.from("commandes").insert([{
       ref, client: form.client, batiment: form.batiment, delai: form.delai,
-      dessinateur: form.dessinateur, notes: form.notes, plans: form.plans,
+      dessinateur: form.dessinateur, plans: form.plans,
       fichiers_plan: form.fichiersPlan, logo_client: form.logoClient,
       adresse1: form.adresse1, adresse2: form.adresse2,
       code_postal: form.code_postal, ville: form.ville,
       plans_finalises: [], statut: "En attente",
     }]).select("*, messages(*)").single();
     if (!error && data) {
-      setCommandes(prev => [{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...prev]);
+      const nouvelleCommande = { ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] };
+      // Si des instructions ont été saisies, les envoyer comme premier message
+      if (form.notes.trim()) {
+        const { data: msg } = await supabase.from("messages").insert([{
+          commande_id: data.id, auteur: "Simon", texte: form.notes.trim(), fichiers: [],
+          date: formatDateMsg(),
+        }]).select().single();
+        if (msg) nouvelleCommande.messages = [msg];
+      }
+      setCommandes(prev => [nouvelleCommande, ...prev]);
     }
     setSaving(false);
     setShowForm(false);
@@ -1028,7 +1065,7 @@ export default function App() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
                     {[
-                      { label: "Client",      val: selected.client },
+                      { label: "Client",      val: <ChampCopiable valeur={selected.client} label="le client" /> },
                       { label: "Dessinateur", val: selected.dessinateur || "Non assigné" },
                       { label: "Créé le",     val: formatDateCourt(selected.created_at) },
                       { label: "Délai",       val: selected.delai ? formatDateCourt(selected.delai) : "—" },
@@ -1037,11 +1074,7 @@ export default function App() {
                   </div>
 
                   {/* Adresse */}
-                  {(selected.adresse1 || selected.ville) && (
-                    <div style={{ marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151" }}>
-                      📍 {[selected.adresse1, selected.adresse2, selected.code_postal, selected.ville].filter(Boolean).join(", ")}
-                    </div>
-                  )}
+                  <BlocAdresse commande={selected} copiable={true} />
 
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Détail des plans</div>
@@ -1075,8 +1108,6 @@ export default function App() {
                   )}
 
                   <HistoriqueVersions versions={versionsSelected} />
-
-                  {selected.notes && <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>📝 {selected.notes}</div>}
 
                   {/* Boutons action admin */}
                   {selected.statut === "Ébauche déposée" && (
@@ -1200,8 +1231,8 @@ export default function App() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Notes</label>
-              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Informations complémentaires..." style={{ ...inputStyle, resize: "vertical" }} />
+              <label style={labelStyle}>Instructions pour le dessinateur</label>
+              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Ce message sera envoyé automatiquement dans le chat de la commande..." style={{ ...inputStyle, resize: "vertical" }} />
             </div>
 
             {(() => {
