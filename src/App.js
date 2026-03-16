@@ -25,16 +25,20 @@ function formatDateMsg() {
 
 function formatDateCourt(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatDateLong(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const h = new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `Le ${d} à ${h}`;
 }
 
 function tempsRestant(delai) {
   if (!delai) return null;
-  const now  = new Date();
-  const fin  = new Date(delai);
-  const diff = Math.ceil((fin - now) / (1000 * 60 * 60 * 24));
-  if (diff < 0)  return { label: `${Math.abs(diff)}j de retard`, color: "#DC2626", bg: "#FEF2F2" };
+  const diff = Math.ceil((new Date(delai) - new Date()) / (1000 * 60 * 60 * 24));
+  if (diff < 0)   return { label: `${Math.abs(diff)}j de retard`, color: "#DC2626", bg: "#FEF2F2" };
   if (diff === 0) return { label: "Aujourd'hui !", color: "#D97706", bg: "#FFFBEB" };
   if (diff <= 3)  return { label: `${diff}j restant${diff > 1 ? "s" : ""}`, color: "#D97706", bg: "#FFFBEB" };
   return { label: `${diff}j restants`, color: "#059669", bg: "#F0FDF4" };
@@ -51,11 +55,7 @@ function getPeriode(created_at) {
 function Badge({ statut }) {
   const s = STATUT_STYLE[statut] || { bg: "#F3F4F6", color: "#374151" };
   return (
-    <div>
-      <span style={{ background: s.bg, color: s.color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", display: "inline-block" }}>
-        {statut}
-      </span>
-    </div>
+    <div><span style={{ background: s.bg, color: s.color, padding: "3px 10px", borderRadius: 100, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", display: "inline-block" }}>{statut}</span></div>
   );
 }
 
@@ -105,9 +105,9 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
     <div>
       {label ? <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 6, fontWeight: 600 }}>{label}</label> : null}
       <div onClick={() => inputRef.current.click()}
-        style={{ border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: "16px", textAlign: "center", cursor: "pointer", background: "#F9FAFB", marginBottom: fichiers.length > 0 ? 10 : 0 }}>
-        <div style={{ fontSize: 22, marginBottom: 4 }}>📎</div>
-        <div style={{ fontSize: 12, color: "#6B7280" }}>{unique ? "Cliquer pour choisir un fichier" : `Cliquer pour ajouter (max ${maxFichiers})`}</div>
+        style={{ border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: "14px", textAlign: "center", cursor: "pointer", background: "#F9FAFB", marginBottom: fichiers.length > 0 ? 10 : 0 }}>
+        <div style={{ fontSize: 20, marginBottom: 4 }}>📎</div>
+        <div style={{ fontSize: 12, color: "#6B7280" }}>{unique ? "Cliquer pour choisir" : `Ajouter fichiers (max ${maxFichiers})`}</div>
         <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{accept}</div>
         <input ref={inputRef} type="file" accept={accept} multiple={!unique} style={{ display: "none" }} onChange={handleFiles} />
       </div>
@@ -116,15 +116,15 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
           {fichiers.map((f, i) => (
             <div key={i} style={{ position: "relative", border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
               {isImage(f)
-                ? <img src={f.url} alt={f.nom} style={{ width: 80, height: 80, objectFit: "cover", display: "block" }} />
-                : <div style={{ width: 80, height: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                    <span style={{ fontSize: 24 }}>📄</span>
+                ? <img src={f.url} alt={f.nom} style={{ width: 72, height: 72, objectFit: "cover", display: "block" }} />
+                : <div style={{ width: 72, height: 72, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <span style={{ fontSize: 22 }}>📄</span>
                     <span style={{ fontSize: 9, color: "#6B7280", textAlign: "center", padding: "0 4px", wordBreak: "break-all" }}>{f.nom}</span>
                   </div>
               }
-              <div style={{ fontSize: 9, color: "#9CA3AF", textAlign: "center", padding: "3px 4px", borderTop: "1px solid #F3F4F6", background: "#F9FAFB" }}>{f.taille}</div>
+              <div style={{ fontSize: 9, color: "#9CA3AF", textAlign: "center", padding: "2px 4px", borderTop: "1px solid #F3F4F6", background: "#F9FAFB" }}>{f.taille}</div>
               <button onClick={() => onSupprimer(i)}
-                style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>✕</button>
+                style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 9, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>✕</button>
             </div>
           ))}
         </div>
@@ -133,69 +133,93 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
   );
 }
 
-// ─── Barre de filtres + tri ───────────────────────────────────────────────────
+// ─── Historique des versions ──────────────────────────────────────────────────
 
-function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateurs }) {
-  const periodes = [...new Set(commandes.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
-  const typesDispos = [...new Set(commandes.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
-
-  function toggleTri(col) {
-    if (tri.col === col) {
-      setTri({ col, dir: tri.dir === "asc" ? "desc" : "asc" });
-    } else {
-      setTri({ col, dir: "asc" });
-    }
-  }
-
-  const selStyle = { padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" };
-
+function HistoriqueVersions({ versions }) {
+  if (!versions || versions.length === 0) return null;
   return (
-    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-      <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginRight: 4 }}>FILTRES</span>
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 10 }}>
+        📁 Historique des versions ({versions.length})
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {[...versions].sort((a, b) => b.numero - a.numero).map((v, i) => (
+          <div key={v.id} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 14px", background: i === 0 ? "#F5F3FF" : "#F9FAFB" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ background: i === 0 ? "#DDD6FE" : "#E5E7EB", color: i === 0 ? "#5B21B6" : "#6B7280", padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
+                  v{v.numero}
+                </span>
+                {i === 0 && <span style={{ fontSize: 11, color: "#5B21B6", fontWeight: 600 }}>Dernière version</span>}
+              </div>
+              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{formatDateLong(v.created_at)}</div>
+            </div>
+            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>Déposée par {v.deposee_par}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {(v.fichiers || []).map((f, j) => (
+                <a key={j} href={f.url} target="_blank" rel="noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 5, border: `1px solid ${i === 0 ? "#DDD6FE" : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: i === 0 ? "#5B21B6" : "#374151", textDecoration: "none" }}>
+                  📄 {f.nom}
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
+// ─── Filtres + tri ────────────────────────────────────────────────────────────
+
+function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateurs, showDessinateur = true }) {
+  const periodes    = [...new Set(commandes.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
+  const typesDispos = [...new Set(commandes.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
+  function toggleTri(col) { setTri(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }); }
+  const selStyle = { padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" };
+  const actif = filtres.statut || filtres.dessinateur || filtres.type || filtres.periode;
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+      <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>FILTRES</span>
       <select value={filtres.statut} onChange={e => setFiltres({ ...filtres, statut: e.target.value })} style={selStyle}>
         <option value="">Tous les statuts</option>
         {STATUTS_ADMIN.map(s => <option key={s}>{s}</option>)}
       </select>
-
-      <select value={filtres.dessinateur} onChange={e => setFiltres({ ...filtres, dessinateur: e.target.value })} style={selStyle}>
-        <option value="">Tous les dessinateurs</option>
-        {dessinateurs.map(d => <option key={d}>{d}</option>)}
-      </select>
-
+      {showDessinateur && (
+        <select value={filtres.dessinateur} onChange={e => setFiltres({ ...filtres, dessinateur: e.target.value })} style={selStyle}>
+          <option value="">Tous les dessinateurs</option>
+          {dessinateurs.map(d => <option key={d}>{d}</option>)}
+        </select>
+      )}
       <select value={filtres.type} onChange={e => setFiltres({ ...filtres, type: e.target.value })} style={selStyle}>
         <option value="">Tous les types</option>
         {typesDispos.map(t => <option key={t}>{t}</option>)}
       </select>
-
       <select value={filtres.periode} onChange={e => setFiltres({ ...filtres, periode: e.target.value })} style={selStyle}>
         <option value="">Toutes les périodes</option>
         {periodes.map(p => {
           const [y, m] = p.split("-");
-          const label = new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-          return <option key={p} value={p}>{label}</option>;
+          return <option key={p} value={p}>{new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</option>;
         })}
       </select>
-
-      {(filtres.statut || filtres.dessinateur || filtres.type || filtres.periode) && (
+      {actif && (
         <button onClick={() => setFiltres({ statut: "", dessinateur: "", type: "", periode: "" })}
           style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
           ✕ Réinitialiser
         </button>
       )}
-
       <div style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>TRIER</span>
+        <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginRight: 2 }}>TRIER</span>
         {[
           { col: "batiment",    label: "Bâtiment" },
-          { col: "created_at",  label: "Date création" },
+          { col: "created_at",  label: "Date" },
           { col: "delai",       label: "Délai" },
           { col: "statut",      label: "Statut" },
-          { col: "dessinateur", label: "Dessinateur" },
+          ...(showDessinateur ? [{ col: "dessinateur", label: "Dessinateur" }] : []),
         ].map(({ col, label }) => (
           <button key={col} onClick={() => toggleTri(col)}
             style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tri.col === col ? "#EFF6FF" : "#fff", color: tri.col === col ? "#1D4ED8" : "#6B7280" }}>
-            {label} {tri.col === col ? (tri.dir === "asc" ? "↑" : "↓") : ""}
+            {label}{tri.col === col ? (tri.dir === "asc" ? " ↑" : " ↓") : ""}
           </button>
         ))}
       </div>
@@ -204,22 +228,16 @@ function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateur
 }
 
 function appliquerFiltresTri(commandes, filtres, tri) {
-  let result = [...commandes];
-
-  if (filtres.statut)      result = result.filter(c => c.statut === filtres.statut);
-  if (filtres.dessinateur) result = result.filter(c => c.dessinateur === filtres.dessinateur);
-  if (filtres.type)        result = result.filter(c => (c.plans || []).some(p => p.type === filtres.type));
-  if (filtres.periode)     result = result.filter(c => getPeriode(c.created_at) === filtres.periode);
-
-  if (tri.col) {
-    result.sort((a, b) => {
-      const va = a[tri.col] || "";
-      const vb = b[tri.col] || "";
-      return tri.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
-  }
-
-  return result;
+  let r = [...commandes];
+  if (filtres.statut)      r = r.filter(c => c.statut === filtres.statut);
+  if (filtres.dessinateur) r = r.filter(c => c.dessinateur === filtres.dessinateur);
+  if (filtres.type)        r = r.filter(c => (c.plans || []).some(p => p.type === filtres.type));
+  if (filtres.periode)     r = r.filter(c => getPeriode(c.created_at) === filtres.periode);
+  if (tri.col) r.sort((a, b) => {
+    const va = a[tri.col] || ""; const vb = b[tri.col] || "";
+    return tri.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  return r;
 }
 
 // ─── Page Réglages ────────────────────────────────────────────────────────────
@@ -228,12 +246,6 @@ function PageReglages({ settings, onSave }) {
   const [local, setLocal] = useState(settings);
   const [sauve, setSauve] = useState(false);
   const logoRef = useRef();
-  function handleLogoChange(e) {
-    const f = e.target.files[0];
-    if (!f) return;
-    setLocal({ ...local, logoUrl: URL.createObjectURL(f), logoNom: f.name });
-  }
-  function sauvegarder() { onSave(local); setSauve(true); setTimeout(() => setSauve(false), 2000); }
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4 };
   return (
@@ -264,7 +276,10 @@ function PageReglages({ settings, onSave }) {
               {local.logoUrl ? "Changer le logo" : "Choisir un logo"}
             </button>
             {local.logoNom && <div style={{ fontSize: 11, color: "#9CA3AF" }}>{local.logoNom}</div>}
-            <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoChange} />
+            <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+              const f = e.target.files[0];
+              if (f) setLocal({ ...local, logoUrl: URL.createObjectURL(f), logoNom: f.name });
+            }} />
           </div>
         </div>
       </div>
@@ -275,7 +290,7 @@ function PageReglages({ settings, onSave }) {
           onChange={e => setLocal({ ...local, dessinateurs: e.target.value.split("\n").filter(d => d.trim()) })}
           rows={4} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
-      <button onClick={sauvegarder}
+      <button onClick={() => { onSave(local); setSauve(true); setTimeout(() => setSauve(false), 2000); }}
         style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: sauve ? "#059669" : "#DC2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.3s" }}>
         {sauve ? "✓ Sauvegardé !" : "Sauvegarder les réglages"}
       </button>
@@ -283,7 +298,7 @@ function PageReglages({ settings, onSave }) {
   );
 }
 
-// ─── Messagerie partagée ──────────────────────────────────────────────────────
+// ─── Messagerie ───────────────────────────────────────────────────────────────
 
 function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif }) {
   return (
@@ -316,20 +331,18 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif })
 
 // ─── Vue Dessinateur ──────────────────────────────────────────────────────────
 
-function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerMessage, onUploaderPlansFinalises }) {
+function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, onEnvoyerMessage, onDeposerVersion }) {
   const [selected, setSelected]                 = useState(null);
   const [msgInput, setMsgInput]                 = useState("");
   const [fichiersNouveaux, setFichiersNouveaux] = useState([]);
   const [deposant, setDeposant]                 = useState(false);
-  const [filtres, setFiltres]                   = useState({ statut: "", type: "", periode: "" });
+  const [filtres, setFiltres]                   = useState({ statut: "", type: "", periode: "", dessinateur: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
 
-  const toutes      = commandes.filter(c => c.dessinateur === nomDessinateur);
-  const mesTerminees = toutes.filter(c => c.statut === "Validé");
+  const toutes       = commandes.filter(c => c.dessinateur === nomDessinateur);
   const mesMissions  = toutes.filter(c => c.statut !== "Validé");
-
-  const filtresDessin = { ...filtres, dessinateur: "" }; // pas de filtre dessinateur côté dessinateur
-  const missionsFiltrees = appliquerFiltresTri(mesMissions, filtresDessin, tri);
+  const mesTerminees = toutes.filter(c => c.statut === "Validé");
+  const missionsFiltrees = appliquerFiltresTri(mesMissions, { ...filtres, dessinateur: "" }, tri);
 
   useEffect(() => {
     if (selected) {
@@ -346,68 +359,15 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
   async function handleDeposer() {
     if (!fichiersNouveaux.length || !selected) return;
     setDeposant(true);
-    await onUploaderPlansFinalises(selected.id, fichiersNouveaux);
+    const mesVersions = versions.filter(v => v.commande_id === selected.id);
+    const numero = mesVersions.length + 1;
+    await onDeposerVersion(selected.id, fichiersNouveaux, numero, nomDessinateur);
     await onChangerStatut(selected.id, "Ébauche déposée");
     setFichiersNouveaux([]);
     setDeposant(false);
   }
 
-  async function handleEnvoyer() {
-    if (!msgInput.trim() || !selected) return;
-    await onEnvoyerMessage(selected.id, nomDessinateur, msgInput.trim());
-    setMsgInput("");
-  }
-
-  // Barre filtres/tri simplifiée pour dessinateur (sans filtre dessinateur)
-  function BarreDessinateur() {
-    const periodes = [...new Set(mesMissions.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
-    const typesDispos = [...new Set(mesMissions.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
-    const selStyle = { padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" };
-    function toggleTri(col) {
-      setTri(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
-    }
-    return (
-      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>FILTRES</span>
-        <select value={filtres.statut} onChange={e => setFiltres({ ...filtres, statut: e.target.value })} style={selStyle}>
-          <option value="">Tous les statuts</option>
-          {["En attente","Commencé","Ébauche déposée","Modification dessinateur"].map(s => <option key={s}>{s}</option>)}
-        </select>
-        <select value={filtres.type} onChange={e => setFiltres({ ...filtres, type: e.target.value })} style={selStyle}>
-          <option value="">Tous les types</option>
-          {typesDispos.map(t => <option key={t}>{t}</option>)}
-        </select>
-        <select value={filtres.periode} onChange={e => setFiltres({ ...filtres, periode: e.target.value })} style={selStyle}>
-          <option value="">Toutes les périodes</option>
-          {periodes.map(p => {
-            const [y, m] = p.split("-");
-            const label = new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-            return <option key={p} value={p}>{label}</option>;
-          })}
-        </select>
-        {(filtres.statut || filtres.type || filtres.periode) && (
-          <button onClick={() => setFiltres({ statut: "", type: "", periode: "" })}
-            style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-            ✕ Réinitialiser
-          </button>
-        )}
-        <div style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>TRIER</span>
-          {[
-            { col: "batiment",   label: "Bâtiment" },
-            { col: "created_at", label: "Date" },
-            { col: "delai",      label: "Délai" },
-            { col: "statut",     label: "Statut" },
-          ].map(({ col, label }) => (
-            <button key={col} onClick={() => toggleTri(col)}
-              style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tri.col === col ? "#EFF6FF" : "#fff", color: tri.col === col ? "#1D4ED8" : "#6B7280" }}>
-              {label} {tri.col === col ? (tri.dir === "asc" ? "↑" : "↓") : ""}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const versionsCommande = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827" }}>
@@ -433,7 +393,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
       <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Mes missions</h1>
 
-        <BarreDessinateur />
+        <BarreFiltres commandes={mesMissions} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} />
 
         {missionsFiltrees.length === 0 && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
@@ -458,9 +418,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                  <div>
-                    {tr && <span style={{ background: tr.bg, color: tr.color, padding: "3px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tr.label}</span>}
-                  </div>
+                  <div>{tr && <span style={{ background: tr.bg, color: tr.color, padding: "3px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tr.label}</span>}</div>
                   <Badge statut={c.statut} />
                 </div>
               );
@@ -468,7 +426,6 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
           </div>
         )}
 
-        {/* Détail mission */}
         {selected && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -483,14 +440,12 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
               </div>
             </div>
 
-            {/* EN ATTENTE → bouton commencer uniquement */}
+            {/* EN ATTENTE */}
             {selected.statut === "En attente" && (
               <div style={{ textAlign: "center", padding: "40px 20px" }}>
                 <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Nouvelle mission disponible</div>
-                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 8 }}>
-                  {selected.plans.length} plan{selected.plans.length > 1 ? "s" : ""} à réaliser
-                </div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 8 }}>{selected.plans.length} plan{selected.plans.length > 1 ? "s" : ""} à réaliser</div>
                 {tempsRestant(selected.delai) && (
                   <div style={{ marginBottom: 20 }}>
                     <span style={{ background: tempsRestant(selected.delai).bg, color: tempsRestant(selected.delai).color, padding: "4px 12px", borderRadius: 100, fontSize: 12, fontWeight: 600 }}>
@@ -520,12 +475,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                     { label: "Créé le",       val: formatDateCourt(selected.created_at) },
                     { label: "Délai",         val: selected.delai ? formatDateCourt(selected.delai) : "—" },
                     { label: "Temps restant", val: tempsRestant(selected.delai) ? <span style={{ background: tempsRestant(selected.delai).bg, color: tempsRestant(selected.delai).color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tempsRestant(selected.delai).label}</span> : "—" },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
-                    </div>
-                  ))}
+                  ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
                 </div>
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans à réaliser</div>
@@ -545,12 +495,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {selected.fichiersPlan.map((f, i) => (
-                        <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151", textDecoration: "none" }}>
-                          📄 {f.nom}
-                        </a>
-                      ))}
+                      {selected.fichiersPlan.map((f, i) => <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151", textDecoration: "none" }}>📄 {f.nom}</a>)}
                     </div>
                   </div>
                 )}
@@ -560,13 +505,14 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                     <img src={selected.logoClient[0].url} alt="logo" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
                   </div>
                 )}
-                {selected.notes && (
-                  <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>
-                    📝 {selected.notes}
-                  </div>
-                )}
+                {selected.notes && <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>📝 {selected.notes}</div>}
+
+                <HistoriqueVersions versions={versionsCommande} />
+
                 <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 18, marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#065F46", marginBottom: 4 }}>📤 Déposer l'ébauche</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#065F46", marginBottom: 4 }}>
+                    📤 {versionsCommande.length > 0 ? `Déposer la version ${versionsCommande.length + 1}` : "Déposer l'ébauche"}
+                  </div>
                   <div style={{ fontSize: 12, color: "#059669", marginBottom: 14 }}>Uploadez vos fichiers puis confirmez le dépôt.</div>
                   <ZoneUpload label="" fichiers={fichiersNouveaux} onAjouter={f => setFichiersNouveaux(f)} onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai" maxFichiers={20} />
                   {fichiersNouveaux.length > 0 && (
@@ -576,7 +522,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                     </button>
                   )}
                 </div>
-                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={handleEnvoyer} auteurActif={nomDessinateur} />
+                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={async () => { if (!msgInput.trim()) return; await onEnvoyerMessage(selected.id, nomDessinateur, msgInput.trim()); setMsgInput(""); }} auteurActif={nomDessinateur} />
               </>
             )}
 
@@ -589,26 +535,12 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                     { label: "Créé le",       val: formatDateCourt(selected.created_at) },
                     { label: "Délai",         val: selected.delai ? formatDateCourt(selected.delai) : "—" },
                     { label: "Temps restant", val: tempsRestant(selected.delai) ? <span style={{ background: tempsRestant(selected.delai).bg, color: tempsRestant(selected.delai).color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tempsRestant(selected.delai).label}</span> : "—" },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
-                    </div>
-                  ))}
+                  ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
                 </div>
-                <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 18, marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6", marginBottom: 10 }}>✅ Ébauche déposée — en attente de retour client</div>
-                  {selected.plansFinalises?.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {selected.plansFinalises.map((f, i) => (
-                        <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#fff", fontSize: 11, color: "#5B21B6", textDecoration: "none" }}>
-                          📄 {f.nom}
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6", marginBottom: 4 }}>✅ Ébauche déposée — en attente de retour</div>
                 </div>
+                <HistoriqueVersions versions={versionsCommande} />
                 <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 18, marginBottom: 20 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#6B7280", marginBottom: 10 }}>Redéposer une version corrigée</div>
                   <ZoneUpload label="" fichiers={fichiersNouveaux} onAjouter={f => setFichiersNouveaux(f)} onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai" maxFichiers={20} />
@@ -619,13 +551,12 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                     </button>
                   )}
                 </div>
-                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={handleEnvoyer} auteurActif={nomDessinateur} />
+                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={async () => { if (!msgInput.trim()) return; await onEnvoyerMessage(selected.id, nomDessinateur, msgInput.trim()); setMsgInput(""); }} auteurActif={nomDessinateur} />
               </>
             )}
           </div>
         )}
 
-        {/* Missions terminées */}
         {mesTerminees.length > 0 && (
           <div>
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "#9CA3AF", marginBottom: 12 }}>Missions terminées</h2>
@@ -652,6 +583,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
 
 export default function App() {
   const [commandes, setCommandes]               = useState([]);
+  const [versions, setVersions]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
   const [vue, setVue]                           = useState("dashboard");
   const [selected, setSelected]                 = useState(null);
@@ -662,6 +594,16 @@ export default function App() {
   const [dessinateurActif, setDessinateurActif] = useState("");
   const [filtres, setFiltres]                   = useState({ statut: "", dessinateur: "", type: "", periode: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
+
+  // Modal demande modification
+  const [showModifModal, setShowModifModal]   = useState(false);
+  const [modifMsg, setModifMsg]               = useState("");
+  const [modifFichiers, setModifFichiers]     = useState([]);
+  const [envoyantModif, setEnvoyantModif]     = useState(false);
+
+  // Modal confirmation validation
+  const [showValidModal, setShowValidModal]   = useState(false);
+  const [validant, setValidant]               = useState(false);
 
   const [settings, setSettings] = useState({
     nomEntreprise: "First Incendie",
@@ -674,25 +616,23 @@ export default function App() {
   const formVide = () => ({ batiment: "", client: "", delai: "", dessinateur: "", notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [] });
   const [form, setForm] = useState(formVide());
 
-  useEffect(() => { chargerCommandes(); }, []);
+  useEffect(() => { chargerTout(); }, []);
 
-  async function chargerCommandes() {
+  async function chargerTout() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("commandes")
-      .select("*, messages(*)")
-      .order("created_at", { ascending: false });
-    if (error) { console.error("Erreur chargement:", error); }
-    else {
-      setCommandes(data.map(c => ({
-        ...c,
-        plans:          c.plans || [],
-        fichiersPlan:   c.fichiers_plan || [],
-        logoClient:     c.logo_client || [],
-        plansFinalises: c.plans_finalises || [],
-        messages:       (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
-      })));
-    }
+    const [{ data: cmd }, { data: ver }] = await Promise.all([
+      supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false }),
+      supabase.from("versions").select("*").order("numero", { ascending: true }),
+    ]);
+    if (cmd) setCommandes(cmd.map(c => ({
+      ...c,
+      plans:          c.plans || [],
+      fichiersPlan:   c.fichiers_plan || [],
+      logoClient:     c.logo_client || [],
+      plansFinalises: c.plans_finalises || [],
+      messages:       (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+    })));
+    if (ver) setVersions(ver);
     setLoading(false);
   }
 
@@ -708,7 +648,6 @@ export default function App() {
       fichiers_plan: form.fichiersPlan, logo_client: form.logoClient,
       plans_finalises: [], statut: "En attente",
     }]).select("*, messages(*)").single();
-    console.log("Résultat Supabase:", { data, error });
     if (!error && data) {
       setCommandes(prev => [{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...prev]);
     }
@@ -727,28 +666,47 @@ export default function App() {
 
   async function envoyerMessage(commandeId, auteur, texte) {
     const { data, error } = await supabase.from("messages").insert([{
-      commande_id: commandeId, auteur, texte,
-      date: formatDateMsg(),
+      commande_id: commandeId, auteur, texte, date: formatDateMsg(),
     }]).select().single();
     if (!error && data) {
-      setCommandes(prev => prev.map(c =>
-        c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c
-      ));
+      setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c));
       if (selected?.id === commandeId) setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
     }
   }
 
-  async function envoyerMessageAdmin() {
-    if (!msgInput.trim() || !selected) return;
-    await envoyerMessage(selected.id, "Simon", msgInput.trim());
-    setMsgInput("");
+  async function deposerVersion(commandeId, fichiers, numero, deposee_par) {
+    const { data, error } = await supabase.from("versions").insert([{
+      commande_id: commandeId, fichiers, numero, deposee_par,
+    }]).select().single();
+    if (!error && data) {
+      setVersions(prev => [...prev, data]);
+    }
   }
 
-  async function uploaderPlansFinalises(commandeId, fichiers) {
-    const { error } = await supabase.from("commandes").update({ plans_finalises: fichiers }).eq("id", commandeId);
-    if (!error) {
-      setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, plansFinalises: fichiers } : c));
-    }
+  // Demande de modification (admin)
+  async function envoyerDemandeModification() {
+    if (!modifMsg.trim() || !selected) return;
+    setEnvoyantModif(true);
+    // Message avec fichiers joints si présents
+    const texte = modifFichiers.length > 0
+      ? `${modifMsg}\n📎 ${modifFichiers.length} fichier(s) joint(s) : ${modifFichiers.map(f => f.nom).join(", ")}`
+      : modifMsg;
+    await envoyerMessage(selected.id, "Simon", texte);
+    await changerStatut(selected.id, "Modification dessinateur");
+    setModifMsg("");
+    setModifFichiers([]);
+    setShowModifModal(false);
+    setEnvoyantModif(false);
+  }
+
+  // Validation (admin)
+  async function validerCommande() {
+    if (!selected) return;
+    setValidant(true);
+    await changerStatut(selected.id, "Validé");
+    await envoyerMessage(selected.id, "Simon", "✅ Commande validée. Merci pour votre travail !");
+    setShowValidModal(false);
+    setValidant(false);
   }
 
   const stats = {
@@ -762,6 +720,7 @@ export default function App() {
   const cmdAffichees = vue === "dashboard" ? cmdFiltrees.slice(0, 5) : cmdFiltrees;
   const inputStyle   = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle   = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4 };
+  const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   const SwitcherBarre = () => (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "#1E293B", padding: "8px 20px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -800,10 +759,11 @@ export default function App() {
           ) : (
             <VueDessinateur
               commandes={commandes}
+              versions={versions}
               nomDessinateur={dessinateurActif}
               onChangerStatut={changerStatut}
               onEnvoyerMessage={envoyerMessage}
-              onUploaderPlansFinalises={uploaderPlansFinalises}
+              onDeposerVersion={deposerVersion}
             />
           )}
         </div>
@@ -856,7 +816,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Stats */}
               {vue === "dashboard" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
                   {[
@@ -873,17 +832,8 @@ export default function App() {
                 </div>
               )}
 
-              {/* Filtres admin */}
-              <BarreFiltres
-                commandes={commandes}
-                filtres={filtres}
-                setFiltres={setFiltres}
-                tri={tri}
-                setTri={setTri}
-                dessinateurs={settings.dessinateurs}
-              />
+              <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={settings.dessinateurs} showDessinateur={true} />
 
-              {/* Tableau */}
               {loading ? (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>Chargement...</div>
               ) : (
@@ -891,9 +841,7 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
-                  {cmdAffichees.length === 0 && (
-                    <div style={{ padding: "32px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande ne correspond aux filtres.</div>
-                  )}
+                  {cmdAffichees.length === 0 && <div style={{ padding: "32px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande ne correspond aux filtres.</div>}
                   {cmdAffichees.map(c => (
                     <div key={c.id} onClick={() => setSelected(c)}
                       style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
@@ -919,7 +867,10 @@ export default function App() {
                       <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div>
                       <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div>
                     </div>
-                    <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <Badge statut={selected.statut} />
+                      <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+                    </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -929,12 +880,7 @@ export default function App() {
                       { label: "Créé le",     val: formatDateCourt(selected.created_at) },
                       { label: "Délai",       val: selected.delai ? formatDateCourt(selected.delai) : "—" },
                       { label: "Nb. plans",   val: selected.plans.length },
-                    ].map(f => (
-                      <div key={f.label}>
-                        <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
-                      </div>
-                    ))}
+                    ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
                   </div>
 
                   {/* Plans */}
@@ -953,29 +899,27 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Plans finalisés */}
-                  {selected.plansFinalises?.length > 0 && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans déposés par le dessinateur ({selected.plansFinalises.length})</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {selected.plansFinalises.map((f, i) => (
-                          <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                            style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#F5F3FF", fontSize: 11, color: "#5B21B6", textDecoration: "none" }}>
-                            📄 {f.nom}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Historique versions */}
+                  <HistoriqueVersions versions={versionsSelected} />
 
                   {/* Notes */}
-                  {selected.notes && (
-                    <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>
-                      📝 {selected.notes}
+                  {selected.notes && <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>📝 {selected.notes}</div>}
+
+                  {/* Boutons d'action admin */}
+                  {selected.statut === "Ébauche déposée" && (
+                    <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+                      <button onClick={() => setShowModifModal(true)}
+                        style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        ✏️ Demander une modification
+                      </button>
+                      <button onClick={() => setShowValidModal(true)}
+                        style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        ✅ Valider la commande
+                      </button>
                     </div>
                   )}
 
-                  <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={envoyerMessageAdmin} auteurActif="Simon" />
+                  <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={async () => { if (!msgInput.trim()) return; await envoyerMessage(selected.id, "Simon", msgInput.trim()); setMsgInput(""); }} auteurActif="Simon" />
                 </div>
               )}
             </>
@@ -983,7 +927,65 @@ export default function App() {
         </div>
       </div>
 
-      {/* Modal nouvelle commande */}
+      {/* ── Modal demande de modification ── */}
+      {showModifModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 500 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>✏️ Demander une modification</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur" et le dessinateur recevra votre message.</div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>Message de modification *</label>
+              <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)}
+                rows={4} placeholder="Décrivez les modifications à apporter..."
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <ZoneUpload label="📎 Fichiers joints (optionnel)" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => { setShowModifModal(false); setModifMsg(""); setModifFichiers([]); }}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={envoyerDemandeModification} disabled={!modifMsg.trim() || envoyantModif}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: !modifMsg.trim() ? "#F3F4F6" : "#D97706", color: !modifMsg.trim() ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: !modifMsg.trim() ? "not-allowed" : "pointer" }}>
+                {envoyantModif ? "Envoi..." : "Envoyer la demande"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal confirmation validation ── */}
+      {showValidModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 420, textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Confirmer la validation</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 8 }}>
+              Vous êtes sur le point de valider la commande
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 24 }}>
+              {selected?.batiment}
+            </div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 24 }}>
+              Cette action est irréversible. La commande sera clôturée et le dessinateur notifié.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => setShowValidModal(false)}
+                style={{ padding: "10px 24px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={validerCommande} disabled={validant}
+                style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#059669", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {validant ? "Validation..." : "Confirmer la validation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal nouvelle commande ── */}
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
           onClick={e => e.target === e.currentTarget && setShowForm(false)}>
@@ -999,9 +1001,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={labelStyle}>Délai souhaité *</label>
-                <input type="date" value={form.delai}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
+                <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Dessinateur *</label>
@@ -1036,11 +1036,7 @@ export default function App() {
               const ok = manque.length === 0;
               return (
                 <div>
-                  {!ok && (
-                    <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>
-                      Champs manquants : {manque.join(", ")}
-                    </div>
-                  )}
+                  {!ok && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Champs manquants : {manque.join(", ")}</div>}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                     <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
                     <button onClick={creerCommande} disabled={saving || !ok}
