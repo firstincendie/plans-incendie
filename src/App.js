@@ -738,8 +738,8 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   )}
                 </div>
                 <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-                  onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && fichiers.length === 0) return; await onEnvoyerMessage(selected.id, nomDessinateur, texte, fichiers); }}
-                  auteurActif={nomDessinateur} allowFichier={true} />
+                  onEnvoyer={async (texte) => { if (!texte.trim()) return; await onEnvoyerMessage(selected.id, nomDessinateur, texte, []); }}
+                  auteurActif={nomDessinateur} />
               </>
             )}
 
@@ -762,8 +762,8 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   )}
                 </div>
                 <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-                  onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && fichiers.length === 0) return; await onEnvoyerMessage(selected.id, nomDessinateur, texte, fichiers); }}
-                  auteurActif={nomDessinateur} allowFichier={true} />
+                  onEnvoyer={async (texte) => { if (!texte.trim()) return; await onEnvoyerMessage(selected.id, nomDessinateur, texte, []); }}
+                  auteurActif={nomDessinateur} />
               </>
             )}
           </div>
