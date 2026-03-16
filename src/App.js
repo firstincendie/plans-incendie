@@ -1095,14 +1095,14 @@ export default function App() {
                       style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{c.client}</div>
+                          <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                            {c.client}
+                            {hasNouveauMsg && (
+                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
+                            )}
+                          </div>
                           <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                         </div>
-                        {hasNouveauMsg && (
-                          <span style={{ background: "#DC2626", color: "#fff", borderRadius: 100, fontSize: 10, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap" }}>
-                            Nouveau msg
-                          </span>
-                        )}
                       </div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.batiment || "—"}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
