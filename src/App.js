@@ -543,7 +543,11 @@ export default function App() {
   }
 
   async function creerCommande() {
-    if (!form.batiment || !form.client || !form.dessinateur || !form.delai || form.fichiersPlan.length === 0) return;
+    if (!form.batiment || !form.client || !form.dessinateur || !form.delai || form.fichiersPlan.length === 0) {
+      console.log("Validation échouée", { batiment: form.batiment, client: form.client, dessinateur: form.dessinateur, delai: form.delai, fichiers: form.fichiersPlan.length });
+      return;
+    }
+    console.log("Création commande...");
     setSaving(true);
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
     const { data, error } = await supabase.from("commandes").insert([{
@@ -552,6 +556,7 @@ export default function App() {
       fichiers_plan: form.fichiersPlan, logo_client: form.logoClient,
       plans_finalises: [], statut: "En attente",
     }]).select("*, messages(*)").single();
+    console.log("Résultat Supabase:", { data, error });
     if (!error && data) {
       setCommandes([{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...commandes]);
     }
@@ -820,11 +825,16 @@ export default function App() {
               <div><label style={labelStyle}>Client *</label><input type="text" value={form.client} placeholder="Nom de la société" onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>Délai souhaité</label><input type="date" value={form.delai} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} /></div>
               <div>
-                <label style={labelStyle}>Dessinateur</label>
+                <label style={labelStyle}>Délai souhaité *</label>
+                <input type="date" value={form.delai}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Dessinateur *</label>
                 <select value={form.dessinateur} onChange={e => setForm({ ...form, dessinateur: e.target.value })} style={inputStyle}>
-                  <option value="">— Assigner plus tard —</option>
+                  <option value="">— Choisir un dessinateur —</option>
                   {settings.dessinateurs.map(d => <option key={d}>{d}</option>)}
                 </select>
               </div>
@@ -836,7 +846,7 @@ export default function App() {
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
-              <ZoneUpload label="📄 Fichiers du plan" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
+              <ZoneUpload label="📄 Fichiers du plan *" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
               <ZoneUpload label="🏢 Logo du client" fichiers={form.logoClient} onAjouter={f => setForm({ ...form, logoClient: f })} onSupprimer={() => setForm({ ...form, logoClient: [] })} accept="image/*" unique={true} />
             </div>
             <div style={{ marginBottom: 20 }}>
