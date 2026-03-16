@@ -166,28 +166,28 @@ function PageReglages({ settings, onSave }) {
 // ─── Vue Dessinateur ──────────────────────────────────────────────────────────
 
 function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerMessage, onUploaderPlansFinalises }) {
-  const [selected, setSelected]         = useState(null);
-  const [msgInput, setMsgInput]         = useState("");
+  const [selected, setSelected]             = useState(null);
+  const [msgInput, setMsgInput]             = useState("");
   const [fichiersNouveaux, setFichiersNouveaux] = useState([]);
-  const [deposant, setDeposant]         = useState(false);
+  const [deposant, setDeposant]             = useState(false);
 
   const mesMissions  = commandes.filter(c => c.dessinateur === nomDessinateur && c.statut !== "Validé");
   const mesTerminees = commandes.filter(c => c.dessinateur === nomDessinateur && c.statut === "Validé");
 
-  // Sync selected quand commandes change (ex: après changement statut)
+  // Sync selected quand commandes change
   useEffect(() => {
     if (selected) {
       const updated = commandes.find(c => c.id === selected.id);
       if (updated) setSelected(updated);
     }
-  }, [commandes]);
+  }, [commandes]); // eslint-disable-line
 
   async function handleCommencer() {
     if (!selected) return;
     await onChangerStatut(selected.id, "Commencé");
   }
 
-  async function handleDeposerEbauche() {
+  async function handleDeposer() {
     if (!fichiersNouveaux.length || !selected) return;
     setDeposant(true);
     await onUploaderPlansFinalises(selected.id, fichiersNouveaux);
@@ -202,119 +202,9 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
     setMsgInput("");
   }
 
-  // Bloc action principal selon statut
-  function BlocAction() {
-    if (!selected) return null;
-    const statut = selected.statut;
-
-    // En attente → bouton Commencer
-    if (statut === "En attente") {
-      return (
-        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: 20, marginBottom: 20, textAlign: "center" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#1E40AF", marginBottom: 6 }}>Nouvelle mission</div>
-          <div style={{ fontSize: 13, color: "#3B82F6", marginBottom: 16 }}>Cliquez sur "Commencer" pour accepter cette mission</div>
-          <button onClick={handleCommencer}
-            style={{ padding: "10px 28px", borderRadius: 8, border: "none", background: "#2563EB", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            ▶ Commencer la mission
-          </button>
-        </div>
-      );
-    }
-
-    // Commencé OU Modification demandée → zone de dépôt
-    if (statut === "Commencé" || statut === "Modification dessinateur") {
-      const isModif = statut === "Modification dessinateur";
-      return (
-        <div style={{ background: isModif ? "#FFF7ED" : "#F0FDF4", border: `1px solid ${isModif ? "#FED7AA" : "#BBF7D0"}`, borderRadius: 10, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: isModif ? "#92400E" : "#065F46", marginBottom: 4 }}>
-            {isModif ? "⚠️ Modification demandée" : "📤 Déposer l'ébauche"}
-          </div>
-          <div style={{ fontSize: 12, color: isModif ? "#B45309" : "#059669", marginBottom: 14 }}>
-            {isModif ? "Le client a demandé des modifications. Déposez une nouvelle version." : "Uploadez vos fichiers puis confirmez le dépôt."}
-          </div>
-
-          {/* Fichiers déjà déposés */}
-          {selected.plansFinalises?.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 6 }}>Dernière version déposée</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {selected.plansFinalises.map((f, i) => (
-                  <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#fff", fontSize: 11, color: "#374151", textDecoration: "none" }}>
-                    📄 {f.nom}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <ZoneUpload
-            label=""
-            fichiers={fichiersNouveaux}
-            onAjouter={f => setFichiersNouveaux(f)}
-            onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))}
-            accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
-            maxFichiers={20}
-          />
-          {fichiersNouveaux.length > 0 && (
-            <button onClick={handleDeposerEbauche} disabled={deposant}
-              style={{ marginTop: 12, padding: "9px 20px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#059669", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
-              {deposant ? "Dépôt en cours..." : `✓ Confirmer le dépôt (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
-            </button>
-          )}
-        </div>
-      );
-    }
-
-    // Ébauche déposée → affichage des fichiers + possibilité de redéposer
-    if (statut === "Ébauche déposée") {
-      return (
-        <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6", marginBottom: 4 }}>✅ Ébauche déposée</div>
-          <div style={{ fontSize: 12, color: "#7C3AED", marginBottom: 14 }}>En attente de retour du client. Vous pouvez redéposer une version corrigée si nécessaire.</div>
-
-          {/* Fichiers déposés */}
-          {selected.plansFinalises?.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 6 }}>Fichiers déposés</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {selected.plansFinalises.map((f, i) => (
-                  <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#fff", fontSize: 11, color: "#374151", textDecoration: "none" }}>
-                    📄 {f.nom}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Redépôt possible */}
-          <div style={{ borderTop: "1px solid #DDD6FE", paddingTop: 14 }}>
-            <div style={{ fontSize: 11, color: "#7C3AED", fontWeight: 600, marginBottom: 8 }}>Redéposer une version corrigée</div>
-            <ZoneUpload
-              label=""
-              fichiers={fichiersNouveaux}
-              onAjouter={f => setFichiersNouveaux(f)}
-              onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))}
-              accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
-              maxFichiers={20}
-            />
-            {fichiersNouveaux.length > 0 && (
-              <button onClick={handleDeposerEbauche} disabled={deposant}
-                style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#7C3AED", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
-                {deposant ? "Dépôt en cours..." : `↩ Redéposer (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
-              </button>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  }
-
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827" }}>
+
       {/* Sidebar */}
       <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
@@ -339,12 +229,13 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
       <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Mes missions</h1>
 
-        {mesMissions.length === 0 && !selected && (
+        {mesMissions.length === 0 && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
             Aucune mission assignée pour l'instant.
           </div>
         )}
 
+        {/* Liste missions */}
         {mesMissions.length > 0 && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 24 }}>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -369,104 +260,191 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
         {/* Détail mission */}
         {selected && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 24 }}>
+
+            {/* Header avec statut */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div>
-                <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref} · {selected.client}</div>
+                <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3 }}>{selected.ref} · {selected.client}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Badge statut={selected.statut} />
-                <button onClick={() => { setSelected(null); setFichiersNouveaux([]); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+                <button onClick={() => { setSelected(null); setFichiersNouveaux([]); }}
+                  style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
               </div>
             </div>
 
-            {/* Infos */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
-              {[
-                { label: "Client",    val: selected.client },
-                { label: "Délai",     val: selected.delai || "—" },
-                { label: "Nb. plans", val: selected.plans.length },
-              ].map(f => (
-                <div key={f.label}>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
+            {/* ── CAS 1 : EN ATTENTE → uniquement bouton Commencer, rien d'autre ── */}
+            {selected.statut === "En attente" && (
+              <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 8 }}>Nouvelle mission disponible</div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 28 }}>
+                  {selected.plans.length} plan{selected.plans.length > 1 ? "s" : ""} à réaliser · Délai : {selected.delai || "non défini"}
                 </div>
-              ))}
-            </div>
+                <button onClick={handleCommencer}
+                  style={{ padding: "12px 36px", borderRadius: 10, border: "none", background: "#2563EB", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", letterSpacing: "0.01em" }}>
+                  ▶ Commencer la mission
+                </button>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 12 }}>
+                  Les détails seront visibles après avoir commencé
+                </div>
+              </div>
+            )}
 
-            {/* Plans à réaliser */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans à réaliser</div>
-              <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr 1fr", padding: "8px 14px", background: "#F9FAFB", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>
-                  <span>N°</span><span>Type</span><span>Orientation</span><span>Format</span>
-                </div>
-                {selected.plans.map((p, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr 1fr", padding: "9px 14px", borderBottom: i < selected.plans.length - 1 ? "1px solid #F3F4F6" : "none", fontSize: 13 }}>
-                    <span style={{ color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</span>
-                    <span>{p.type}</span>
-                    <span style={{ color: "#6B7280" }}>{p.orientation}</span>
-                    <span style={{ color: "#6B7280" }}>{p.format}</span>
+            {/* ── CAS 2 : COMMENCÉ ou MODIFICATION → infos complètes + dépôt ── */}
+            {(selected.statut === "Commencé" || selected.statut === "Modification dessinateur") && (
+              <>
+                {selected.statut === "Modification dessinateur" && (
+                  <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: "#92400E", fontWeight: 500 }}>
+                    ⚠️ Modification demandée — déposez une nouvelle version
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
 
-            {/* Fichiers sources */}
-            {selected.fichiersPlan?.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources fournis</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {selected.fichiersPlan.map((f, i) => (
-                    <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151", textDecoration: "none" }}>
-                      📄 {f.nom}
-                    </a>
+                {/* Infos */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+                  {[
+                    { label: "Client",    val: selected.client },
+                    { label: "Délai",     val: selected.delai || "—" },
+                    { label: "Nb. plans", val: selected.plans.length },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
 
-            {/* Logo client */}
-            {selected.logoClient?.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
-                <img src={selected.logoClient[0].url} alt="logo" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
-              </div>
-            )}
-
-            {/* Notes */}
-            {selected.notes && (
-              <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>
-                📝 {selected.notes}
-              </div>
-            )}
-
-            {/* Bloc action principal */}
-            <BlocAction />
-
-            {/* Messagerie */}
-            <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "#374151" }}>Messagerie</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
-                {selected.messages.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>Aucun message.</div>}
-                {selected.messages.map((m, i) => (
-                  <div key={i} style={{ alignSelf: m.auteur === nomDessinateur ? "flex-end" : "flex-start", maxWidth: "75%" }}>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2, textAlign: m.auteur === nomDessinateur ? "right" : "left" }}>{m.auteur} · {m.date}</div>
-                    <div style={{ background: m.auteur === nomDessinateur ? "#EFF6FF" : "#F3F4F6", color: m.auteur === nomDessinateur ? "#1E3A5F" : "#111827", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{m.texte}</div>
+                {/* Plans à réaliser */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans à réaliser</div>
+                  <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr 1fr", padding: "8px 14px", background: "#F9FAFB", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>
+                      <span>N°</span><span>Type</span><span>Orientation</span><span>Format</span>
+                    </div>
+                    {selected.plans.map((p, i) => (
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr 1fr", padding: "9px 14px", borderBottom: i < selected.plans.length - 1 ? "1px solid #F3F4F6" : "none", fontSize: 13 }}>
+                        <span style={{ color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</span>
+                        <span>{p.type}</span>
+                        <span style={{ color: "#6B7280" }}>{p.orientation}</span>
+                        <span style={{ color: "#6B7280" }}>{p.format}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleEnvoyer()}
-                  placeholder="Écrire un message..." style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, outline: "none" }} />
-                <button onClick={handleEnvoyer}
-                  style={{ background: "#2563EB", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  Envoyer
-                </button>
-              </div>
-            </div>
+                </div>
+
+                {/* Fichiers sources */}
+                {selected.fichiersPlan?.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {selected.fichiersPlan.map((f, i) => (
+                        <a key={i} href={f.url} target="_blank" rel="noreferrer"
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151", textDecoration: "none" }}>
+                          📄 {f.nom}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Logo client */}
+                {selected.logoClient?.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
+                    <img src={selected.logoClient[0].url} alt="logo" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selected.notes && (
+                  <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>
+                    📝 {selected.notes}
+                  </div>
+                )}
+
+                {/* Zone dépôt */}
+                <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#065F46", marginBottom: 4 }}>📤 Déposer l'ébauche</div>
+                  <div style={{ fontSize: 12, color: "#059669", marginBottom: 14 }}>Uploadez vos fichiers puis confirmez le dépôt.</div>
+                  <ZoneUpload
+                    label=""
+                    fichiers={fichiersNouveaux}
+                    onAjouter={f => setFichiersNouveaux(f)}
+                    onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))}
+                    accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
+                    maxFichiers={20}
+                  />
+                  {fichiersNouveaux.length > 0 && (
+                    <button onClick={handleDeposer} disabled={deposant}
+                      style={{ marginTop: 12, padding: "9px 20px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#059669", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
+                      {deposant ? "Dépôt en cours..." : `✓ Confirmer le dépôt (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Messagerie */}
+                <MessagerieDessinateur selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={handleEnvoyer} nomDessinateur={nomDessinateur} />
+              </>
+            )}
+
+            {/* ── CAS 3 : ÉBAUCHE DÉPOSÉE → lecture + redépôt possible ── */}
+            {selected.statut === "Ébauche déposée" && (
+              <>
+                {/* Infos */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+                  {[
+                    { label: "Client",    val: selected.client },
+                    { label: "Délai",     val: selected.delai || "—" },
+                    { label: "Nb. plans", val: selected.plans.length },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Fichiers déposés */}
+                <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6", marginBottom: 10 }}>✅ Ébauche déposée — en attente de retour client</div>
+                  {selected.plansFinalises?.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {selected.plansFinalises.map((f, i) => (
+                        <a key={i} href={f.url} target="_blank" rel="noreferrer"
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#fff", fontSize: 11, color: "#5B21B6", textDecoration: "none" }}>
+                          📄 {f.nom}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#9CA3AF" }}>Fichiers enregistrés.</div>
+                  )}
+                </div>
+
+                {/* Redépôt */}
+                <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#6B7280", marginBottom: 10 }}>Redéposer une version corrigée</div>
+                  <ZoneUpload
+                    label=""
+                    fichiers={fichiersNouveaux}
+                    onAjouter={f => setFichiersNouveaux(f)}
+                    onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))}
+                    accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
+                    maxFichiers={20}
+                  />
+                  {fichiersNouveaux.length > 0 && (
+                    <button onClick={handleDeposer} disabled={deposant}
+                      style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#7C3AED", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
+                      {deposant ? "Dépôt en cours..." : `↩ Redéposer (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Messagerie */}
+                <MessagerieDessinateur selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={handleEnvoyer} nomDessinateur={nomDessinateur} />
+              </>
+            )}
           </div>
         )}
 
@@ -492,17 +470,43 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
   );
 }
 
+function MessagerieDessinateur({ selected, msgInput, setMsgInput, onEnvoyer, nomDessinateur }) {
+  return (
+    <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "#374151" }}>Messagerie</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
+        {selected.messages.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>Aucun message.</div>}
+        {selected.messages.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.auteur === nomDessinateur ? "flex-end" : "flex-start", maxWidth: "75%" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2, textAlign: m.auteur === nomDessinateur ? "right" : "left" }}>{m.auteur} · {m.date}</div>
+            <div style={{ background: m.auteur === nomDessinateur ? "#EFF6FF" : "#F3F4F6", color: m.auteur === nomDessinateur ? "#1E3A5F" : "#111827", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{m.texte}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && onEnvoyer()}
+          placeholder="Écrire un message..." style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, outline: "none" }} />
+        <button onClick={onEnvoyer}
+          style={{ background: "#2563EB", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          Envoyer
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── App principale ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [commandes, setCommandes]           = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [vue, setVue]                       = useState("dashboard");
-  const [selected, setSelected]             = useState(null);
-  const [showForm, setShowForm]             = useState(false);
-  const [msgInput, setMsgInput]             = useState("");
-  const [saving, setSaving]                 = useState(false);
-  const [modeVue, setModeVue]               = useState("admin");
+  const [commandes, setCommandes]               = useState([]);
+  const [loading, setLoading]                   = useState(true);
+  const [vue, setVue]                           = useState("dashboard");
+  const [selected, setSelected]                 = useState(null);
+  const [showForm, setShowForm]                 = useState(false);
+  const [msgInput, setMsgInput]                 = useState("");
+  const [saving, setSaving]                     = useState(false);
+  const [modeVue, setModeVue]                   = useState("admin");
   const [dessinateurActif, setDessinateurActif] = useState("");
 
   const [settings, setSettings] = useState({
@@ -528,11 +532,11 @@ export default function App() {
     else {
       setCommandes(data.map(c => ({
         ...c,
-        plans: c.plans || [],
-        fichiersPlan: c.fichiers_plan || [],
-        logoClient: c.logo_client || [],
+        plans:          c.plans || [],
+        fichiersPlan:   c.fichiers_plan || [],
+        logoClient:     c.logo_client || [],
         plansFinalises: c.plans_finalises || [],
-        messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+        messages:       (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
       })));
     }
     setLoading(false);
@@ -757,7 +761,6 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  {/* Plans finalisés déposés par le dessinateur */}
                   {selected.plansFinalises?.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
                       <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans déposés par le dessinateur ({selected.plansFinalises.length})</div>
