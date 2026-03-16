@@ -608,6 +608,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
   const [deposant, setDeposant]                 = useState(false);
   const [filtres, setFiltres]                   = useState({ statut: "", type: "", periode: "", client: "", dessinateur: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
+  const [showTermineesDessin, setShowTermineesDessin] = useState(false);
 
   const toutes       = commandes.filter(c => c.dessinateur === nomDessinateur);
   const mesMissions  = toutes.filter(c => c.statut !== "Validé");
@@ -683,6 +684,8 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
             </div>
             {missionsFiltrees.map(c => {
               const tr = tempsRestant(c.delai);
+              const dernierMsg = c.messages[c.messages.length - 1];
+              const hasNouveauMsg = dernierMsg && dernierMsg.auteur !== nomDessinateur && selected?.id !== c.id;
               return (
                 <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
                   style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
@@ -695,7 +698,12 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
                   <div>{tr && <span style={{ background: tr.bg, color: tr.color, padding: "3px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tr.label}</span>}</div>
-                  <Badge statut={c.statut} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Badge statut={c.statut} />
+                    {hasNouveauMsg && (
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -825,27 +833,30 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
         )}
 
         {mesTerminees.length > 0 && (
-          <div>
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: "#9CA3AF", marginBottom: 12 }}>
-              Missions terminées ({mesTerminees.length})
-            </h2>
-            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span></span><span>Statut</span>
-              </div>
-              {mesTerminees.map(c => (
-                <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
-                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
-                  <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
-                  <div style={{ fontSize: 12 }}>{c.client}</div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                  <div></div>
-                  <Badge statut={c.statut} />
+          <div style={{ marginTop: 8 }}>
+            <button onClick={() => setShowTermineesDessin(v => !v)}
+              style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
+              {showTermineesDessin ? "▲ Masquer les missions terminées" : `▼ Voir les ${mesTerminees.length} mission${mesTerminees.length > 1 ? "s" : ""} terminée${mesTerminees.length > 1 ? "s" : ""}`}
+            </button>
+            {showTermineesDessin && (
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16, opacity: 0.85 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span></span><span>Statut</span>
                 </div>
-              ))}
-            </div>
+                {mesTerminees.map(c => (
+                  <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
+                    style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent" }}>
+                    <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
+                    <div style={{ fontSize: 12 }}>{c.client}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                    <div></div>
+                    <Badge statut={c.statut} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1148,22 +1159,20 @@ export default function App() {
                   return (
                     <div onClick={() => setSelected(c)}
                       style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                            {c.client}
-                            {hasNouveauMsg && (
-                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
-                            )}
-                          </div>
-                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
-                        </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.client}</div>
+                        <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                       </div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.batiment || "—"}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                      <Badge statut={c.statut} />
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <Badge statut={c.statut} />
+                        {hasNouveauMsg && (
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
+                        )}
+                      </div>
                     </div>
                   );
                 };
@@ -1269,9 +1278,15 @@ export default function App() {
                     </div>
                   )}
 
-                  <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-                    onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await envoyerMessage(selected.id, "Simon", texte, fichiers); }}
-                    auteurActif="Simon" allowFichier={true} />
+                  {selected.statut === "Validé" ? (
+                    <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46", fontWeight: 500 }}>
+                      ✅ Commande validée — messagerie fermée
+                    </div>
+                  ) : (
+                    <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
+                      onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await envoyerMessage(selected.id, "Simon", texte, fichiers); }}
+                      auteurActif="Simon" allowFichier={true} />
+                  )}
                 </div>
               )}
             </>
