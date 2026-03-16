@@ -470,13 +470,17 @@ function PageReglages({ settings, onSave }) {
 // ─── Filtre anti-coordonnées ──────────────────────────────────────────────────
 
 const PATTERNS_CONTACTS = [
-  { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g,          label: "adresse email" },
-  { regex: /(\+33|0033|0)[1-9]([\s.\-]?\d{2}){4}/g,                        label: "numéro de téléphone" },
-  { regex: /(\b\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}\b)/g, label: "numéro de téléphone" },
-  { regex: /(https?:\/\/|www\.)[^\s]+/gi,                                   label: "lien web" },
-  { regex: /\b[a-zA-Z0-9\-]+\.(fr|com|net|org|io|co|eu|pro|biz)\b/gi,     label: "nom de domaine" },
-  { regex: /\b(instagram|facebook|linkedin|twitter|tiktok|whatsapp|telegram|signal)\b/gi, label: "réseau social" },
-  { regex: /\b(skype|discord|snapchat|messenger)\b/gi,                      label: "messagerie externe" },
+  // Email complet
+  { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, label: "adresse email" },
+  // Téléphone FR format complet : 06 12 34 56 78 / +33612345678 / 0612345678
+  { regex: /(\+33|0033)[\s.\-]?[1-9]([\s.\-]?\d{2}){4}/g,        label: "numéro de téléphone" },
+  { regex: /\b0[1-9]([\s.\-]?\d{2}){4}\b/g,                       label: "numéro de téléphone" },
+  // URL avec protocole ou www
+  { regex: /(https?:\/\/|www\.)\S+/gi,                             label: "lien web" },
+  // Domaine explicite avec extension
+  { regex: /\b[a-zA-Z0-9\-]{2,}\.(fr|com|net|org|io|co|eu|pro|biz)\b/gi, label: "nom de domaine" },
+  // Réseaux sociaux
+  { regex: /\b(instagram|facebook|linkedin|twitter|tiktok|whatsapp|telegram|signal|skype|discord|snapchat|messenger)\b/gi, label: "contact externe" },
 ];
 
 function analyserMessage(texte) {
@@ -503,6 +507,13 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
       if (detection) {
         setAlerte(`⛔ Message bloqué : ${detection} détecté(e). Le partage de coordonnées personnelles est interdit sur cette plateforme.`);
         setTimeout(() => setAlerte(null), 5000);
+        // Enregistrement de l'alerte en base pour notification admin
+        await supabase.from("alertes").insert([{
+          commande_id: selected.id,
+          auteur: auteurActif,
+          message_bloque: msgInput,
+          type_detection: detection,
+        }]);
         return;
       }
     }
@@ -851,6 +862,7 @@ export default function App() {
   const [envoyantModif, setEnvoyantModif]       = useState(false);
   const [showValidModal, setShowValidModal]     = useState(false);
   const [validant, setValidant]                 = useState(false);
+  const [showTermineesAdmin, setShowTermineesAdmin] = useState(false);
 
   const [settings, setSettings] = useState({
     nomEntreprise: "First Incendie", email: "contact@firstincendie.fr",
@@ -1065,18 +1077,32 @@ export default function App() {
 
               {loading ? (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF" }}>Chargement...</div>
-              ) : (
-                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: selected ? 24 : 0 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              ) : (() => {
+                const actives  = cmdAffichees.filter(c => c.statut !== "Validé");
+                const terminees = cmdAffichees.filter(c => c.statut === "Validé");
+
+                const EnteteTableau = () => (
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     <span>Client</span><span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
-                  {cmdAffichees.length === 0 && <div style={{ padding: "32px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande ne correspond aux filtres.</div>}
-                  {cmdAffichees.map(c => (
-                    <div key={c.id} onClick={() => setSelected(c)}
-                      style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.client}</div>
-                        <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                );
+
+                const LigneCommande = ({ c }) => {
+                  const dernierMsg = c.messages[c.messages.length - 1];
+                  const hasNouveauMsg = dernierMsg && dernierMsg.auteur !== "Simon" && selected?.id !== c.id;
+                  return (
+                    <div onClick={() => setSelected(c)}
+                      style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{c.client}</div>
+                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                        </div>
+                        {hasNouveauMsg && (
+                          <span style={{ background: "#DC2626", color: "#fff", borderRadius: 100, fontSize: 10, fontWeight: 700, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                            Nouveau msg
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.batiment || "—"}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
@@ -1084,9 +1110,36 @@ export default function App() {
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
                       <Badge statut={c.statut} />
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                };
+
+                return (
+                  <>
+                    {/* Commandes actives */}
+                    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                      <EnteteTableau />
+                      {actives.length === 0 && <div style={{ padding: "24px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
+                      {actives.map(c => <LigneCommande key={c.id} c={c} />)}
+                    </div>
+
+                    {/* Commandes terminées — repliables */}
+                    {terminees.length > 0 && (
+                      <div style={{ marginBottom: selected ? 24 : 0 }}>
+                        <button onClick={() => setShowTermineesAdmin(v => !v)}
+                          style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
+                          {showTermineesAdmin ? "▲ Masquer les commandes validées" : `▼ Voir les ${terminees.length} commande${terminees.length > 1 ? "s" : ""} validée${terminees.length > 1 ? "s" : ""}`}
+                        </button>
+                        {showTermineesAdmin && (
+                          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
+                            <EnteteTableau />
+                            {terminees.map(c => <LigneCommande key={c.id} c={c} />)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {selected && (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 0 }}>
