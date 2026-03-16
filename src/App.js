@@ -50,6 +50,10 @@ function getPeriode(created_at) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function fichierAvecDate(f) {
+  return { ...f, ajouteLe: f.ajouteLe || formatDateMsg() };
+}
+
 // ─── Composants utilitaires ───────────────────────────────────────────────────
 
 function Badge({ statut }) {
@@ -92,7 +96,7 @@ function TableauPlans({ plans, onChange }) {
 function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichiers = 10, unique = false }) {
   const inputRef = useRef();
   function handleFiles(e) {
-    const nouveaux = Array.from(e.target.files).map(f => ({
+    const nouveaux = Array.from(e.target.files).map(f => fichierAvecDate({
       nom: f.name, taille: (f.size / 1024).toFixed(0) + " Ko",
       url: URL.createObjectURL(f), type: f.type,
     }));
@@ -112,19 +116,16 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
         <input ref={inputRef} type="file" accept={accept} multiple={!unique} style={{ display: "none" }} onChange={handleFiles} />
       </div>
       {fichiers.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {fichiers.map((f, i) => (
-            <div key={i} style={{ position: "relative", border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-              {isImage(f)
-                ? <img src={f.url} alt={f.nom} style={{ width: 72, height: 72, objectFit: "cover", display: "block" }} />
-                : <div style={{ width: 72, height: 72, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                    <span style={{ fontSize: 22 }}>📄</span>
-                    <span style={{ fontSize: 9, color: "#6B7280", textAlign: "center", padding: "0 4px", wordBreak: "break-all" }}>{f.nom}</span>
-                  </div>
-              }
-              <div style={{ fontSize: 9, color: "#9CA3AF", textAlign: "center", padding: "2px 4px", borderTop: "1px solid #F3F4F6", background: "#F9FAFB" }}>{f.taille}</div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff" }}>
+              <span style={{ fontSize: 18 }}>{isImage(f) ? "🖼️" : "📄"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</a>
+                <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille} · {f.ajouteLe || "—"}</div>
+              </div>
               <button onClick={() => onSupprimer(i)}
-                style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 9, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>✕</button>
+                style={{ border: "none", background: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 14, padding: 0, flexShrink: 0 }}>✕</button>
             </div>
           ))}
         </div>
@@ -133,39 +134,100 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
   );
 }
 
+// ─── Logo cliquable ───────────────────────────────────────────────────────────
+
+function LogoCliquable({ fichier }) {
+  const [zoom, setZoom] = useState(false);
+  if (!fichier) return null;
+  const isImage = fichier.type && fichier.type.startsWith("image/");
+  return (
+    <>
+      <div style={{ display: "inline-block", cursor: "pointer" }} onClick={() => isImage ? setZoom(true) : window.open(fichier.url, "_blank")}>
+        {isImage
+          ? <img src={fichier.url} alt="logo" style={{ height: 56, maxWidth: 140, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 8, padding: 6, background: "#fff" }} />
+          : <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 12, color: "#374151" }}>📄 {fichier.nom}</div>
+        }
+      </div>
+      {zoom && (
+        <div onClick={() => setZoom(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, cursor: "zoom-out" }}>
+          <div style={{ position: "relative" }}>
+            <img src={fichier.url} alt="logo" style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 8 }} />
+            <a href={fichier.url} download={fichier.nom} onClick={e => e.stopPropagation()}
+              style={{ position: "absolute", bottom: -40, left: "50%", transform: "translateX(-50%)", background: "#fff", color: "#111827", padding: "6px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              ⬇ Télécharger
+            </a>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Historique des versions ──────────────────────────────────────────────────
 
 function HistoriqueVersions({ versions }) {
+  const [showOld, setShowOld] = useState(false);
   if (!versions || versions.length === 0) return null;
+  const sorted     = [...versions].sort((a, b) => b.numero - a.numero);
+  const derniere   = sorted[0];
+  const anciennes  = sorted.slice(1);
+
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 10 }}>
-        📁 Historique des versions ({versions.length})
+        📁 Versions déposées ({versions.length})
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {[...versions].sort((a, b) => b.numero - a.numero).map((v, i) => (
-          <div key={v.id} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 14px", background: i === 0 ? "#F5F3FF" : "#F9FAFB" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ background: i === 0 ? "#DDD6FE" : "#E5E7EB", color: i === 0 ? "#5B21B6" : "#6B7280", padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>
-                  v{v.numero}
-                </span>
-                {i === 0 && <span style={{ fontSize: 11, color: "#5B21B6", fontWeight: 600 }}>Dernière version</span>}
-              </div>
-              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{formatDateLong(v.created_at)}</div>
-            </div>
-            <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 6 }}>Déposée par {v.deposee_par}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {(v.fichiers || []).map((f, j) => (
-                <a key={j} href={f.url} target="_blank" rel="noreferrer"
-                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", borderRadius: 5, border: `1px solid ${i === 0 ? "#DDD6FE" : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: i === 0 ? "#5B21B6" : "#374151", textDecoration: "none" }}>
-                  📄 {f.nom}
-                </a>
+
+      {/* Dernière version — mise en avant */}
+      <div style={{ border: "1.5px solid #DDD6FE", borderRadius: 10, padding: "12px 16px", background: "#F5F3FF", marginBottom: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ background: "#7C3AED", color: "#fff", padding: "2px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>v{derniere.numero}</span>
+            <span style={{ fontSize: 12, color: "#5B21B6", fontWeight: 600 }}>Dernière version</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#7C3AED" }}>{formatDateLong(derniere.created_at)}</div>
+        </div>
+        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>Déposée par {derniere.deposee_par}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {(derniere.fichiers || []).map((f, j) => (
+            <a key={j} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
+              style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#fff", fontSize: 11, color: "#5B21B6", textDecoration: "none" }}>
+              📄 {f.nom} <span style={{ color: "#9CA3AF" }}>⬇</span>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Anciennes versions — repliées */}
+      {anciennes.length > 0 && (
+        <>
+          <button onClick={() => setShowOld(!showOld)}
+            style={{ fontSize: 11, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontWeight: 600 }}>
+            {showOld ? "▲ Masquer les anciennes versions" : `▼ Voir les ${anciennes.length} ancienne${anciennes.length > 1 ? "s" : ""} version${anciennes.length > 1 ? "s" : ""}`}
+          </button>
+          {showOld && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+              {anciennes.map(v => (
+                <div key={v.id} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 14px", background: "#FAFAFA", opacity: 0.75 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ background: "#E5E7EB", color: "#6B7280", padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>v{v.numero}</span>
+                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>{formatDateLong(v.created_at)}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Déposée par {v.deposee_par}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {(v.fichiers || []).map((f, j) => (
+                      <a key={j} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
+                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: "1px solid #E5E7EB", background: "#fff", fontSize: 11, color: "#6B7280", textDecoration: "none" }}>
+                        📄 {f.nom} <span style={{ color: "#9CA3AF" }}>⬇</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -175,9 +237,10 @@ function HistoriqueVersions({ versions }) {
 function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateurs, showDessinateur = true }) {
   const periodes    = [...new Set(commandes.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
   const typesDispos = [...new Set(commandes.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
+  const clients     = [...new Set(commandes.map(c => c.client).filter(Boolean))].sort();
   function toggleTri(col) { setTri(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }); }
   const selStyle = { padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" };
-  const actif = filtres.statut || filtres.dessinateur || filtres.type || filtres.periode;
+  const actif = filtres.statut || filtres.dessinateur || filtres.type || filtres.periode || filtres.client;
   return (
     <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
       <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>FILTRES</span>
@@ -191,6 +254,10 @@ function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateur
           {dessinateurs.map(d => <option key={d}>{d}</option>)}
         </select>
       )}
+      <select value={filtres.client || ""} onChange={e => setFiltres({ ...filtres, client: e.target.value })} style={selStyle}>
+        <option value="">Tous les clients</option>
+        {clients.map(c => <option key={c}>{c}</option>)}
+      </select>
       <select value={filtres.type} onChange={e => setFiltres({ ...filtres, type: e.target.value })} style={selStyle}>
         <option value="">Tous les types</option>
         {typesDispos.map(t => <option key={t}>{t}</option>)}
@@ -203,7 +270,7 @@ function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateur
         })}
       </select>
       {actif && (
-        <button onClick={() => setFiltres({ statut: "", dessinateur: "", type: "", periode: "" })}
+        <button onClick={() => setFiltres({ statut: "", dessinateur: "", type: "", periode: "", client: "" })}
           style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
           ✕ Réinitialiser
         </button>
@@ -212,6 +279,7 @@ function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateur
         <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginRight: 2 }}>TRIER</span>
         {[
           { col: "batiment",    label: "Bâtiment" },
+          { col: "client",      label: "Client" },
           { col: "created_at",  label: "Date" },
           { col: "delai",       label: "Délai" },
           { col: "statut",      label: "Statut" },
@@ -233,6 +301,7 @@ function appliquerFiltresTri(commandes, filtres, tri) {
   if (filtres.dessinateur) r = r.filter(c => c.dessinateur === filtres.dessinateur);
   if (filtres.type)        r = r.filter(c => (c.plans || []).some(p => p.type === filtres.type));
   if (filtres.periode)     r = r.filter(c => getPeriode(c.created_at) === filtres.periode);
+  if (filtres.client)      r = r.filter(c => c.client === filtres.client);
   if (tri.col) r.sort((a, b) => {
     const va = a[tri.col] || ""; const vb = b[tri.col] || "";
     return tri.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
@@ -286,9 +355,7 @@ function PageReglages({ settings, onSave }) {
       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Dessinateurs</div>
         <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12 }}>Un nom par ligne</div>
-        <textarea value={local.dessinateurs.join("\n")}
-          onChange={e => setLocal({ ...local, dessinateurs: e.target.value.split("\n").filter(d => d.trim()) })}
-          rows={4} style={{ ...inputStyle, resize: "vertical" }} />
+        <textarea value={local.dessinateurs.join("\n")} onChange={e => setLocal({ ...local, dessinateurs: e.target.value.split("\n").filter(d => d.trim()) })} rows={4} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
       <button onClick={() => { onSave(local); setSauve(true); setTimeout(() => setSauve(false), 2000); }}
         style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: sauve ? "#059669" : "#DC2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.3s" }}>
@@ -300,28 +367,74 @@ function PageReglages({ settings, onSave }) {
 
 // ─── Messagerie ───────────────────────────────────────────────────────────────
 
-function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif }) {
+function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false }) {
+  const [fichierMsg, setFichierMsg] = useState([]);
+  const inputRef = useRef();
+
+  async function handleEnvoyer() {
+    if (!msgInput.trim() && fichierMsg.length === 0) return;
+    await onEnvoyer(msgInput, fichierMsg);
+    setMsgInput("");
+    setFichierMsg([]);
+  }
+
   return (
     <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, color: "#374151" }}>Messagerie</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto", marginBottom: 12 }}>
         {selected.messages.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>Aucun message.</div>}
         {selected.messages.map((m, i) => {
           const moi = m.auteur === auteurActif;
           return (
-            <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "75%" }}>
+            <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
               <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2, textAlign: moi ? "right" : "left" }}>{m.auteur} · {m.date}</div>
-              <div style={{ background: moi ? "#FEF2F2" : "#F3F4F6", color: moi ? "#7F1D1D" : "#111827", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{m.texte}</div>
+              <div style={{ background: moi ? "#FEF2F2" : "#F3F4F6", color: moi ? "#7F1D1D" : "#111827", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>
+                {m.texte}
+                {m.fichiers && m.fichiers.length > 0 && (
+                  <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {m.fichiers.map((f, j) => (
+                      <a key={j} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
+                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: `1px solid ${moi ? "#FECACA" : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: moi ? "#DC2626" : "#374151", textDecoration: "none" }}>
+                        📎 {f.nom} ⬇
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
+      {allowFichier && fichierMsg.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+          {fichierMsg.map((f, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151" }}>
+              📎 {f.nom}
+              <button onClick={() => setFichierMsg(fichierMsg.filter((_, idx) => idx !== i))} style={{ border: "none", background: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 12, padding: 0 }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {allowFichier && (
+          <>
+            <button onClick={() => inputRef.current.click()}
+              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 16, cursor: "pointer", flexShrink: 0 }} title="Joindre un fichier">
+              📎
+            </button>
+            <input ref={inputRef} type="file" accept=".png,.jpg,.jpeg,.pdf" multiple style={{ display: "none" }}
+              onChange={e => {
+                const nouveaux = Array.from(e.target.files).map(f => fichierAvecDate({ nom: f.name, taille: (f.size / 1024).toFixed(0) + " Ko", url: URL.createObjectURL(f), type: f.type }));
+                setFichierMsg(prev => [...prev, ...nouveaux].slice(0, 5));
+                e.target.value = "";
+              }} />
+          </>
+        )}
         <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && onEnvoyer()}
+          onKeyDown={e => e.key === "Enter" && handleEnvoyer()}
           placeholder="Écrire un message..." style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, outline: "none" }} />
-        <button onClick={onEnvoyer}
-          style={{ background: auteurActif === "Simon" ? "#DC2626" : "#2563EB", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+        <button onClick={handleEnvoyer}
+          style={{ background: auteurActif === "Simon" ? "#DC2626" : "#2563EB", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
           Envoyer
         </button>
       </div>
@@ -336,7 +449,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
   const [msgInput, setMsgInput]                 = useState("");
   const [fichiersNouveaux, setFichiersNouveaux] = useState([]);
   const [deposant, setDeposant]                 = useState(false);
-  const [filtres, setFiltres]                   = useState({ statut: "", type: "", periode: "", dessinateur: "" });
+  const [filtres, setFiltres]                   = useState({ statut: "", type: "", periode: "", client: "", dessinateur: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
 
   const toutes       = commandes.filter(c => c.dessinateur === nomDessinateur);
@@ -351,23 +464,30 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
     }
   }, [commandes]); // eslint-disable-line
 
-  async function handleCommencer() {
-    if (!selected) return;
-    await onChangerStatut(selected.id, "Commencé");
-  }
-
   async function handleDeposer() {
     if (!fichiersNouveaux.length || !selected) return;
     setDeposant(true);
     const mesVersions = versions.filter(v => v.commande_id === selected.id);
-    const numero = mesVersions.length + 1;
-    await onDeposerVersion(selected.id, fichiersNouveaux, numero, nomDessinateur);
+    await onDeposerVersion(selected.id, fichiersNouveaux, mesVersions.length + 1, nomDessinateur);
     await onChangerStatut(selected.id, "Ébauche déposée");
     setFichiersNouveaux([]);
     setDeposant(false);
   }
 
   const versionsCommande = selected ? versions.filter(v => v.commande_id === selected.id) : [];
+
+  function InfosDetail({ c }) {
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+        {[
+          { label: "Client",        val: c.client },
+          { label: "Créé le",       val: formatDateCourt(c.created_at) },
+          { label: "Délai",         val: c.delai ? formatDateCourt(c.delai) : "—" },
+          { label: "Temps restant", val: tempsRestant(c.delai) ? <span style={{ background: tempsRestant(c.delai).bg, color: tempsRestant(c.delai).color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tempsRestant(c.delai).label}</span> : "—" },
+        ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827" }}>
@@ -396,25 +516,24 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
         <BarreFiltres commandes={mesMissions} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} />
 
         {missionsFiltrees.length === 0 && (
-          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
-            Aucune mission à afficher.
-          </div>
+          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>Aucune mission à afficher.</div>
         )}
 
         {missionsFiltrees.length > 0 && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              <span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Temps restant</span><span>Statut</span>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Temps restant</span><span>Statut</span>
             </div>
             {missionsFiltrees.map(c => {
               const tr = tempsRestant(c.delai);
               return (
                 <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
-                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
+                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div>
                     <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                   </div>
+                  <div style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>{c.client}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
@@ -430,13 +549,12 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment || selected.client}</div>
                 <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3 }}>{selected.ref} · {selected.client}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Badge statut={selected.statut} />
-                <button onClick={() => { setSelected(null); setFichiersNouveaux([]); }}
-                  style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+                <button onClick={() => { setSelected(null); setFichiersNouveaux([]); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
               </div>
             </div>
 
@@ -444,16 +562,17 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
             {selected.statut === "En attente" && (
               <div style={{ textAlign: "center", padding: "40px 20px" }}>
                 <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Nouvelle mission disponible</div>
-                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 8 }}>{selected.plans.length} plan{selected.plans.length > 1 ? "s" : ""} à réaliser</div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Nouvelle mission disponible</div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 4 }}>Client : <strong>{selected.client}</strong></div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>{selected.plans.length} plan{selected.plans.length > 1 ? "s" : ""} à réaliser</div>
                 {tempsRestant(selected.delai) && (
-                  <div style={{ marginBottom: 20 }}>
+                  <div style={{ marginBottom: 24 }}>
                     <span style={{ background: tempsRestant(selected.delai).bg, color: tempsRestant(selected.delai).color, padding: "4px 12px", borderRadius: 100, fontSize: 12, fontWeight: 600 }}>
                       {tempsRestant(selected.delai).label}
                     </span>
                   </div>
                 )}
-                <button onClick={handleCommencer}
+                <button onClick={() => onChangerStatut(selected.id, "Commencé")}
                   style={{ padding: "12px 36px", borderRadius: 10, border: "none", background: "#2563EB", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                   ▶ Commencer la mission
                 </button>
@@ -469,14 +588,15 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                     ⚠️ Modification demandée — déposez une nouvelle version
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  {[
-                    { label: "Client",        val: selected.client },
-                    { label: "Créé le",       val: formatDateCourt(selected.created_at) },
-                    { label: "Délai",         val: selected.delai ? formatDateCourt(selected.delai) : "—" },
-                    { label: "Temps restant", val: tempsRestant(selected.delai) ? <span style={{ background: tempsRestant(selected.delai).bg, color: tempsRestant(selected.delai).color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tempsRestant(selected.delai).label}</span> : "—" },
-                  ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
-                </div>
+                <InfosDetail c={selected} />
+
+                {/* Adresse */}
+                {(selected.adresse1 || selected.ville) && (
+                  <div style={{ marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151" }}>
+                    📍 {[selected.adresse1, selected.adresse2, selected.code_postal, selected.ville].filter(Boolean).join(", ")}
+                  </div>
+                )}
+
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans à réaliser</div>
                   <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
@@ -491,20 +611,33 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                     ))}
                   </div>
                 </div>
+
                 {selected.fichiersPlan?.length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {selected.fichiersPlan.map((f, i) => <a key={i} href={f.url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151", textDecoration: "none" }}>📄 {f.nom}</a>)}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {selected.fichiersPlan.map((f, i) => (
+                        <a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
+                          style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", textDecoration: "none" }}>
+                          <span style={{ fontSize: 18 }}>📄</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8" }}>{f.nom}</div>
+                            <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille}{f.ajouteLe ? ` · ${f.ajouteLe}` : ""}</div>
+                          </div>
+                          <span style={{ fontSize: 12, color: "#9CA3AF" }}>⬇</span>
+                        </a>
+                      ))}
                     </div>
                   </div>
                 )}
+
                 {selected.logoClient?.length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
-                    <img src={selected.logoClient[0].url} alt="logo" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
+                    <LogoCliquable fichier={selected.logoClient[0]} />
                   </div>
                 )}
+
                 {selected.notes && <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>📝 {selected.notes}</div>}
 
                 <HistoriqueVersions versions={versionsCommande} />
@@ -513,7 +646,6 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#065F46", marginBottom: 4 }}>
                     📤 {versionsCommande.length > 0 ? `Déposer la version ${versionsCommande.length + 1}` : "Déposer l'ébauche"}
                   </div>
-                  <div style={{ fontSize: 12, color: "#059669", marginBottom: 14 }}>Uploadez vos fichiers puis confirmez le dépôt.</div>
                   <ZoneUpload label="" fichiers={fichiersNouveaux} onAjouter={f => setFichiersNouveaux(f)} onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai" maxFichiers={20} />
                   {fichiersNouveaux.length > 0 && (
                     <button onClick={handleDeposer} disabled={deposant}
@@ -522,23 +654,18 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                     </button>
                   )}
                 </div>
-                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={async () => { if (!msgInput.trim()) return; await onEnvoyerMessage(selected.id, nomDessinateur, msgInput.trim()); setMsgInput(""); }} auteurActif={nomDessinateur} />
+                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
+                  onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && fichiers.length === 0) return; await onEnvoyerMessage(selected.id, nomDessinateur, texte, fichiers); }}
+                  auteurActif={nomDessinateur} allowFichier={true} />
               </>
             )}
 
             {/* ÉBAUCHE DÉPOSÉE */}
             {selected.statut === "Ébauche déposée" && (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
-                  {[
-                    { label: "Client",        val: selected.client },
-                    { label: "Créé le",       val: formatDateCourt(selected.created_at) },
-                    { label: "Délai",         val: selected.delai ? formatDateCourt(selected.delai) : "—" },
-                    { label: "Temps restant", val: tempsRestant(selected.delai) ? <span style={{ background: tempsRestant(selected.delai).bg, color: tempsRestant(selected.delai).color, padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{tempsRestant(selected.delai).label}</span> : "—" },
-                  ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
-                </div>
+                <InfosDetail c={selected} />
                 <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6", marginBottom: 4 }}>✅ Ébauche déposée — en attente de retour</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6" }}>✅ Ébauche déposée — en attente de retour</div>
                 </div>
                 <HistoriqueVersions versions={versionsCommande} />
                 <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 18, marginBottom: 20 }}>
@@ -551,7 +678,9 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                     </button>
                   )}
                 </div>
-                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={async () => { if (!msgInput.trim()) return; await onEnvoyerMessage(selected.id, nomDessinateur, msgInput.trim()); setMsgInput(""); }} auteurActif={nomDessinateur} />
+                <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
+                  onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && fichiers.length === 0) return; await onEnvoyerMessage(selected.id, nomDessinateur, texte, fichiers); }}
+                  auteurActif={nomDessinateur} allowFichier={true} />
               </>
             )}
           </div>
@@ -562,8 +691,9 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "#9CA3AF", marginBottom: 12 }}>Missions terminées</h2>
             <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
               {mesTerminees.map(c => (
-                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", opacity: 0.6 }}>
-                  <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
+                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", opacity: 0.6 }}>
+                  <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
+                  <div style={{ fontSize: 12 }}>{c.client}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
@@ -592,28 +722,25 @@ export default function App() {
   const [saving, setSaving]                     = useState(false);
   const [modeVue, setModeVue]                   = useState("admin");
   const [dessinateurActif, setDessinateurActif] = useState("");
-  const [filtres, setFiltres]                   = useState({ statut: "", dessinateur: "", type: "", periode: "" });
+  const [filtres, setFiltres]                   = useState({ statut: "", dessinateur: "", type: "", periode: "", client: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
-
-  // Modal demande modification
-  const [showModifModal, setShowModifModal]   = useState(false);
-  const [modifMsg, setModifMsg]               = useState("");
-  const [modifFichiers, setModifFichiers]     = useState([]);
-  const [envoyantModif, setEnvoyantModif]     = useState(false);
-
-  // Modal confirmation validation
-  const [showValidModal, setShowValidModal]   = useState(false);
-  const [validant, setValidant]               = useState(false);
+  const [showModifModal, setShowModifModal]     = useState(false);
+  const [modifMsg, setModifMsg]                 = useState("");
+  const [modifFichiers, setModifFichiers]       = useState([]);
+  const [envoyantModif, setEnvoyantModif]       = useState(false);
+  const [showValidModal, setShowValidModal]     = useState(false);
+  const [validant, setValidant]                 = useState(false);
 
   const [settings, setSettings] = useState({
-    nomEntreprise: "First Incendie",
-    email: "contact@firstincendie.fr",
-    telephone: "02 XX XX XX XX",
-    logoUrl: null, logoNom: null,
+    nomEntreprise: "First Incendie", email: "contact@firstincendie.fr",
+    telephone: "02 XX XX XX XX", logoUrl: null, logoNom: null,
     dessinateurs: ["Marc L.", "Thomas R."],
   });
 
-  const formVide = () => ({ batiment: "", client: "", delai: "", dessinateur: "", notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [] });
+  const formVide = () => ({
+    client: "", batiment: "", adresse1: "", adresse2: "", code_postal: "", ville: "",
+    delai: "", dessinateur: "", notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [],
+  });
   const [form, setForm] = useState(formVide());
 
   useEffect(() => { chargerTout(); }, []);
@@ -626,26 +753,26 @@ export default function App() {
     ]);
     if (cmd) setCommandes(cmd.map(c => ({
       ...c,
-      plans:          c.plans || [],
-      fichiersPlan:   c.fichiers_plan || [],
-      logoClient:     c.logo_client || [],
-      plansFinalises: c.plans_finalises || [],
-      messages:       (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      plans: c.plans || [], fichiersPlan: c.fichiers_plan || [],
+      logoClient: c.logo_client || [], plansFinalises: c.plans_finalises || [],
+      messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
     })));
     if (ver) setVersions(ver);
     setLoading(false);
   }
 
   async function creerCommande() {
-    if (!form.batiment || !form.client || !form.dessinateur || !form.delai || form.fichiersPlan.length === 0) return;
+    if (!form.client || !form.dessinateur || !form.delai || form.fichiersPlan.length === 0) return;
     const aujourd_hui = new Date().toISOString().split("T")[0];
     if (form.delai < aujourd_hui) { alert("La date ne peut pas être inférieure à aujourd'hui."); return; }
     setSaving(true);
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
     const { data, error } = await supabase.from("commandes").insert([{
-      ref, batiment: form.batiment, client: form.client, delai: form.delai,
+      ref, client: form.client, batiment: form.batiment, delai: form.delai,
       dessinateur: form.dessinateur, notes: form.notes, plans: form.plans,
       fichiers_plan: form.fichiersPlan, logo_client: form.logoClient,
+      adresse1: form.adresse1, adresse2: form.adresse2,
+      code_postal: form.code_postal, ville: form.ville,
       plans_finalises: [], statut: "En attente",
     }]).select("*, messages(*)").single();
     if (!error && data) {
@@ -664,9 +791,10 @@ export default function App() {
     }
   }
 
-  async function envoyerMessage(commandeId, auteur, texte) {
+  async function envoyerMessage(commandeId, auteur, texte, fichiers = []) {
     const { data, error } = await supabase.from("messages").insert([{
-      commande_id: commandeId, auteur, texte, date: formatDateMsg(),
+      commande_id: commandeId, auteur, texte: texte || "", fichiers,
+      date: formatDateMsg(),
     }]).select().single();
     if (!error && data) {
       setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c));
@@ -675,38 +803,24 @@ export default function App() {
   }
 
   async function deposerVersion(commandeId, fichiers, numero, deposee_par) {
-    const { data, error } = await supabase.from("versions").insert([{
-      commande_id: commandeId, fichiers, numero, deposee_par,
-    }]).select().single();
-    if (!error && data) {
-      setVersions(prev => [...prev, data]);
-    }
+    const { data, error } = await supabase.from("versions").insert([{ commande_id: commandeId, fichiers, numero, deposee_par }]).select().single();
+    if (!error && data) setVersions(prev => [...prev, data]);
   }
 
-  // Demande de modification (admin)
   async function envoyerDemandeModification() {
     if (!modifMsg.trim() || !selected) return;
     setEnvoyantModif(true);
-    // Message avec fichiers joints si présents
-    const texte = modifFichiers.length > 0
-      ? `${modifMsg}\n📎 ${modifFichiers.length} fichier(s) joint(s) : ${modifFichiers.map(f => f.nom).join(", ")}`
-      : modifMsg;
-    await envoyerMessage(selected.id, "Simon", texte);
+    await envoyerMessage(selected.id, "Simon", modifMsg, modifFichiers);
     await changerStatut(selected.id, "Modification dessinateur");
-    setModifMsg("");
-    setModifFichiers([]);
-    setShowModifModal(false);
-    setEnvoyantModif(false);
+    setModifMsg(""); setModifFichiers([]); setShowModifModal(false); setEnvoyantModif(false);
   }
 
-  // Validation (admin)
   async function validerCommande() {
     if (!selected) return;
     setValidant(true);
     await changerStatut(selected.id, "Validé");
     await envoyerMessage(selected.id, "Simon", "✅ Commande validée. Merci pour votre travail !");
-    setShowValidModal(false);
-    setValidant(false);
+    setShowValidModal(false); setValidant(false);
   }
 
   const stats = {
@@ -757,14 +871,8 @@ export default function App() {
               <div style={{ fontSize: 13, color: "#9CA3AF" }}>pour simuler son interface</div>
             </div>
           ) : (
-            <VueDessinateur
-              commandes={commandes}
-              versions={versions}
-              nomDessinateur={dessinateurActif}
-              onChangerStatut={changerStatut}
-              onEnvoyerMessage={envoyerMessage}
-              onDeposerVersion={deposerVersion}
-            />
+            <VueDessinateur commandes={commandes} versions={versions} nomDessinateur={dessinateurActif}
+              onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
           )}
         </div>
       </div>
@@ -775,20 +883,13 @@ export default function App() {
     <div>
       <SwitcherBarre />
       <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827", paddingTop: 44 }}>
-        {/* Sidebar */}
         <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
-            {settings.logoUrl
-              ? <img src={settings.logoUrl} alt="logo" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6 }} />
-              : <div style={{ width: 32, height: 32, background: "#DC2626", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>
-            }
+            {settings.logoUrl ? <img src={settings.logoUrl} alt="logo" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6 }} />
+              : <div style={{ width: 32, height: 32, background: "#DC2626", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>}
             <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
           </div>
-          {[
-            { id: "dashboard", label: "Dashboard", icon: "📊" },
-            { id: "commandes", label: "Commandes", icon: "📋" },
-            { id: "reglages",  label: "Réglages",  icon: "⚙️" },
-          ].map(item => (
+          {[{ id: "dashboard", label: "Dashboard", icon: "📊" }, { id: "commandes", label: "Commandes", icon: "📋" }, { id: "reglages", label: "Réglages", icon: "⚙️" }].map(item => (
             <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#FEF2F2" : "transparent", color: vue === item.id ? "#DC2626" : "#6B7280", textAlign: "left" }}>
               <span>{item.icon}</span>{item.label}
@@ -802,7 +903,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Main */}
         <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
           {vue === "reglages" && <PageReglages settings={settings} onSave={s => setSettings(s)} />}
 
@@ -810,8 +910,7 @@ export default function App() {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{vue === "dashboard" ? "Dashboard" : "Toutes les commandes"}</h1>
-                <button onClick={() => setShowForm(true)}
-                  style={{ background: "#DC2626", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => setShowForm(true)} style={{ background: "#DC2626", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Nouvelle commande
                 </button>
               </div>
@@ -835,21 +934,21 @@ export default function App() {
               <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={settings.dessinateurs} showDessinateur={true} />
 
               {loading ? (
-                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>Chargement...</div>
+                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF" }}>Chargement...</div>
               ) : (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: selected ? 24 : 0 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+                    <span>Client</span><span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
                   {cmdAffichees.length === 0 && <div style={{ padding: "32px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande ne correspond aux filtres.</div>}
                   {cmdAffichees.map(c => (
                     <div key={c.id} onClick={() => setSelected(c)}
                       style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.client}</div>
                         <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                       </div>
-                      <div style={{ fontSize: 13 }}>{c.client}</div>
+                      <div style={{ fontSize: 12, color: "#6B7280" }}>{c.batiment || "—"}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
@@ -859,13 +958,12 @@ export default function App() {
                 </div>
               )}
 
-              {/* Détail commande admin */}
               {selected && (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                     <div>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div>
-                      <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.client}</div>
+                      <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}{selected.batiment ? ` · ${selected.batiment}` : ""}</div>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <Badge statut={selected.statut} />
@@ -873,7 +971,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
                     {[
                       { label: "Client",      val: selected.client },
                       { label: "Dessinateur", val: selected.dessinateur || "Non assigné" },
@@ -883,7 +981,13 @@ export default function App() {
                     ].map(f => <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>)}
                   </div>
 
-                  {/* Plans */}
+                  {/* Adresse */}
+                  {(selected.adresse1 || selected.ville) && (
+                    <div style={{ marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151" }}>
+                      📍 {[selected.adresse1, selected.adresse2, selected.code_postal, selected.ville].filter(Boolean).join(", ")}
+                    </div>
+                  )}
+
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Détail des plans</div>
                     <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
@@ -899,13 +1003,39 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Historique versions */}
+                  {/* Fichiers sources */}
+                  {selected.fichiersPlan?.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources ({selected.fichiersPlan.length})</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {selected.fichiersPlan.map((f, i) => (
+                          <a key={i} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
+                            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", textDecoration: "none" }}>
+                            <span style={{ fontSize: 18 }}>📄</span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8" }}>{f.nom}</div>
+                              <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille}{f.ajouteLe ? ` · ${f.ajouteLe}` : ""}</div>
+                            </div>
+                            <span style={{ fontSize: 12, color: "#9CA3AF" }}>⬇</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Logo client */}
+                  {selected.logoClient?.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
+                      <LogoCliquable fichier={selected.logoClient[0]} />
+                    </div>
+                  )}
+
                   <HistoriqueVersions versions={versionsSelected} />
 
-                  {/* Notes */}
                   {selected.notes && <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>📝 {selected.notes}</div>}
 
-                  {/* Boutons d'action admin */}
+                  {/* Boutons action admin */}
                   {selected.statut === "Ébauche déposée" && (
                     <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
                       <button onClick={() => setShowModifModal(true)}
@@ -919,7 +1049,9 @@ export default function App() {
                     </div>
                   )}
 
-                  <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput} onEnvoyer={async () => { if (!msgInput.trim()) return; await envoyerMessage(selected.id, "Simon", msgInput.trim()); setMsgInput(""); }} auteurActif="Simon" />
+                  <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
+                    onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await envoyerMessage(selected.id, "Simon", texte, fichiers); }}
+                    auteurActif="Simon" allowFichier={true} />
                 </div>
               )}
             </>
@@ -927,26 +1059,22 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Modal demande de modification ── */}
+      {/* Modal demande modification */}
       {showModifModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 500 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>✏️ Demander une modification</div>
-            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur" et le dessinateur recevra votre message.</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur".</div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>Message de modification *</label>
-              <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)}
-                rows={4} placeholder="Décrivez les modifications à apporter..."
+              <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>Message *</label>
+              <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)} rows={4} placeholder="Décrivez les modifications..."
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
             </div>
             <div style={{ marginBottom: 20 }}>
               <ZoneUpload label="📎 Fichiers joints (optionnel)" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => { setShowModifModal(false); setModifMsg(""); setModifFichiers([]); }}
-                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
-                Annuler
-              </button>
+              <button onClick={() => { setShowModifModal(false); setModifMsg(""); setModifFichiers([]); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
               <button onClick={envoyerDemandeModification} disabled={!modifMsg.trim() || envoyantModif}
                 style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: !modifMsg.trim() ? "#F3F4F6" : "#D97706", color: !modifMsg.trim() ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: !modifMsg.trim() ? "not-allowed" : "pointer" }}>
                 {envoyantModif ? "Envoi..." : "Envoyer la demande"}
@@ -956,48 +1084,52 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal confirmation validation ── */}
+      {/* Modal validation */}
       {showValidModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 420, textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Confirmer la validation</div>
-            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 8 }}>
-              Vous êtes sur le point de valider la commande
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 24 }}>
-              {selected?.batiment}
-            </div>
-            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 24 }}>
-              Cette action est irréversible. La commande sera clôturée et le dessinateur notifié.
-            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 8 }}>{selected?.client}</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 24 }}>Cette action est irréversible. La commande sera clôturée.</div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={() => setShowValidModal(false)}
-                style={{ padding: "10px 24px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
-                Annuler
-              </button>
+              <button onClick={() => setShowValidModal(false)} style={{ padding: "10px 24px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
               <button onClick={validerCommande} disabled={validant}
                 style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#059669", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                {validant ? "Validation..." : "Confirmer la validation"}
+                {validant ? "Validation..." : "Confirmer"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Modal nouvelle commande ── */}
+      {/* Modal nouvelle commande */}
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
           onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 620, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 640, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
               <button onClick={() => setShowForm(false)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
             </div>
+
+            {/* Client en premier */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>Bâtiment / Référence *</label><input type="text" value={form.batiment} placeholder="Ex: Résidence Les Pins" onChange={e => setForm({ ...form, batiment: e.target.value })} style={inputStyle} /></div>
               <div><label style={labelStyle}>Client *</label><input type="text" value={form.client} placeholder="Nom de la société" onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Bâtiment / Référence</label><input type="text" value={form.batiment} placeholder="Ex: Résidence Les Pins" onChange={e => setForm({ ...form, batiment: e.target.value })} style={inputStyle} /></div>
             </div>
+
+            {/* Adresse */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Adresse</label>
+              <input type="text" value={form.adresse1} placeholder="Adresse ligne 1" onChange={e => setForm({ ...form, adresse1: e.target.value })} style={{ ...inputStyle, marginBottom: 6 }} />
+              <input type="text" value={form.adresse2} placeholder="Complément d'adresse" onChange={e => setForm({ ...form, adresse2: e.target.value })} style={{ ...inputStyle, marginBottom: 6 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+                <input type="text" value={form.code_postal} placeholder="Code postal" onChange={e => setForm({ ...form, code_postal: e.target.value })} style={inputStyle} />
+                <input type="text" value={form.ville} placeholder="Ville" onChange={e => setForm({ ...form, ville: e.target.value })} style={inputStyle} />
+              </div>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={labelStyle}>Délai souhaité *</label>
@@ -1011,27 +1143,30 @@ export default function App() {
                 </select>
               </div>
             </div>
+
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Plans à réaliser</label>
               <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" }}>
                 <TableauPlans plans={form.plans} onChange={plans => setForm({ ...form, plans })} />
               </div>
             </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
               <ZoneUpload label="📄 Fichiers du plan *" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
               <ZoneUpload label="🏢 Logo du client" fichiers={form.logoClient} onAjouter={f => setForm({ ...form, logoClient: f })} onSupprimer={() => setForm({ ...form, logoClient: [] })} accept="image/*" unique={true} />
             </div>
+
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Notes</label>
               <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Informations complémentaires..." style={{ ...inputStyle, resize: "vertical" }} />
             </div>
+
             {(() => {
               const manque = [];
-              if (!form.batiment)    manque.push("bâtiment");
               if (!form.client)      manque.push("client");
               if (!form.dessinateur) manque.push("dessinateur");
               if (!form.delai)       manque.push("délai");
-              else if (form.delai < new Date().toISOString().split("T")[0]) manque.push("délai invalide (date passée)");
+              else if (form.delai < new Date().toISOString().split("T")[0]) manque.push("délai invalide");
               if (form.fichiersPlan.length === 0) manque.push("1 fichier minimum");
               const ok = manque.length === 0;
               return (
