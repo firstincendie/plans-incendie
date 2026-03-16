@@ -13,7 +13,6 @@ const STATUT_STYLE = {
 const TYPES_PLAN   = ["Évacuation", "Intervention", "SSI", "Plan de masse"];
 const FORMATS      = ["A4", "A3", "A2", "A1", "A0"];
 const ORIENTATIONS = ["Portrait", "Paysage"];
-const DESSINATEURS = ["Marc L.", "Thomas R."];
 
 const planVide = () => ({ type: "Évacuation", orientation: "Paysage", format: "A3" });
 
