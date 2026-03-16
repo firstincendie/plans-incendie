@@ -240,23 +240,15 @@ function ListeFichiers({ fichiers, couleurAccent = "#1D4ED8" }) {
           const isImage = f.type && f.type.startsWith("image/");
           const peutApercu = isPdf || isImage;
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff" }}>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", cursor: "pointer" }}
+              onClick={() => setVisuFichier(f)}>
               <span style={{ fontSize: 18 }}>{isImage ? "🖼️" : "📄"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</div>
                 <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille}{f.ajouteLe ? ` · ${f.ajouteLe}` : ""}</div>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                {peutApercu && (
-                  <button onClick={() => setVisuFichier(f)}
-                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", color: "#374151", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                    👁 Aperçu
-                  </button>
-                )}
-                <a href={f.url} download={f.nom}
-                  style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${couleurAccent}20`, background: `${couleurAccent}10`, color: couleurAccent, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-                  ⬇
-                </a>
+                <span style={{ fontSize: 11, color: "#9CA3AF" }}>👁 Voir</span>
               </div>
             </div>
           );
@@ -268,69 +260,72 @@ function ListeFichiers({ fichiers, couleurAccent = "#1D4ED8" }) {
 }
 
 function HistoriqueVersions({ versions }) {
-  const [showOld, setShowOld] = useState(false);
+  const [showOld, setShowOld]       = useState(false);
+  const [visuFichier, setVisuFichier] = useState(null);
   if (!versions || versions.length === 0) return null;
-  const sorted     = [...versions].sort((a, b) => b.numero - a.numero);
-  const derniere   = sorted[0];
-  const anciennes  = sorted.slice(1);
+  const sorted   = [...versions].sort((a, b) => b.numero - a.numero);
+  const derniere = sorted[0];
+  const anciennes = sorted.slice(1);
+
+  function BoutonsFichiers({ fichiers, couleur = "#5B21B6", borderCouleur = "#DDD6FE" }) {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {(fichiers || []).map((f, j) => (
+          <button key={j} onClick={() => setVisuFichier(f)}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: `1px solid ${borderCouleur}`, background: "#fff", fontSize: 11, color: couleur, cursor: "pointer", fontWeight: 500 }}>
+            📄 {f.nom} <span style={{ fontSize: 10, color: "#9CA3AF" }}>👁</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 10 }}>
-        📁 Versions déposées ({versions.length})
-      </div>
-
-      {/* Dernière version — mise en avant */}
-      <div style={{ border: "1.5px solid #DDD6FE", borderRadius: 10, padding: "12px 16px", background: "#F5F3FF", marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ background: "#7C3AED", color: "#fff", padding: "2px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>v{derniere.numero}</span>
-            <span style={{ fontSize: 12, color: "#5B21B6", fontWeight: 600 }}>Dernière version</span>
-          </div>
-          <div style={{ fontSize: 11, color: "#7C3AED" }}>{formatDateLong(derniere.created_at)}</div>
+    <>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 10 }}>
+          📁 Versions déposées ({versions.length})
         </div>
-        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>Déposée par {derniere.deposee_par}</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-          {(derniere.fichiers || []).map((f, j) => (
-            <a key={j} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#fff", fontSize: 11, color: "#5B21B6", textDecoration: "none" }}>
-              📄 {f.nom} <span style={{ color: "#9CA3AF" }}>⬇</span>
-            </a>
-          ))}
-        </div>
-      </div>
 
-      {/* Anciennes versions — repliées */}
-      {anciennes.length > 0 && (
-        <>
-          <button onClick={() => setShowOld(!showOld)}
-            style={{ fontSize: 11, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontWeight: 600 }}>
-            {showOld ? "▲ Masquer les anciennes versions" : `▼ Voir les ${anciennes.length} ancienne${anciennes.length > 1 ? "s" : ""} version${anciennes.length > 1 ? "s" : ""}`}
-          </button>
-          {showOld && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-              {anciennes.map(v => (
-                <div key={v.id} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 14px", background: "#FAFAFA", opacity: 0.75 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ background: "#E5E7EB", color: "#6B7280", padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>v{v.numero}</span>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>{formatDateLong(v.created_at)}</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Déposée par {v.deposee_par}</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                    {(v.fichiers || []).map((f, j) => (
-                      <a key={j} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
-                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: "1px solid #E5E7EB", background: "#fff", fontSize: 11, color: "#6B7280", textDecoration: "none" }}>
-                        📄 {f.nom} <span style={{ color: "#9CA3AF" }}>⬇</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ))}
+        {/* Dernière version */}
+        <div style={{ border: "1.5px solid #DDD6FE", borderRadius: 10, padding: "12px 16px", background: "#F5F3FF", marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ background: "#7C3AED", color: "#fff", padding: "2px 10px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>v{derniere.numero}</span>
+              <span style={{ fontSize: 12, color: "#5B21B6", fontWeight: 600 }}>Dernière version</span>
             </div>
-          )}
-        </>
-      )}
-    </div>
+            <div style={{ fontSize: 11, color: "#7C3AED" }}>{formatDateLong(derniere.created_at)}</div>
+          </div>
+          <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>Déposée par {derniere.deposee_par}</div>
+          <BoutonsFichiers fichiers={derniere.fichiers} couleur="#5B21B6" borderCouleur="#DDD6FE" />
+        </div>
+
+        {/* Anciennes versions */}
+        {anciennes.length > 0 && (
+          <>
+            <button onClick={() => setShowOld(!showOld)}
+              style={{ fontSize: 11, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontWeight: 600 }}>
+              {showOld ? "▲ Masquer les anciennes versions" : `▼ Voir les ${anciennes.length} ancienne${anciennes.length > 1 ? "s" : ""} version${anciennes.length > 1 ? "s" : ""}`}
+            </button>
+            {showOld && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                {anciennes.map(v => (
+                  <div key={v.id} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 14px", background: "#FAFAFA", opacity: 0.75 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ background: "#E5E7EB", color: "#6B7280", padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 700 }}>v{v.numero}</span>
+                      <div style={{ fontSize: 11, color: "#9CA3AF" }}>{formatDateLong(v.created_at)}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Déposée par {v.deposee_par}</div>
+                    <BoutonsFichiers fichiers={v.fichiers} couleur="#6B7280" borderCouleur="#E5E7EB" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {visuFichier && <VisuFichier fichier={visuFichier} onClose={() => setVisuFichier(null)} />}
+    </>
   );
 }
 
@@ -494,8 +489,9 @@ function analyserMessage(texte) {
 // ─── Messagerie ───────────────────────────────────────────────────────────────
 
 function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false }) {
-  const [fichierMsg, setFichierMsg]   = useState([]);
-  const [alerte, setAlerte]           = useState(null);
+  const [fichierMsg, setFichierMsg]     = useState([]);
+  const [alerte, setAlerte]             = useState(null);
+  const [visuFichier, setVisuFichier]   = useState(null);
   const inputRef  = useRef();
   const bottomRef = useRef();
 
@@ -544,10 +540,10 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
                 {m.fichiers && m.fichiers.length > 0 && (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {m.fichiers.map((f, j) => (
-                      <a key={j} href={f.url} target="_blank" rel="noreferrer" download={f.nom}
-                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: `1px solid ${moi ? "#FECACA" : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: moi ? "#DC2626" : "#374151", textDecoration: "none" }}>
-                        📎 {f.nom} ⬇
-                      </a>
+                      <button key={j} onClick={() => setVisuFichier(f)}
+                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: `1px solid ${moi ? "#FECACA" : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: moi ? "#DC2626" : "#374151", cursor: "pointer" }}>
+                        📎 {f.nom} <span style={{ fontSize: 10, color: "#9CA3AF" }}>👁</span>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -557,6 +553,7 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
         })}
         <div ref={bottomRef} />
       </div>
+      {visuFichier && <VisuFichier fichier={visuFichier} onClose={() => setVisuFichier(null)} />}
       {allowFichier && fichierMsg.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
           {fichierMsg.map((f, i) => (
