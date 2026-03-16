@@ -496,7 +496,13 @@ function analyserMessage(texte) {
 function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false }) {
   const [fichierMsg, setFichierMsg]   = useState([]);
   const [alerte, setAlerte]           = useState(null);
-  const inputRef = useRef();
+  const inputRef  = useRef();
+  const bottomRef = useRef();
+
+  // Auto-scroll au dernier message à chaque changement
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selected?.messages?.length, selected?.id]);
 
   async function handleEnvoyer() {
     if (!msgInput.trim() && fichierMsg.length === 0) return;
@@ -507,7 +513,6 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
       if (detection) {
         setAlerte(`⛔ Message bloqué : ${detection} détecté(e). Le partage de coordonnées personnelles est interdit sur cette plateforme.`);
         setTimeout(() => setAlerte(null), 5000);
-        // Enregistrement de l'alerte en base pour notification admin
         await supabase.from("alertes").insert([{
           commande_id: selected.id,
           auteur: auteurActif,
@@ -550,6 +555,7 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
             </div>
           );
         })}
+        <div ref={bottomRef} />
       </div>
       {allowFichier && fichierMsg.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
@@ -820,10 +826,16 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
 
         {mesTerminees.length > 0 && (
           <div>
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: "#9CA3AF", marginBottom: 12 }}>Missions terminées</h2>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: "#9CA3AF", marginBottom: 12 }}>
+              Missions terminées ({mesTerminees.length})
+            </h2>
             <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span></span><span>Statut</span>
+              </div>
               {mesTerminees.map(c => (
-                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", opacity: 0.6 }}>
+                <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
+                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
                   <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
                   <div style={{ fontSize: 12 }}>{c.client}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
@@ -834,6 +846,26 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Détail mission terminée — messagerie + versions accessibles */}
+        {selected && selected.statut === "Validé" && (
+          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment || selected.client}</div>
+                <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3 }}>{selected.ref} · {selected.client}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Badge statut={selected.statut} />
+                <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+              </div>
+            </div>
+            <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: "#065F46", fontWeight: 500 }}>
+              ✅ Mission terminée et validée
+            </div>
+            <HistoriqueVersions versions={versions.filter(v => v.commande_id === selected.id)} />
           </div>
         )}
       </div>
@@ -876,7 +908,30 @@ export default function App() {
   });
   const [form, setForm] = useState(formVide());
 
-  useEffect(() => { chargerTout(); }, []);
+  useEffect(() => {
+    chargerTout();
+
+    // Realtime — nouveau message → badge instantané
+    const canal = supabase
+      .channel("messages-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        const msg = payload.new;
+        setCommandes(prev => prev.map(c =>
+          c.id === msg.commande_id
+            ? { ...c, messages: [...c.messages, msg] }
+            : c
+        ));
+        // Sync selected si la commande est ouverte
+        setSelected(prev =>
+          prev && prev.id === msg.commande_id
+            ? { ...prev, messages: [...prev.messages, msg] }
+            : prev
+        );
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(canal); };
+  }, []); // eslint-disable-line
 
   async function chargerTout() {
     setLoading(true);
