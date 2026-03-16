@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
-const STATUTS_ADMIN       = ["En attente", "Commencé", "Ébauche déposée", "Modification dessinateur", "Validé"];
-const STATUTS_DESSINATEUR = ["Commencé", "Ébauche déposée"];
+const STATUTS_ADMIN = ["En attente", "Commencé", "Ébauche déposée", "Modification dessinateur", "Validé"];
 
 const STATUT_STYLE = {
   "En attente":               { bg: "#FEF3C7", color: "#92400E" },
@@ -73,7 +72,7 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
   const isImage = (f) => f.type && f.type.startsWith("image/");
   return (
     <div>
-      <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 6, fontWeight: 600 }}>{label}</label>
+      {label ? <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 6, fontWeight: 600 }}>{label}</label> : null}
       <div onClick={() => inputRef.current.click()}
         style={{ border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: "16px", textAlign: "center", cursor: "pointer", background: "#F9FAFB", marginBottom: fichiers.length > 0 ? 10 : 0 }}>
         <div style={{ fontSize: 22, marginBottom: 4 }}>📎</div>
@@ -167,39 +166,157 @@ function PageReglages({ settings, onSave }) {
 // ─── Vue Dessinateur ──────────────────────────────────────────────────────────
 
 function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerMessage, onUploaderPlansFinalises }) {
-  const [selected, setSelected] = useState(null);
-  const [msgInput, setMsgInput] = useState("");
-  const [fichiersFinaux, setFichiersFinaux] = useState([]);
+  const [selected, setSelected]         = useState(null);
+  const [msgInput, setMsgInput]         = useState("");
+  const [fichiersNouveaux, setFichiersNouveaux] = useState([]);
+  const [deposant, setDeposant]         = useState(false);
 
-  const mesMissions = commandes.filter(c =>
-    c.dessinateur === nomDessinateur && c.statut !== "Validé"
-  );
-  const mesTerminees = commandes.filter(c =>
-    c.dessinateur === nomDessinateur && c.statut === "Validé"
-  );
+  const mesMissions  = commandes.filter(c => c.dessinateur === nomDessinateur && c.statut !== "Validé");
+  const mesTerminees = commandes.filter(c => c.dessinateur === nomDessinateur && c.statut === "Validé");
+
+  // Sync selected quand commandes change (ex: après changement statut)
+  useEffect(() => {
+    if (selected) {
+      const updated = commandes.find(c => c.id === selected.id);
+      if (updated) setSelected(updated);
+    }
+  }, [commandes]);
+
+  async function handleCommencer() {
+    if (!selected) return;
+    await onChangerStatut(selected.id, "Commencé");
+  }
+
+  async function handleDeposerEbauche() {
+    if (!fichiersNouveaux.length || !selected) return;
+    setDeposant(true);
+    await onUploaderPlansFinalises(selected.id, fichiersNouveaux);
+    await onChangerStatut(selected.id, "Ébauche déposée");
+    setFichiersNouveaux([]);
+    setDeposant(false);
+  }
 
   async function handleEnvoyer() {
     if (!msgInput.trim() || !selected) return;
     await onEnvoyerMessage(selected.id, nomDessinateur, msgInput.trim());
-    setSelected(prev => ({
-      ...prev,
-      messages: [...prev.messages, { auteur: nomDessinateur, texte: msgInput.trim(), date: "Maintenant" }]
-    }));
     setMsgInput("");
   }
 
-  async function handleUploadFinalises() {
-    if (!fichiersFinaux.length || !selected) return;
-    await onUploaderPlansFinalises(selected.id, fichiersFinaux);
-    setFichiersFinaux([]);
-    alert("Plans déposés avec succès !");
+  // Bloc action principal selon statut
+  function BlocAction() {
+    if (!selected) return null;
+    const statut = selected.statut;
+
+    // En attente → bouton Commencer
+    if (statut === "En attente") {
+      return (
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: 20, marginBottom: 20, textAlign: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#1E40AF", marginBottom: 6 }}>Nouvelle mission</div>
+          <div style={{ fontSize: 13, color: "#3B82F6", marginBottom: 16 }}>Cliquez sur "Commencer" pour accepter cette mission</div>
+          <button onClick={handleCommencer}
+            style={{ padding: "10px 28px", borderRadius: 8, border: "none", background: "#2563EB", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            ▶ Commencer la mission
+          </button>
+        </div>
+      );
+    }
+
+    // Commencé OU Modification demandée → zone de dépôt
+    if (statut === "Commencé" || statut === "Modification dessinateur") {
+      const isModif = statut === "Modification dessinateur";
+      return (
+        <div style={{ background: isModif ? "#FFF7ED" : "#F0FDF4", border: `1px solid ${isModif ? "#FED7AA" : "#BBF7D0"}`, borderRadius: 10, padding: 20, marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: isModif ? "#92400E" : "#065F46", marginBottom: 4 }}>
+            {isModif ? "⚠️ Modification demandée" : "📤 Déposer l'ébauche"}
+          </div>
+          <div style={{ fontSize: 12, color: isModif ? "#B45309" : "#059669", marginBottom: 14 }}>
+            {isModif ? "Le client a demandé des modifications. Déposez une nouvelle version." : "Uploadez vos fichiers puis confirmez le dépôt."}
+          </div>
+
+          {/* Fichiers déjà déposés */}
+          {selected.plansFinalises?.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 6 }}>Dernière version déposée</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {selected.plansFinalises.map((f, i) => (
+                  <a key={i} href={f.url} target="_blank" rel="noreferrer"
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#fff", fontSize: 11, color: "#374151", textDecoration: "none" }}>
+                    📄 {f.nom}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <ZoneUpload
+            label=""
+            fichiers={fichiersNouveaux}
+            onAjouter={f => setFichiersNouveaux(f)}
+            onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))}
+            accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
+            maxFichiers={20}
+          />
+          {fichiersNouveaux.length > 0 && (
+            <button onClick={handleDeposerEbauche} disabled={deposant}
+              style={{ marginTop: 12, padding: "9px 20px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#059669", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
+              {deposant ? "Dépôt en cours..." : `✓ Confirmer le dépôt (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // Ébauche déposée → affichage des fichiers + possibilité de redéposer
+    if (statut === "Ébauche déposée") {
+      return (
+        <div style={{ background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 10, padding: 20, marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6", marginBottom: 4 }}>✅ Ébauche déposée</div>
+          <div style={{ fontSize: 12, color: "#7C3AED", marginBottom: 14 }}>En attente de retour du client. Vous pouvez redéposer une version corrigée si nécessaire.</div>
+
+          {/* Fichiers déposés */}
+          {selected.plansFinalises?.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 6 }}>Fichiers déposés</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {selected.plansFinalises.map((f, i) => (
+                  <a key={i} href={f.url} target="_blank" rel="noreferrer"
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#fff", fontSize: 11, color: "#374151", textDecoration: "none" }}>
+                    📄 {f.nom}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Redépôt possible */}
+          <div style={{ borderTop: "1px solid #DDD6FE", paddingTop: 14 }}>
+            <div style={{ fontSize: 11, color: "#7C3AED", fontWeight: 600, marginBottom: 8 }}>Redéposer une version corrigée</div>
+            <ZoneUpload
+              label=""
+              fichiers={fichiersNouveaux}
+              onAjouter={f => setFichiersNouveaux(f)}
+              onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))}
+              accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
+              maxFichiers={20}
+            />
+            {fichiersNouveaux.length > 0 && (
+              <button onClick={handleDeposerEbauche} disabled={deposant}
+                style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#7C3AED", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
+                {deposant ? "Dépôt en cours..." : `↩ Redéposer (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827" }}>
-
-      {/* Sidebar dessinateur */}
-      <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", height: "100vh" }}>
+      {/* Sidebar */}
+      <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
           <div style={{ width: 32, height: 32, background: "#2563EB", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "white", fontSize: 16 }}>✏️</span>
@@ -210,34 +327,31 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
           <div style={{ fontSize: 11, color: "#93C5FD", marginBottom: 2 }}>Connecté en tant que</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#1D4ED8" }}>{nomDessinateur}</div>
         </div>
-        <div style={{ fontSize: 11, color: "#9CA3AF", padding: "8px 12px", marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: "#9CA3AF", padding: "8px 12px", marginTop: 4 }}>
           {mesMissions.length} mission{mesMissions.length > 1 ? "s" : ""} en cours
         </div>
         <div style={{ marginTop: "auto", borderTop: "1px solid #E5E7EB", paddingTop: 12 }}>
-          <div style={{ padding: "8px 12px", fontSize: 12, color: "#9CA3AF" }}>
-            Mode test — vue dessinateur
-          </div>
+          <div style={{ padding: "8px 12px", fontSize: 11, color: "#9CA3AF" }}>Mode test — vue dessinateur</div>
         </div>
       </div>
 
-      {/* Main dessinateur */}
+      {/* Main */}
       <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Mes missions</h1>
 
-        {mesMissions.length === 0 && (
+        {mesMissions.length === 0 && !selected && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
             Aucune mission assignée pour l'instant.
           </div>
         )}
 
-        {/* Liste des missions */}
         {mesMissions.length > 0 && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 24 }}>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <span>Bâtiment</span><span>Client</span><span>Plans</span><span>Délai</span><span>Statut</span>
             </div>
             {mesMissions.map(c => (
-              <div key={c.id} onClick={() => setSelected(c)}
+              <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
                 style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
@@ -252,7 +366,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
           </div>
         )}
 
-        {/* Détail mission dessinateur */}
+        {/* Détail mission */}
         {selected && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -260,15 +374,18 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div>
                 <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref} · {selected.client}</div>
               </div>
-              <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Badge statut={selected.statut} />
+                <button onClick={() => { setSelected(null); setFichiersNouveaux([]); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+              </div>
             </div>
 
             {/* Infos */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
               {[
+                { label: "Client",    val: selected.client },
                 { label: "Délai",     val: selected.delai || "—" },
                 { label: "Nb. plans", val: selected.plans.length },
-                { label: "Statut",    val: <Badge statut={selected.statut} /> },
               ].map(f => (
                 <div key={f.label}>
                   <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
@@ -277,7 +394,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
               ))}
             </div>
 
-            {/* Tableau plans */}
+            {/* Plans à réaliser */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans à réaliser</div>
               <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
@@ -295,10 +412,10 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
               </div>
             </div>
 
-            {/* Fichiers source fournis par admin */}
+            {/* Fichiers sources */}
             {selected.fichiersPlan?.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources</div>
+                <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources fournis</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {selected.fichiersPlan.map((f, i) => (
                     <a key={i} href={f.url} target="_blank" rel="noreferrer"
@@ -314,41 +431,19 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
             {selected.logoClient?.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
-                <img src={selected.logoClient[0].url} alt="logo client" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
+                <img src={selected.logoClient[0].url} alt="logo" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
               </div>
             )}
 
-            {/* Changer statut (limité) */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 8 }}>Mettre à jour le statut</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {STATUTS_DESSINATEUR.map(s => (
-                  <button key={s} onClick={() => { onChangerStatut(selected.id, s); setSelected(prev => ({ ...prev, statut: s })); }}
-                    style={{ padding: "7px 16px", borderRadius: 100, border: selected.statut === s ? "2px solid #2563EB" : "1px solid #E5E7EB", background: selected.statut === s ? "#EFF6FF" : "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", color: selected.statut === s ? "#1D4ED8" : "#6B7280" }}>
-                    {s}
-                  </button>
-                ))}
+            {/* Notes */}
+            {selected.notes && (
+              <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>
+                📝 {selected.notes}
               </div>
-            </div>
+            )}
 
-            {/* Upload plans finalisés */}
-            <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 10 }}>📤 Déposer les plans finalisés</div>
-              <ZoneUpload
-                label=""
-                fichiers={fichiersFinaux}
-                onAjouter={f => setFichiersFinaux(f)}
-                onSupprimer={i => setFichiersFinaux(fichiersFinaux.filter((_, idx) => idx !== i))}
-                accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai"
-                maxFichiers={20}
-              />
-              {fichiersFinaux.length > 0 && (
-                <button onClick={handleUploadFinalises}
-                  style={{ marginTop: 12, padding: "8px 18px", borderRadius: 8, border: "none", background: "#059669", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  Confirmer le dépôt ({fichiersFinaux.length} fichier{fichiersFinaux.length > 1 ? "s" : ""})
-                </button>
-              )}
-            </div>
+            {/* Bloc action principal */}
+            <BlocAction />
 
             {/* Messagerie */}
             <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
@@ -382,10 +477,7 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
             <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
               {mesTerminees.map(c => (
                 <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", opacity: 0.6 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
-                  </div>
+                  <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
                   <div style={{ fontSize: 13 }}>{c.client}</div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                   <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai || "—"}</div>
@@ -403,16 +495,14 @@ function VueDessinateur({ commandes, nomDessinateur, onChangerStatut, onEnvoyerM
 // ─── App principale ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [commandes, setCommandes] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [vue, setVue]             = useState("dashboard");
-  const [selected, setSelected]   = useState(null);
-  const [showForm, setShowForm]   = useState(false);
-  const [msgInput, setMsgInput]   = useState("");
-  const [saving, setSaving]       = useState(false);
-
-  // Switcher Admin / Dessinateur
-  const [modeVue, setModeVue]               = useState("admin"); // "admin" | "dessinateur"
+  const [commandes, setCommandes]           = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [vue, setVue]                       = useState("dashboard");
+  const [selected, setSelected]             = useState(null);
+  const [showForm, setShowForm]             = useState(false);
+  const [msgInput, setMsgInput]             = useState("");
+  const [saving, setSaving]                 = useState(false);
+  const [modeVue, setModeVue]               = useState("admin");
   const [dessinateurActif, setDessinateurActif] = useState("");
 
   const [settings, setSettings] = useState({
@@ -441,6 +531,7 @@ export default function App() {
         plans: c.plans || [],
         fichiersPlan: c.fichiers_plan || [],
         logoClient: c.logo_client || [],
+        plansFinalises: c.plans_finalises || [],
         messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
       })));
     }
@@ -454,10 +545,11 @@ export default function App() {
     const { data, error } = await supabase.from("commandes").insert([{
       ref, batiment: form.batiment, client: form.client, delai: form.delai,
       dessinateur: form.dessinateur, notes: form.notes, plans: form.plans,
-      fichiers_plan: form.fichiersPlan, logo_client: form.logoClient, statut: "En attente",
+      fichiers_plan: form.fichiersPlan, logo_client: form.logoClient,
+      plans_finalises: [], statut: "En attente",
     }]).select("*, messages(*)").single();
     if (!error && data) {
-      setCommandes([{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], messages: [] }, ...commandes]);
+      setCommandes([{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...commandes]);
     }
     setSaving(false);
     setShowForm(false);
@@ -467,7 +559,7 @@ export default function App() {
   async function changerStatut(id, statut) {
     const { error } = await supabase.from("commandes").update({ statut }).eq("id", id);
     if (!error) {
-      setCommandes(commandes.map(c => c.id === id ? { ...c, statut } : c));
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
       if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
     }
   }
@@ -478,24 +570,24 @@ export default function App() {
       date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long" }),
     }]).select().single();
     if (!error && data) {
-      setCommandes(commandes.map(c =>
+      setCommandes(prev => prev.map(c =>
         c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c
       ));
+      if (selected?.id === commandeId) setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
+    }
+  }
+
+  async function uploaderPlansFinalises(commandeId, fichiers) {
+    const { error } = await supabase.from("commandes").update({ plans_finalises: fichiers }).eq("id", commandeId);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, plansFinalises: fichiers } : c));
     }
   }
 
   async function envoyerMessageAdmin() {
     if (!msgInput.trim() || !selected) return;
     await envoyerMessage(selected.id, "Simon", msgInput.trim());
-    setSelected(prev => ({ ...prev, messages: [...prev.messages, { auteur: "Simon", texte: msgInput.trim(), date: "Maintenant" }] }));
     setMsgInput("");
-  }
-
-  async function uploaderPlansFinalises(commandeId, fichiers) {
-    const { error } = await supabase.from("commandes").update({ plans_finalises: fichiers }).eq("id", commandeId);
-    if (!error) {
-      setCommandes(commandes.map(c => c.id === commandeId ? { ...c, plansFinalises: fichiers } : c));
-    }
   }
 
   const stats = {
@@ -509,7 +601,6 @@ export default function App() {
   const inputStyle   = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle   = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4 };
 
-  // ── Switcher barre ──
   const SwitcherBarre = () => (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "#1E293B", padding: "8px 20px", display: "flex", alignItems: "center", gap: 12 }}>
       <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em" }}>MODE TEST</span>
@@ -533,7 +624,6 @@ export default function App() {
     </div>
   );
 
-  // ── Vue dessinateur ──
   if (modeVue === "dessinateur") {
     return (
       <div>
@@ -559,20 +649,15 @@ export default function App() {
     );
   }
 
-  // ── Vue admin ──
   return (
     <div>
       <SwitcherBarre />
       <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827", paddingTop: 44 }}>
-
-        {/* Sidebar */}
         <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
             {settings.logoUrl
               ? <img src={settings.logoUrl} alt="logo" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6 }} />
-              : <div style={{ width: 32, height: 32, background: "#DC2626", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ color: "white", fontSize: 16 }}>🔥</span>
-                </div>
+              : <div style={{ width: 32, height: 32, background: "#DC2626", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>
             }
             <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
           </div>
@@ -594,11 +679,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Main admin */}
         <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
-
           {vue === "reglages" && <PageReglages settings={settings} onSave={s => setSettings(s)} />}
-
           {vue !== "reglages" && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -608,7 +690,6 @@ export default function App() {
                   + Nouvelle commande
                 </button>
               </div>
-
               {vue === "dashboard" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
                   {[
@@ -624,11 +705,8 @@ export default function App() {
                   ))}
                 </div>
               )}
-
               {loading ? (
-                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
-                  Chargement des commandes...
-                </div>
+                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>Chargement...</div>
               ) : (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: selected ? 24 : 0 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -640,10 +718,7 @@ export default function App() {
                   {cmdAffichees.map(c => (
                     <div key={c.id} onClick={() => setSelected(c)}
                       style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
-                        <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
-                      </div>
+                      <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
                       <div style={{ fontSize: 13 }}>{c.client}</div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
                       <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai || "—"}</div>
@@ -652,14 +727,10 @@ export default function App() {
                   ))}
                 </div>
               )}
-
               {selected && (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div>
-                      <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div>
-                    </div>
+                    <div><div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment}</div><div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div></div>
                     <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -669,10 +740,7 @@ export default function App() {
                       { label: "Délai",       val: selected.delai || "—" },
                       { label: "Nb. plans",   val: selected.plans.length },
                     ].map(f => (
-                      <div key={f.label}>
-                        <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
-                      </div>
+                      <div key={f.label}><div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div></div>
                     ))}
                   </div>
                   <div style={{ marginBottom: 20 }}>
@@ -689,27 +757,18 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  {(selected.fichiersPlan?.length > 0 || selected.logoClient?.length > 0) && (
-                    <div style={{ marginBottom: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                      {selected.fichiersPlan?.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers du plan ({selected.fichiersPlan.length})</div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {selected.fichiersPlan.map((f, i) => (
-                              <a key={i} href={f.url} target="_blank" rel="noreferrer"
-                                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 11, color: "#374151", textDecoration: "none" }}>
-                                📄 {f.nom}
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {selected.logoClient?.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
-                          <img src={selected.logoClient[0].url} alt="logo client" style={{ height: 48, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 6, padding: 4, background: "#fff" }} />
-                        </div>
-                      )}
+                  {/* Plans finalisés déposés par le dessinateur */}
+                  {selected.plansFinalises?.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans déposés par le dessinateur ({selected.plansFinalises.length})</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {selected.plansFinalises.map((f, i) => (
+                          <a key={i} href={f.url} target="_blank" rel="noreferrer"
+                            style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "1px solid #DDD6FE", background: "#F5F3FF", fontSize: 11, color: "#5B21B6", textDecoration: "none" }}>
+                            📄 {f.nom}
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div style={{ marginBottom: 20 }}>
@@ -756,7 +815,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Modal nouvelle commande */}
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
           onClick={e => e.target === e.currentTarget && setShowForm(false)}>
@@ -766,22 +824,11 @@ export default function App() {
               <button onClick={() => setShowForm(false)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={labelStyle}>Bâtiment / Référence *</label>
-                <input type="text" value={form.batiment} placeholder="Ex: Résidence Les Pins"
-                  onChange={e => setForm({ ...form, batiment: e.target.value })} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Client *</label>
-                <input type="text" value={form.client} placeholder="Nom de la société"
-                  onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} />
-              </div>
+              <div><label style={labelStyle}>Bâtiment / Référence *</label><input type="text" value={form.batiment} placeholder="Ex: Résidence Les Pins" onChange={e => setForm({ ...form, batiment: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Client *</label><input type="text" value={form.client} placeholder="Nom de la société" onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={labelStyle}>Délai souhaité</label>
-                <input type="date" value={form.delai} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
-              </div>
+              <div><label style={labelStyle}>Délai souhaité</label><input type="date" value={form.delai} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} /></div>
               <div>
                 <label style={labelStyle}>Dessinateur</label>
                 <select value={form.dessinateur} onChange={e => setForm({ ...form, dessinateur: e.target.value })} style={inputStyle}>
@@ -797,38 +844,17 @@ export default function App() {
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
-              <ZoneUpload
-                label="📄 Fichiers du plan"
-                fichiers={form.fichiersPlan}
-                onAjouter={f => setForm({ ...form, fichiersPlan: f })}
-                onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })}
-                accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf"
-                maxFichiers={10}
-              />
-              <ZoneUpload
-                label="🏢 Logo du client"
-                fichiers={form.logoClient}
-                onAjouter={f => setForm({ ...form, logoClient: f })}
-                onSupprimer={() => setForm({ ...form, logoClient: [] })}
-                accept="image/*"
-                unique={true}
-              />
+              <ZoneUpload label="📄 Fichiers du plan" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
+              <ZoneUpload label="🏢 Logo du client" fichiers={form.logoClient} onAjouter={f => setForm({ ...form, logoClient: f })} onSupprimer={() => setForm({ ...form, logoClient: [] })} accept="image/*" unique={true} />
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Notes</label>
-              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-                rows={3} placeholder="Informations complémentaires..."
-                style={{ ...inputStyle, resize: "vertical" }} />
+              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Informations complémentaires..." style={{ ...inputStyle, resize: "vertical" }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                {form.plans.length} plan{form.plans.length > 1 ? "s" : ""} · {form.fichiersPlan.length} fichier{form.fichiersPlan.length > 1 ? "s" : ""}
-              </span>
+              <span style={{ fontSize: 12, color: "#9CA3AF" }}>{form.plans.length} plan{form.plans.length > 1 ? "s" : ""} · {form.fichiersPlan.length} fichier{form.fichiersPlan.length > 1 ? "s" : ""}</span>
               <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => { setShowForm(false); setForm(formVide()); }}
-                  style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
-                  Annuler
-                </button>
+                <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
                 <button onClick={creerCommande} disabled={saving}
                   style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !form.batiment || !form.client ? "not-allowed" : "pointer", background: !form.batiment || !form.client ? "#F3F4F6" : "#DC2626", color: !form.batiment || !form.client ? "#9CA3AF" : "#fff" }}>
                   {saving ? "Enregistrement..." : "Créer la commande"}
