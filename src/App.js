@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "./supabase";
 
 const STATUTS = ["En attente", "Commencé", "Ébauche déposée", "Modification dessinateur", "Validé"];
 
@@ -16,56 +17,6 @@ const ORIENTATIONS = ["Portrait", "Paysage"];
 
 const planVide = () => ({ type: "Évacuation", orientation: "Paysage", format: "A3" });
 
-const initCommandes = [
-  {
-    id: 1, ref: "CMD-001", batiment: "Résidence Les Acacias", client: "Syndic Acacias",
-    delai: "2024-03-20", dessinateur: "Marc L.", statut: "Commencé", notes: "3 niveaux + sous-sol",
-    plans: [
-      { type: "Évacuation",   orientation: "Paysage",  format: "A2" },
-      { type: "Intervention", orientation: "Paysage",  format: "A3" },
-      { type: "Évacuation",   orientation: "Portrait", format: "A3" },
-    ],
-    fichiersPlan: [], logoClient: null,
-    messages: [
-      { auteur: "Simon",   texte: "Commande transmise.",       date: "10 mars" },
-      { auteur: "Marc L.", texte: "Reçu, je commence demain.", date: "10 mars" },
-    ],
-  },
-  {
-    id: 2, ref: "CMD-002", batiment: "Entrepôt Nord – Bât. B", client: "LogiPro",
-    delai: "2024-03-18", dessinateur: "Thomas R.", statut: "Modification dessinateur",
-    notes: "Ajouter issues de secours côté nord",
-    plans: [{ type: "Intervention", orientation: "Paysage", format: "A2" }],
-    fichiersPlan: [], logoClient: null,
-    messages: [{ auteur: "Simon", texte: "Le client demande un ajout côté nord.", date: "12 mars" }],
-  },
-  {
-    id: 3, ref: "CMD-003", batiment: "Hôtel du Port", client: "Hôtel du Port",
-    delai: "2024-03-15", dessinateur: "Marc L.", statut: "Validé", notes: "",
-    plans: [
-      { type: "Évacuation",   orientation: "Paysage", format: "A2" },
-      { type: "Évacuation",   orientation: "Paysage", format: "A2" },
-      { type: "Intervention", orientation: "Paysage", format: "A3" },
-    ],
-    fichiersPlan: [], logoClient: null,
-    messages: [
-      { auteur: "Marc L.", texte: "Plans finaux déposés.",         date: "14 mars" },
-      { auteur: "Simon",   texte: "Validé par le client. Merci !", date: "15 mars" },
-    ],
-  },
-  {
-    id: 4, ref: "CMD-004", batiment: "École Jules Ferry", client: "Mairie de Rennes",
-    delai: "2024-03-25", dessinateur: "", statut: "En attente",
-    notes: "Bâtiment principal + gymnase",
-    plans: [
-      { type: "Évacuation", orientation: "Portrait", format: "A3" },
-      { type: "Évacuation", orientation: "Portrait", format: "A3" },
-    ],
-    fichiersPlan: [], logoClient: null,
-    messages: [],
-  },
-];
-
 // ─── Composants utilitaires ───────────────────────────────────────────────────
 
 function Badge({ statut }) {
@@ -82,19 +33,13 @@ function TableauPlans({ plans, onChange }) {
     onChange(plans.map((p, idx) => idx === i ? { ...p, [key]: val } : p));
   }
   function ajouterLigne() {
-    // copie la dernière ligne
     const derniere = { ...plans[plans.length - 1] };
     onChange([...plans, derniere]);
   }
   function supprimerLigne(i) {
     onChange(plans.filter((_, idx) => idx !== i));
   }
-
-  const sel = {
-    padding: "6px 8px", borderRadius: 6, border: "1px solid #E5E7EB",
-    fontSize: 12, width: "100%", background: "#fff",
-  };
-
+  const sel = { padding: "6px 8px", borderRadius: 6, border: "1px solid #E5E7EB", fontSize: 12, width: "100%", background: "#fff" };
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "32px 1fr 1fr 1fr 28px", gap: 6, marginBottom: 6 }}>
@@ -109,9 +54,7 @@ function TableauPlans({ plans, onChange }) {
           <select value={p.orientation} onChange={e => updatePlan(i, "orientation", e.target.value)} style={sel}>{ORIENTATIONS.map(o => <option key={o}>{o}</option>)}</select>
           <select value={p.format}      onChange={e => updatePlan(i, "format",      e.target.value)} style={sel}>{FORMATS.map(f      => <option key={f}>{f}</option>)}</select>
           <button onClick={() => supprimerLigne(i)} disabled={plans.length === 1}
-            style={{ border: "none", background: "none", cursor: plans.length === 1 ? "not-allowed" : "pointer", color: "#D1D5DB", fontSize: 15, padding: 0 }}>
-            ✕
-          </button>
+            style={{ border: "none", background: "none", cursor: plans.length === 1 ? "not-allowed" : "pointer", color: "#D1D5DB", fontSize: 15, padding: 0 }}>✕</button>
         </div>
       ))}
       <button onClick={ajouterLigne}
@@ -124,7 +67,6 @@ function TableauPlans({ plans, onChange }) {
 
 function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichiers = 10, unique = false }) {
   const inputRef = useRef();
-
   function handleFiles(e) {
     const nouveaux = Array.from(e.target.files).map(f => ({
       nom: f.name,
@@ -135,48 +77,35 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
     if (unique) {
       onAjouter([nouveaux[0]]);
     } else {
-      const total = [...fichiers, ...nouveaux].slice(0, maxFichiers);
-      onAjouter(total);
+      onAjouter([...fichiers, ...nouveaux].slice(0, maxFichiers));
     }
     e.target.value = "";
   }
-
   const isImage = (f) => f.type && f.type.startsWith("image/");
-
   return (
     <div>
       <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 6, fontWeight: 600 }}>{label}</label>
-
-      {/* Zone drop / clic */}
       <div onClick={() => inputRef.current.click()}
         style={{ border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: "16px", textAlign: "center", cursor: "pointer", background: "#F9FAFB", marginBottom: fichiers.length > 0 ? 10 : 0 }}>
         <div style={{ fontSize: 22, marginBottom: 4 }}>📎</div>
-        <div style={{ fontSize: 12, color: "#6B7280" }}>
-          {unique ? "Cliquer pour choisir un fichier" : `Cliquer pour ajouter des fichiers (max ${maxFichiers})`}
-        </div>
+        <div style={{ fontSize: 12, color: "#6B7280" }}>{unique ? "Cliquer pour choisir un fichier" : `Cliquer pour ajouter (max ${maxFichiers})`}</div>
         <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{accept}</div>
         <input ref={inputRef} type="file" accept={accept} multiple={!unique} style={{ display: "none" }} onChange={handleFiles} />
       </div>
-
-      {/* Aperçu fichiers */}
       {fichiers.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {fichiers.map((f, i) => (
             <div key={i} style={{ position: "relative", border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-              {isImage(f) ? (
-                <img src={f.url} alt={f.nom} style={{ width: 80, height: 80, objectFit: "cover", display: "block" }} />
-              ) : (
-                <div style={{ width: 80, height: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                  <span style={{ fontSize: 24 }}>📄</span>
-                  <span style={{ fontSize: 9, color: "#6B7280", textAlign: "center", padding: "0 4px", wordBreak: "break-all" }}>{f.nom}</span>
-                </div>
-              )}
+              {isImage(f)
+                ? <img src={f.url} alt={f.nom} style={{ width: 80, height: 80, objectFit: "cover", display: "block" }} />
+                : <div style={{ width: 80, height: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <span style={{ fontSize: 24 }}>📄</span>
+                    <span style={{ fontSize: 9, color: "#6B7280", textAlign: "center", padding: "0 4px", wordBreak: "break-all" }}>{f.nom}</span>
+                  </div>
+              }
               <div style={{ fontSize: 9, color: "#9CA3AF", textAlign: "center", padding: "3px 4px", borderTop: "1px solid #F3F4F6", background: "#F9FAFB" }}>{f.taille}</div>
-              {/* Bouton supprimer */}
               <button onClick={() => onSupprimer(i)}
-                style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>
-                ✕
-              </button>
+                style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>✕</button>
             </div>
           ))}
         </div>
@@ -185,53 +114,40 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
   );
 }
 
-// ─── Page Réglages ────────────────────────────────────────────────────────────
-
 function PageReglages({ settings, onSave }) {
-  const [local, setLocal]   = useState(settings);
-  const [sauve, setSauve]   = useState(false);
-  const logoRef             = useRef();
-
+  const [local, setLocal] = useState(settings);
+  const [sauve, setSauve] = useState(false);
+  const logoRef = useRef();
   function handleLogoChange(e) {
     const f = e.target.files[0];
     if (!f) return;
     setLocal({ ...local, logoUrl: URL.createObjectURL(f), logoNom: f.name });
   }
-
   function sauvegarder() {
     onSave(local);
     setSauve(true);
     setTimeout(() => setSauve(false), 2000);
   }
-
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4 };
-
   return (
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Réglages</h1>
-
-      {/* Infos entreprise */}
       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: "#374151" }}>Informations entreprise</div>
-
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Nom de l'entreprise</label>
-          <input type="text" value={local.nomEntreprise} onChange={e => setLocal({ ...local, nomEntreprise: e.target.value })} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Email de contact</label>
-          <input type="email" value={local.email} onChange={e => setLocal({ ...local, email: e.target.value })} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label style={labelStyle}>Téléphone</label>
-          <input type="text" value={local.telephone} onChange={e => setLocal({ ...local, telephone: e.target.value })} style={inputStyle} />
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Informations entreprise</div>
+        {[
+          { label: "Nom de l'entreprise", key: "nomEntreprise", type: "text" },
+          { label: "Email de contact",    key: "email",         type: "email" },
+          { label: "Téléphone",           key: "telephone",     type: "text" },
+        ].map(f => (
+          <div key={f.key} style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>{f.label}</label>
+            <input type={f.type} value={local[f.key]} onChange={e => setLocal({ ...local, [f.key]: e.target.value })} style={inputStyle} />
+          </div>
+        ))}
       </div>
-
-      {/* Logo entreprise */}
       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: "#374151" }}>Logo de l'entreprise</div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Logo de l'entreprise</div>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div style={{ width: 80, height: 80, border: "1px solid #E5E7EB", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: "#F9FAFB", flexShrink: 0 }}>
             {local.logoUrl
@@ -249,16 +165,13 @@ function PageReglages({ settings, onSave }) {
           </div>
         </div>
       </div>
-
-      {/* Dessinateurs */}
       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginBottom: 24 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#374151" }}>Dessinateurs</div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Dessinateurs</div>
         <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12 }}>Un nom par ligne</div>
         <textarea value={local.dessinateurs.join("\n")}
           onChange={e => setLocal({ ...local, dessinateurs: e.target.value.split("\n").filter(d => d.trim()) })}
           rows={4} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
-
       <button onClick={sauvegarder}
         style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: sauve ? "#059669" : "#DC2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.3s" }}>
         {sauve ? "✓ Sauvegardé !" : "Sauvegarder les réglages"}
@@ -270,23 +183,112 @@ function PageReglages({ settings, onSave }) {
 // ─── App principale ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [commandes, setCommandes] = useState(initCommandes);
+  const [commandes, setCommandes] = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [vue, setVue]             = useState("dashboard");
   const [selected, setSelected]   = useState(null);
   const [showForm, setShowForm]   = useState(false);
   const [msgInput, setMsgInput]   = useState("");
+  const [saving, setSaving]       = useState(false);
 
   const [settings, setSettings] = useState({
     nomEntreprise: "First Incendie",
     email: "contact@firstincendie.fr",
     telephone: "02 XX XX XX XX",
-    logoUrl: null,
-    logoNom: null,
+    logoUrl: null, logoNom: null,
     dessinateurs: ["Marc L.", "Thomas R."],
   });
 
   const formVide = () => ({ batiment: "", client: "", delai: "", dessinateur: "", notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [] });
   const [form, setForm] = useState(formVide());
+
+  // ── Charger les commandes depuis Supabase ──
+  useEffect(() => {
+    chargerCommandes();
+  }, []);
+
+  async function chargerCommandes() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("commandes")
+      .select("*, messages(*)")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Erreur chargement:", error);
+    } else {
+      // Normalise les données
+      const normalized = data.map(c => ({
+        ...c,
+        plans: c.plans || [],
+        fichiersPlan: c.fichiers_plan || [],
+        logoClient: c.logo_client || [],
+        messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      }));
+      setCommandes(normalized);
+    }
+    setLoading(false);
+  }
+
+  // ── Créer une commande ──
+  async function creerCommande() {
+    if (!form.batiment || !form.client) return;
+    setSaving(true);
+    const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
+    const { data, error } = await supabase.from("commandes").insert([{
+      ref,
+      batiment:      form.batiment,
+      client:        form.client,
+      delai:         form.delai,
+      dessinateur:   form.dessinateur,
+      notes:         form.notes,
+      plans:         form.plans,
+      fichiers_plan: form.fichiersPlan,
+      logo_client:   form.logoClient,
+      statut:        "En attente",
+    }]).select("*, messages(*)").single();
+
+    if (!error && data) {
+      const nouvelle = {
+        ...data,
+        plans: data.plans || [],
+        fichiersPlan: data.fichiers_plan || [],
+        logoClient: data.logo_client || [],
+        messages: [],
+      };
+      setCommandes([nouvelle, ...commandes]);
+    }
+    setSaving(false);
+    setShowForm(false);
+    setForm(formVide());
+  }
+
+  // ── Changer le statut ──
+  async function changerStatut(id, statut) {
+    const { error } = await supabase.from("commandes").update({ statut }).eq("id", id);
+    if (!error) {
+      setCommandes(commandes.map(c => c.id === id ? { ...c, statut } : c));
+      if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
+    }
+  }
+
+  // ── Envoyer un message ──
+  async function envoyerMessage() {
+    if (!msgInput.trim() || !selected) return;
+    const { data, error } = await supabase.from("messages").insert([{
+      commande_id: selected.id,
+      auteur: "Simon",
+      texte: msgInput.trim(),
+      date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long" }),
+    }]).select().single();
+
+    if (!error && data) {
+      setCommandes(commandes.map(c =>
+        c.id === selected.id ? { ...c, messages: [...c.messages, data] } : c
+      ));
+      setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
+    }
+    setMsgInput("");
+  }
 
   const stats = {
     total:   commandes.length,
@@ -294,33 +296,6 @@ export default function App() {
     attente: commandes.filter(c => c.statut === "En attente" || c.statut === "Modification dessinateur").length,
     valides: commandes.filter(c => c.statut === "Validé").length,
   };
-
-  function creerCommande() {
-    if (!form.batiment || !form.client) return;
-    setCommandes([{
-      id: Date.now(),
-      ref: "CMD-" + String(commandes.length + 1).padStart(3, "0"),
-      batiment: form.batiment, client: form.client, delai: form.delai,
-      dessinateur: form.dessinateur, notes: form.notes, plans: form.plans,
-      fichiersPlan: form.fichiersPlan, logoClient: form.logoClient,
-      statut: "En attente", messages: [],
-    }, ...commandes]);
-    setShowForm(false);
-    setForm(formVide());
-  }
-
-  function changerStatut(id, statut) {
-    setCommandes(commandes.map(c => c.id === id ? { ...c, statut } : c));
-    if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
-  }
-
-  function envoyerMessage() {
-    if (!msgInput.trim() || !selected) return;
-    const msg = { auteur: "Simon", texte: msgInput.trim(), date: "Maintenant" };
-    setCommandes(commandes.map(c => c.id === selected.id ? { ...c, messages: [...c.messages, msg] } : c));
-    setSelected(prev => ({ ...prev, messages: [...prev.messages, msg] }));
-    setMsgInput("");
-  }
 
   const cmdAffichees = vue === "dashboard" ? commandes.slice(0, 5) : commandes;
   const inputStyle   = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
@@ -340,18 +315,16 @@ export default function App() {
           }
           <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
         </div>
-
         {[
-          { id: "dashboard", label: "Dashboard",  icon: "📊" },
-          { id: "commandes", label: "Commandes",  icon: "📋" },
-          { id: "reglages",  label: "Réglages",   icon: "⚙️" },
+          { id: "dashboard", label: "Dashboard", icon: "📊" },
+          { id: "commandes", label: "Commandes", icon: "📋" },
+          { id: "reglages",  label: "Réglages",  icon: "⚙️" },
         ].map(item => (
           <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#FEF2F2" : "transparent", color: vue === item.id ? "#DC2626" : "#6B7280", textAlign: "left" }}>
             <span>{item.icon}</span>{item.label}
           </button>
         ))}
-
         <div style={{ marginTop: "auto", borderTop: "1px solid #E5E7EB", paddingTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", fontSize: 13, color: "#6B7280" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#DC2626" }}>SR</div>
@@ -363,12 +336,8 @@ export default function App() {
       {/* ── Main ── */}
       <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
 
-        {/* Page Réglages */}
-        {vue === "reglages" && (
-          <PageReglages settings={settings} onSave={s => setSettings(s)} />
-        )}
+        {vue === "reglages" && <PageReglages settings={settings} onSave={s => setSettings(s)} />}
 
-        {/* Dashboard + Commandes */}
         {vue !== "reglages" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -397,24 +366,35 @@ export default function App() {
             )}
 
             {/* Tableau commandes */}
-            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: selected ? 24 : 0 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                <span>Bâtiment</span><span>Client</span><span>Plans</span><span>Délai</span><span>Statut</span>
+            {loading ? (
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>
+                Chargement des commandes...
               </div>
-              {cmdAffichees.map(c => (
-                <div key={c.id} onClick={() => setSelected(c)}
-                  style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
-                  </div>
-                  <div style={{ fontSize: 13 }}>{c.client}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai || "—"}</div>
-                  <Badge statut={c.statut} />
+            ) : (
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: selected ? 24 : 0 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <span>Bâtiment</span><span>Client</span><span>Plans</span><span>Délai</span><span>Statut</span>
                 </div>
-              ))}
-            </div>
+                {cmdAffichees.length === 0 && (
+                  <div style={{ padding: "32px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>
+                    Aucune commande pour l'instant. Créez votre première commande !
+                  </div>
+                )}
+                {cmdAffichees.map(c => (
+                  <div key={c.id} onClick={() => setSelected(c)}
+                    style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 1.3fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment}</div>
+                      <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                    </div>
+                    <div style={{ fontSize: 13 }}>{c.client}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai || "—"}</div>
+                    <Badge statut={c.statut} />
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Détail commande */}
             {selected && (
@@ -441,7 +421,7 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Tableau plans lecture */}
+                {/* Tableau plans */}
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Détail des plans</div>
                   <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
@@ -541,8 +521,6 @@ export default function App() {
               <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
               <button onClick={() => setShowForm(false)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
             </div>
-
-            {/* Infos générales */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={labelStyle}>Bâtiment / Référence *</label>
@@ -555,7 +533,6 @@ export default function App() {
                   onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} />
               </div>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={labelStyle}>Délai souhaité</label>
@@ -569,16 +546,12 @@ export default function App() {
                 </select>
               </div>
             </div>
-
-            {/* Tableau des plans */}
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Plans à réaliser</label>
               <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" }}>
                 <TableauPlans plans={form.plans} onChange={plans => setForm({ ...form, plans })} />
               </div>
             </div>
-
-            {/* Uploads */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
               <ZoneUpload
                 label="📄 Fichiers du plan"
@@ -597,14 +570,12 @@ export default function App() {
                 unique={true}
               />
             </div>
-
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Notes</label>
               <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                 rows={3} placeholder="Informations complémentaires..."
                 style={{ ...inputStyle, resize: "vertical" }} />
             </div>
-
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 12, color: "#9CA3AF" }}>
                 {form.plans.length} plan{form.plans.length > 1 ? "s" : ""} · {form.fichiersPlan.length} fichier{form.fichiersPlan.length > 1 ? "s" : ""}
@@ -614,9 +585,9 @@ export default function App() {
                   style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
                   Annuler
                 </button>
-                <button onClick={creerCommande}
+                <button onClick={creerCommande} disabled={saving}
                   style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !form.batiment || !form.client ? "not-allowed" : "pointer", background: !form.batiment || !form.client ? "#F3F4F6" : "#DC2626", color: !form.batiment || !form.client ? "#9CA3AF" : "#fff" }}>
-                  Créer la commande
+                  {saving ? "Enregistrement..." : "Créer la commande"}
                 </button>
               </div>
             </div>
