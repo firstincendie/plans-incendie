@@ -467,14 +467,47 @@ function PageReglages({ settings, onSave }) {
   );
 }
 
+// ─── Filtre anti-coordonnées ──────────────────────────────────────────────────
+
+const PATTERNS_CONTACTS = [
+  { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g,          label: "adresse email" },
+  { regex: /(\+33|0033|0)[1-9]([\s.\-]?\d{2}){4}/g,                        label: "numéro de téléphone" },
+  { regex: /(\b\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}[\s.\-]?\d{2}\b)/g, label: "numéro de téléphone" },
+  { regex: /(https?:\/\/|www\.)[^\s]+/gi,                                   label: "lien web" },
+  { regex: /\b[a-zA-Z0-9\-]+\.(fr|com|net|org|io|co|eu|pro|biz)\b/gi,     label: "nom de domaine" },
+  { regex: /\b(instagram|facebook|linkedin|twitter|tiktok|whatsapp|telegram|signal)\b/gi, label: "réseau social" },
+  { regex: /\b(skype|discord|snapchat|messenger)\b/gi,                      label: "messagerie externe" },
+];
+
+function analyserMessage(texte) {
+  for (const { regex, label } of PATTERNS_CONTACTS) {
+    regex.lastIndex = 0;
+    if (regex.test(texte)) return label;
+  }
+  return null;
+}
+
 // ─── Messagerie ───────────────────────────────────────────────────────────────
 
 function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false }) {
-  const [fichierMsg, setFichierMsg] = useState([]);
+  const [fichierMsg, setFichierMsg]   = useState([]);
+  const [alerte, setAlerte]           = useState(null);
   const inputRef = useRef();
 
   async function handleEnvoyer() {
     if (!msgInput.trim() && fichierMsg.length === 0) return;
+
+    // Filtre regex — sauf pour Simon (admin)
+    if (auteurActif !== "Simon") {
+      const detection = analyserMessage(msgInput);
+      if (detection) {
+        setAlerte(`⛔ Message bloqué : ${detection} détecté(e). Le partage de coordonnées personnelles est interdit sur cette plateforme.`);
+        setTimeout(() => setAlerte(null), 5000);
+        return;
+      }
+    }
+
+    setAlerte(null);
     await onEnvoyer(msgInput, fichierMsg);
     setMsgInput("");
     setFichierMsg([]);
@@ -515,6 +548,11 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
               <button onClick={() => setFichierMsg(fichierMsg.filter((_, idx) => idx !== i))} style={{ border: "none", background: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 12, padding: 0 }}>✕</button>
             </div>
           ))}
+        </div>
+      )}
+      {alerte && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: "#DC2626", fontWeight: 500 }}>
+          {alerte}
         </div>
       )}
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
