@@ -46,8 +46,8 @@ function TableauPlans({ plans, onChange }) {
           <select value={p.type}        onChange={e => updatePlan(i, "type",        e.target.value)} style={sel}>{TYPES_PLAN.map(t   => <option key={t}>{t}</option>)}</select>
           <select value={p.orientation} onChange={e => updatePlan(i, "orientation", e.target.value)} style={sel}>{ORIENTATIONS.map(o => <option key={o}>{o}</option>)}</select>
           <select value={p.format}      onChange={e => updatePlan(i, "format",      e.target.value)} style={sel}>{FORMATS.map(f      => <option key={f}>{f}</option>)}</select>
-          <button onClick={() => supprimerLigne(i)} disabled={plans.length === 1}
-            style={{ border: "none", background: "none", cursor: plans.length === 1 ? "not-allowed" : "pointer", color: "#D1D5DB", fontSize: 15, padding: 0 }}>✕</button>
+          <button onClick={() => supprimerLigne(i)} disabled={i === 0}
+            style={{ border: "none", background: "none", cursor: i === 0 ? "not-allowed" : "pointer", color: i === 0 ? "transparent" : "#D1D5DB", fontSize: 15, padding: 0 }}>✕</button>
         </div>
       ))}
       <button onClick={ajouterLigne}
@@ -543,7 +543,7 @@ export default function App() {
   }
 
   async function creerCommande() {
-    if (!form.batiment || !form.client) return;
+    if (!form.batiment || !form.client || !form.dessinateur || !form.delai || form.fichiersPlan.length === 0) return;
     setSaving(true);
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
     const { data, error } = await supabase.from("commandes").insert([{
@@ -774,17 +774,6 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 8 }}>Changer le statut</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {STATUTS_ADMIN.map(s => (
-                        <button key={s} onClick={() => changerStatut(selected.id, s)}
-                          style={{ padding: "5px 12px", borderRadius: 100, border: selected.statut === s ? "2px solid #DC2626" : "1px solid #E5E7EB", background: selected.statut === s ? "#FEF2F2" : "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", color: selected.statut === s ? "#DC2626" : "#6B7280" }}>
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   {selected.notes && (
                     <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400E", marginBottom: 20 }}>
                       📝 {selected.notes}
@@ -854,16 +843,31 @@ export default function App() {
               <label style={labelStyle}>Notes</label>
               <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Informations complémentaires..." style={{ ...inputStyle, resize: "vertical" }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#9CA3AF" }}>{form.plans.length} plan{form.plans.length > 1 ? "s" : ""} · {form.fichiersPlan.length} fichier{form.fichiersPlan.length > 1 ? "s" : ""}</span>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
-                <button onClick={creerCommande} disabled={saving}
-                  style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !form.batiment || !form.client ? "not-allowed" : "pointer", background: !form.batiment || !form.client ? "#F3F4F6" : "#DC2626", color: !form.batiment || !form.client ? "#9CA3AF" : "#fff" }}>
-                  {saving ? "Enregistrement..." : "Créer la commande"}
-                </button>
-              </div>
-            </div>
+            {(() => {
+              const manque = [];
+              if (!form.batiment)              manque.push("bâtiment");
+              if (!form.client)                manque.push("client");
+              if (!form.dessinateur)           manque.push("dessinateur");
+              if (!form.delai)                 manque.push("délai");
+              if (form.fichiersPlan.length === 0) manque.push("1 fichier minimum");
+              const ok = manque.length === 0;
+              return (
+                <div>
+                  {!ok && (
+                    <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>
+                      Champs manquants : {manque.join(", ")}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                    <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+                    <button onClick={creerCommande} disabled={saving || !ok}
+                      style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !ok ? "not-allowed" : "pointer", background: !ok ? "#F3F4F6" : "#DC2626", color: !ok ? "#9CA3AF" : "#fff" }}>
+                      {saving ? "Enregistrement..." : "Créer la commande"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
