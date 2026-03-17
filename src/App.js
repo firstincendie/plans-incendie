@@ -177,7 +177,7 @@ export default function App() {
       <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em" }}>MODE TEST</span>
       <div style={{ display: "flex", gap: 4, background: "#0F172A", borderRadius: 8, padding: 3 }}>
         <button onClick={() => setModeVue("admin")}
-          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#122131" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
+          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#386CA3" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
           👤 Admin
         </button>
         <button onClick={() => setModeVue("dessinateur")}
