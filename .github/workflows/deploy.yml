@@ -33,4 +33,4 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./build/
           server-dir: incendieplan.fr/
-          dangerous-clean-slate: false
+          dangerous-clean-slate: true
