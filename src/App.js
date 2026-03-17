@@ -254,9 +254,9 @@ export default function App() {
   }
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
-  const SwitcherBarre = () => (
+  const SwitcherBarre = () => profil?.role !== "admin" ? null : (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "#1E293B", padding: "8px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em" }}>MODE TEST</span>
+      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em" }}>VUE ADMIN</span>
       <div style={{ display: "flex", gap: 4, background: "#0F172A", borderRadius: 8, padding: 3 }}>
         <button onClick={() => setModeVue("admin")}
           style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#386CA3" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
@@ -277,7 +277,7 @@ export default function App() {
     </div>
   );
 
-  if (modeVue === "dessinateur") {
+  if (modeVue === "dessinateur" && profil?.role === "admin") {
     return (
       <div>
         <SwitcherBarre />

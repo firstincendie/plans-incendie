@@ -9,6 +9,8 @@ const STATUT_STYLE = {
 
 const ROLE_LABEL = { admin: "Admin", client: "Client", dessinateur: "Dessinateur" };
 
+const NOUVEL_USER_INIT = { prenom: "", nom: "", email: "", role: "client", mdp: "", telephone: "", entreprise: "", siren: "", adresse: "", code_postal: "", ville: "" };
+
 export default function GestionUtilisateurs() {
   const [profils, setProfils] = useState([]);
   const [dessinateurs, setDessinateurs] = useState([]);
@@ -18,6 +20,10 @@ export default function GestionUtilisateurs() {
   const [notesAdmin, setNotesAdmin] = useState("");
   const [chargement, setChargement] = useState(true);
   const [actionEnCours, setActionEnCours] = useState(false);
+  const [showNouvelUser, setShowNouvelUser] = useState(false);
+  const [nouvelUser, setNouvelUser] = useState(NOUVEL_USER_INIT);
+  const [creerErreur, setCreerErreur] = useState("");
+  const [creerEnCours, setCreerEnCours] = useState(false);
 
   const charger = async () => {
     setChargement(true);
@@ -67,13 +73,66 @@ export default function GestionUtilisateurs() {
   const dessinateursClient = (client_id) =>
     liaisons.filter(l => l.client_id === client_id).map(l => l.dessinateur_id);
 
+  const creerUtilisateur = async (e) => {
+    e.preventDefault();
+    setCreerErreur("");
+    setCreerEnCours(true);
+    // Créer le compte auth via signUp (sans se connecter)
+    const { data, error } = await supabase.auth.admin
+      ? { data: null, error: { message: "admin_not_available" } }
+      : { data: null, error: { message: "admin_not_available" } };
+
+    // Fallback : insertion directe via RPC ou SQL n'est pas possible côté client.
+    // On utilise la méthode standard signUp et on patch le profil immédiatement.
+    const res = await supabase.auth.signUp({
+      email: nouvelUser.email,
+      password: nouvelUser.mdp,
+      options: { data: { nom: nouvelUser.nom, prenom: nouvelUser.prenom, role: nouvelUser.role } }
+    });
+
+    if (res.error) {
+      setCreerErreur(res.error.message === "User already registered" ? "Un compte existe déjà avec cet email." : res.error.message);
+      setCreerEnCours(false);
+      return;
+    }
+
+    // Patch profil avec toutes les infos + statut actif direct
+    if (res.data?.user) {
+      await supabase.from("profiles").update({
+        role: nouvelUser.role,
+        statut: "actif",
+        nom: nouvelUser.nom,
+        prenom: nouvelUser.prenom,
+        telephone: nouvelUser.telephone,
+        entreprise: nouvelUser.entreprise,
+        siren: nouvelUser.siren,
+        adresse: nouvelUser.adresse,
+        code_postal: nouvelUser.code_postal,
+        ville: nouvelUser.ville,
+      }).eq("id", res.data.user.id);
+    }
+
+    await charger();
+    setShowNouvelUser(false);
+    setNouvelUser(NOUVEL_USER_INIT);
+    setCreerEnCours(false);
+  };
+
+  const setNU = (champ) => (e) => setNouvelUser(prev => ({ ...prev, [champ]: e.target.value }));
+
   const inputStyle = { width: "100%", padding: "8px 10px", border: "1.5px solid #E2E8F0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" };
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 1000 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#122131" }}>Gestion des utilisateurs</h2>
-        <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 14 }}>Gérez les demandes d'accès et les comptes clients</p>
+      <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#122131" }}>Gestion des utilisateurs</h2>
+          <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 14 }}>Gérez les demandes d'accès et les comptes clients</p>
+        </div>
+        <button onClick={() => { setShowNouvelUser(true); setCreerErreur(""); setNouvelUser(NOUVEL_USER_INIT); }}
+          style={{ background: "#122131", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          + Ajouter un utilisateur
+        </button>
       </div>
 
       {/* Filtres */}
@@ -247,6 +306,109 @@ export default function GestionUtilisateurs() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nouvel utilisateur */}
+      {showNouvelUser && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setShowNouvelUser(false)}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 520, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div style={{ fontWeight: 800, fontSize: 18, color: "#122131" }}>Nouvel utilisateur</div>
+              <button onClick={() => setShowNouvelUser(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94A3B8" }}>✕</button>
+            </div>
+
+            <form onSubmit={creerUtilisateur} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Rôle */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>Rôle</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["client", "dessinateur", "admin"].map(r => (
+                    <button key={r} type="button" onClick={() => setNouvelUser(p => ({ ...p, role: r }))}
+                      style={{ flex: 1, padding: "8px", borderRadius: 8, border: `2px solid ${nouvelUser.role === r ? "#122131" : "#E2E8F0"}`, background: nouvelUser.role === r ? "#122131" : "#fff", color: nouvelUser.role === r ? "#fff" : "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                      {ROLE_LABEL[r]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Identité */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Prénom *</label>
+                  <input type="text" value={nouvelUser.prenom} onChange={setNU("prenom")} required style={inputStyle} placeholder="Jean" />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Nom *</label>
+                  <input type="text" value={nouvelUser.nom} onChange={setNU("nom")} required style={inputStyle} placeholder="Dupont" />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Email *</label>
+                  <input type="email" value={nouvelUser.email} onChange={setNU("email")} required style={inputStyle} placeholder="jean@exemple.fr" />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Téléphone</label>
+                  <input type="tel" value={nouvelUser.telephone} onChange={setNU("telephone")} style={inputStyle} placeholder="06 00 00 00 00" />
+                </div>
+              </div>
+
+              {nouvelUser.role === "client" && (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Entreprise</label>
+                      <input type="text" value={nouvelUser.entreprise} onChange={setNU("entreprise")} style={inputStyle} placeholder="Mon Entreprise SAS" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>SIREN</label>
+                      <input type="text" value={nouvelUser.siren} onChange={setNU("siren")} maxLength={9} style={inputStyle} placeholder="123456789" />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Adresse</label>
+                    <input type="text" value={nouvelUser.adresse} onChange={setNU("adresse")} style={inputStyle} placeholder="12 rue de la Paix" />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Code postal</label>
+                      <input type="text" value={nouvelUser.code_postal} onChange={setNU("code_postal")} style={inputStyle} placeholder="75001" />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Ville</label>
+                      <input type="text" value={nouvelUser.ville} onChange={setNU("ville")} style={inputStyle} placeholder="Paris" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Mot de passe *</label>
+                <input type="password" value={nouvelUser.mdp} onChange={setNU("mdp")} required minLength={8} style={inputStyle} placeholder="8 caractères minimum" />
+              </div>
+
+              {creerErreur && (
+                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 12px", color: "#DC2626", fontSize: 13 }}>
+                  {creerErreur}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+                <button type="button" onClick={() => setShowNouvelUser(false)}
+                  style={{ padding: "10px 18px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                  Annuler
+                </button>
+                <button type="submit" disabled={creerEnCours}
+                  style={{ background: "#122131", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: creerEnCours ? "not-allowed" : "pointer", opacity: creerEnCours ? 0.7 : 1 }}>
+                  {creerEnCours ? "Création..." : "Créer le compte"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
