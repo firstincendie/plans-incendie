@@ -13,8 +13,17 @@ import BarreFiltres from "./components/BarreFiltres";
 import Messagerie from "./components/Messagerie";
 import PageReglages from "./components/PageReglages";
 import VueDessinateur from "./components/VueDessinateur";
+import GestionUtilisateurs from "./components/GestionUtilisateurs";
+import PageConnexion from "./components/auth/PageConnexion";
+import PageInscription from "./components/auth/PageInscription";
+import PageMotDePasseOublie from "./components/auth/PageMotDePasseOublie";
 
 export default function App() {
+  const [session, setSession]                   = useState(undefined); // undefined = chargement, null = non connecté
+  const [profil, setProfil]                     = useState(null);
+  const [pageAuth, setPageAuth]                 = useState("connexion"); // connexion | inscription | mdp_oublie
+  const [nbAttente, setNbAttente]               = useState(0);
+
   const [commandes, setCommandes]               = useState([]);
   const [versions, setVersions]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
@@ -46,6 +55,31 @@ export default function App() {
     delai: "", dessinateur: "", notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [],
   });
   const [form, setForm] = useState(formVide());
+
+  // Auth : écoute la session Supabase
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) chargerProfil(session.user.id);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) chargerProfil(session.user.id);
+      else setProfil(null);
+    });
+    return () => subscription.unsubscribe();
+  }, []); // eslint-disable-line
+
+  const chargerProfil = async (uid) => {
+    const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
+    setProfil(data);
+    if (data?.role === "admin") chargerNbAttente();
+  };
+
+  const chargerNbAttente = async () => {
+    const { count } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("statut", "en_attente");
+    setNbAttente(count || 0);
+  };
 
   useEffect(() => {
     chargerTout();
@@ -170,6 +204,54 @@ export default function App() {
   const cmdAffichees = vue === "dashboard" ? cmdFiltrees.slice(0, 5) : cmdFiltrees;
   const inputStyle   = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle   = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4 };
+
+  // Affichage de chargement initial
+  if (session === undefined) {
+    return <div style={{ minHeight: "100vh", background: "#F5FAFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: 14 }}>Chargement...</div>;
+  }
+
+  // Pages d'authentification (non connecté)
+  if (!session) {
+    if (pageAuth === "inscription") return <PageInscription onRetour={() => setPageAuth("connexion")} />;
+    if (pageAuth === "mdp_oublie") return <PageMotDePasseOublie onRetour={() => setPageAuth("connexion")} />;
+    return <PageConnexion onMotDePasseOublie={() => setPageAuth("mdp_oublie")} onInscription={() => setPageAuth("inscription")} />;
+  }
+
+  // Compte en attente de validation
+  if (profil && profil.statut === "en_attente") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F5FAFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "48px 40px", width: 420, boxShadow: "0 4px 24px rgba(18,33,49,0.10)", textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: "#122131", marginBottom: 12 }}>Votre compte est en attente</div>
+          <div style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+            Un administrateur va examiner votre demande. Vous recevrez un email dès que votre compte sera activé.
+          </div>
+          <button onClick={() => supabase.auth.signOut()} style={{ background: "#F1F5F9", color: "#64748B", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Compte refusé
+  if (profil && profil.statut === "refuse") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F5FAFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "48px 40px", width: 420, boxShadow: "0 4px 24px rgba(18,33,49,0.10)", textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: "#122131", marginBottom: 12 }}>Demande refusée</div>
+          <div style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+            Votre demande d'accès n'a pas été acceptée. Contactez-nous pour plus d'informations.
+          </div>
+          <button onClick={() => supabase.auth.signOut()} style={{ background: "#F1F5F9", color: "#64748B", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   const SwitcherBarre = () => (
@@ -225,24 +307,43 @@ export default function App() {
               : <div style={{ width: 32, height: 32, background: "#122131", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>}
             <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
           </div>
-          {[{ id: "dashboard", label: "Dashboard", icon: "📊" }, { id: "commandes", label: "Commandes", icon: "📋" }, { id: "reglages", label: "Réglages", icon: "⚙️" }].map(item => (
-            <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left" }}>
-              <span>{item.icon}</span>{item.label}
+          {[
+            { id: "dashboard", label: "Dashboard", icon: "📊" },
+            { id: "commandes", label: "Commandes", icon: "📋" },
+            { id: "utilisateurs", label: "Utilisateurs", icon: "👥", badge: nbAttente },
+            { id: "reglages", label: "Réglages", icon: "⚙️" }
+          ].map(item => (
+            <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); if (item.id === "utilisateurs") chargerNbAttente(); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left", width: "100%" }}>
+              <span>{item.icon}</span>
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.badge > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>{item.badge}</span>}
             </button>
           ))}
           <div style={{ marginTop: "auto", borderTop: "1px solid #E5E7EB", paddingTop: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", fontSize: 13, color: "#6B7280" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E8EDF2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#122131" }}>SR</div>
-              Simon R. — Admin
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E8EDF2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#122131" }}>
+                {profil ? `${profil.prenom?.[0] || ""}${profil.nom?.[0] || ""}` : "SR"}
+              </div>
+              <div style={{ overflow: "hidden" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#122131", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profil ? `${profil.prenom} ${profil.nom}` : "Simon R."}
+                </div>
+                <div style={{ fontSize: 11, color: "#94A3B8" }}>{profil?.role === "admin" ? "Admin" : "Utilisateur"}</div>
+              </div>
             </div>
+            <button onClick={() => supabase.auth.signOut()}
+              style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: "none", border: "none", fontSize: 12, color: "#94A3B8", cursor: "pointer", borderRadius: 6 }}>
+              → Se déconnecter
+            </button>
           </div>
         </div>
 
         <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
           {vue === "reglages" && <PageReglages settings={settings} onSave={s => setSettings(s)} />}
+          {vue === "utilisateurs" && <GestionUtilisateurs />}
 
-          {vue !== "reglages" && (
+          {vue !== "reglages" && vue !== "utilisateurs" && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{vue === "dashboard" ? "Dashboard" : "Toutes les commandes"}</h1>
