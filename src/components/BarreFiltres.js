@@ -1,10 +1,11 @@
 import { STATUTS_ADMIN } from "../constants";
 import { getPeriode } from "../helpers";
 
-export default function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateurs, showDessinateur = true, couleurAccent = "#122131" }) {
+export default function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, showDessinateur = true, couleurAccent = "#122131" }) {
   const periodes    = [...new Set(commandes.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
   const typesDispos = [...new Set(commandes.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
   const clients     = [...new Set(commandes.map(c => c.client).filter(Boolean))].sort();
+  const dessinateurs = [...new Set(commandes.map(c => c.dessinateur).filter(Boolean))].sort();
   function toggleTri(col) { setTri(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }); }
   const selStyle = { padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" };
   const actif = filtres.statut || filtres.dessinateur || filtres.type || filtres.periode || filtres.client;

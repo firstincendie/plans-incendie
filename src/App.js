@@ -14,6 +14,7 @@ import Messagerie from "./components/Messagerie";
 import PageReglages from "./components/PageReglages";
 import VueDessinateur from "./components/VueDessinateur";
 import GestionUtilisateurs from "./components/GestionUtilisateurs";
+import PageMonCompte from "./components/PageMonCompte";
 import PageConnexion from "./components/auth/PageConnexion";
 import PageInscription from "./components/auth/PageInscription";
 import PageMotDePasseOublie from "./components/auth/PageMotDePasseOublie";
@@ -23,6 +24,11 @@ export default function App() {
   const [profil, setProfil]                     = useState(null);
   const [pageAuth, setPageAuth]                 = useState("connexion"); // connexion | inscription | mdp_oublie
   const [nbAttente, setNbAttente]               = useState(0);
+  const [showMenuProfil, setShowMenuProfil]     = useState(false);
+  const [showMonCompte, setShowMonCompte]       = useState(false);
+  const [monCompteForm, setMonCompteForm]       = useState({ nom: "", prenom: "", mdp: "", mdp_confirm: "" });
+  const [monCompteSaving, setMonCompteSaving]   = useState(false);
+  const [monCompteMsg, setMonCompteMsg]         = useState("");
 
   const [commandes, setCommandes]               = useState([]);
   const [versions, setVersions]                 = useState([]);
@@ -33,7 +39,6 @@ export default function App() {
   const [msgInput, setMsgInput]                 = useState("");
   const [saving, setSaving]                     = useState(false);
   const [modeVue, setModeVue]                   = useState("admin");
-  const [dessinateurActif, setDessinateurActif] = useState("");
   const [filtres, setFiltres]                   = useState({ statut: "", dessinateur: "", type: "", periode: "", client: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
   const [showModifModal, setShowModifModal]     = useState(false);
@@ -47,12 +52,11 @@ export default function App() {
   const [settings, setSettings] = useState({
     nomEntreprise: "First Incendie", email: "contact@firstincendie.fr",
     telephone: "02 XX XX XX XX", logoUrl: null, logoNom: null,
-    dessinateurs: ["Marc L.", "Thomas R."],
   });
 
   const formVide = () => ({
     client: "", batiment: "", adresse1: "", adresse2: "", code_postal: "", ville: "",
-    delai: "", dessinateur: "", notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [],
+    delai: "", dessinateur: settings.nomEntreprise, notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [],
   });
   const [form, setForm] = useState(formVide());
 
@@ -123,7 +127,7 @@ export default function App() {
   }
 
   async function creerCommande() {
-    if (!form.client || !form.dessinateur || !form.delai || form.fichiersPlan.length === 0) return;
+    if (!form.client || !form.delai || form.fichiersPlan.length === 0) return;
     const aujourd_hui = new Date().toISOString().split("T")[0];
     if (form.delai < aujourd_hui) { alert("La date ne peut pas être inférieure à aujourd'hui."); return; }
     setSaving(true);
@@ -268,11 +272,7 @@ export default function App() {
         </button>
       </div>
       {modeVue === "dessinateur" && (
-        <select value={dessinateurActif} onChange={e => setDessinateurActif(e.target.value)}
-          style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid #334155", background: "#0F172A", color: "#E2E8F0", fontSize: 12 }}>
-          <option value="">— Choisir un dessinateur —</option>
-          {settings.dessinateurs.map(d => <option key={d}>{d}</option>)}
-        </select>
+        <span style={{ fontSize: 12, color: "#FC6C1B", fontWeight: 600 }}>✏️ {settings.nomEntreprise}</span>
       )}
     </div>
   );
@@ -282,26 +282,49 @@ export default function App() {
       <div>
         <SwitcherBarre />
         <div style={{ paddingTop: 44 }}>
-          {!dessinateurActif ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "80vh", flexDirection: "column", gap: 12 }}>
-              <div style={{ fontSize: 32 }}>✏️</div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Choisissez un dessinateur dans la barre du haut</div>
-              <div style={{ fontSize: 13, color: "#9CA3AF" }}>pour simuler son interface</div>
-            </div>
-          ) : (
-            <VueDessinateur commandes={commandes} versions={versions} nomDessinateur={dessinateurActif}
-              onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
-          )}
+          <VueDessinateur commandes={commandes} versions={versions} nomDessinateur={settings.nomEntreprise}
+            onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
         </div>
       </div>
     );
   }
 
+  const isAdmin = profil?.role === "admin";
+  const barreVisible = isAdmin;
+  const topOffset = barreVisible ? 44 : 0;
+
+  const sauvegarderMonCompte = async (e) => {
+    e.preventDefault();
+    setMonCompteMsg("");
+    setMonCompteSaving(true);
+    const updates = {};
+    if (monCompteForm.nom) updates.nom = monCompteForm.nom;
+    if (monCompteForm.prenom) updates.prenom = monCompteForm.prenom;
+    if (Object.keys(updates).length > 0) {
+      await supabase.from("profiles").update(updates).eq("id", session.user.id);
+      setProfil(prev => ({ ...prev, ...updates }));
+    }
+    if (monCompteForm.mdp) {
+      if (monCompteForm.mdp !== monCompteForm.mdp_confirm) {
+        setMonCompteMsg("Les mots de passe ne correspondent pas.");
+        setMonCompteSaving(false);
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: monCompteForm.mdp });
+      if (error) { setMonCompteMsg("Erreur lors du changement de mot de passe."); setMonCompteSaving(false); return; }
+    }
+    setMonCompteMsg("✅ Modifications enregistrées.");
+    setMonCompteForm({ nom: "", prenom: "", mdp: "", mdp_confirm: "" });
+    setMonCompteSaving(false);
+  };
+
+  const ROLE_LABELS = { admin: "Admin", client: "Client", dessinateur: "Dessinateur" };
+
   return (
-    <div>
+    <div onClick={() => showMenuProfil && setShowMenuProfil(false)}>
       <SwitcherBarre />
-      <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827", paddingTop: 44 }}>
-        <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
+      <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827", paddingTop: topOffset }}>
+        <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: topOffset, height: `calc(100dvh - ${topOffset}px)`, overflowY: "auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
             {settings.logoUrl ? <img src={settings.logoUrl} alt="logo" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6 }} />
               : <div style={{ width: 32, height: 32, background: "#122131", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>}
@@ -311,7 +334,8 @@ export default function App() {
             { id: "dashboard", label: "Dashboard", icon: "📊" },
             { id: "commandes", label: "Commandes", icon: "📋" },
             { id: "utilisateurs", label: "Utilisateurs", icon: "👥", badge: nbAttente },
-            { id: "reglages", label: "Réglages", icon: "⚙️" }
+            { id: "reglages", label: "Réglages", icon: "⚙️" },
+            { id: "mon-compte", label: "Mon compte", icon: "👤" },
           ].map(item => (
             <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); if (item.id === "utilisateurs") chargerNbAttente(); }}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left", width: "100%" }}>
@@ -320,21 +344,39 @@ export default function App() {
               {item.badge > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>{item.badge}</span>}
             </button>
           ))}
-          <div style={{ marginTop: "auto", borderTop: "1px solid #E5E7EB", paddingTop: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", fontSize: 13, color: "#6B7280" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E8EDF2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#122131" }}>
-                {profil ? `${profil.prenom?.[0] || ""}${profil.nom?.[0] || ""}` : "SR"}
-              </div>
-              <div style={{ overflow: "hidden" }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#122131", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {profil ? `${profil.prenom} ${profil.nom}` : "Simon R."}
+          <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
+            {showMenuProfil && (
+              <div onClick={e => e.stopPropagation()} style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, boxShadow: "0 -4px 20px rgba(0,0,0,0.10)", overflow: "hidden" }}>
+                <div style={{ padding: "12px 14px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#122131" }}>{profil?.prenom} {profil?.nom}</div>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{session?.user?.email}</div>
                 </div>
-                <div style={{ fontSize: 11, color: "#94A3B8" }}>{profil?.role === "admin" ? "Admin" : "Utilisateur"}</div>
+                <button onClick={() => supabase.auth.signOut()}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 14px", background: "none", border: "none", fontSize: 13, color: "#DC2626", cursor: "pointer" }}>
+                  ↪ Se déconnecter
+                </button>
               </div>
-            </div>
-            <button onClick={() => supabase.auth.signOut()}
-              style={{ width: "100%", textAlign: "left", padding: "7px 12px", background: "none", border: "none", fontSize: 12, color: "#94A3B8", cursor: "pointer", borderRadius: 6 }}>
-              → Se déconnecter
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMenuProfil(v => !v); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: showMenuProfil ? "#F1F5F9" : "transparent", border: "none", borderTop: "1px solid #E5E7EB", cursor: "pointer", textAlign: "left" }}
+            >
+              {profil?.avatar_url ? (
+                <img src={profil.avatar_url} alt="avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #E2E8F0" }} />
+              ) : (
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#122131", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0, letterSpacing: "0.02em" }}>
+                  {profil ? `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}` : "?"}
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#122131", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profil ? `${profil.prenom} ${profil.nom}` : "—"}
+                </div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{ROLE_LABELS[profil?.role] || "—"}</div>
+              </div>
+              <span style={{ fontSize: 9, color: "#CBD5E1", flexShrink: 0 }}>
+                {showMenuProfil ? "▼" : "▲"}
+              </span>
             </button>
           </div>
         </div>
@@ -342,8 +384,9 @@ export default function App() {
         <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
           {vue === "reglages" && <PageReglages settings={settings} onSave={s => setSettings(s)} />}
           {vue === "utilisateurs" && <GestionUtilisateurs />}
+          {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />}
 
-          {vue !== "reglages" && vue !== "utilisateurs" && (
+          {vue !== "reglages" && vue !== "utilisateurs" && vue !== "mon-compte" && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{vue === "dashboard" ? "Dashboard" : "Toutes les commandes"}</h1>
@@ -368,7 +411,7 @@ export default function App() {
                 </div>
               )}
 
-              <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={settings.dessinateurs} showDessinateur={true} />
+              <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} showDessinateur={true} />
 
               {loading ? (
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF" }}>Chargement...</div>
@@ -599,13 +642,6 @@ export default function App() {
                 <label style={labelStyle}>Délai souhaité *</label>
                 <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>Dessinateur *</label>
-                <select value={form.dessinateur} onChange={e => setForm({ ...form, dessinateur: e.target.value })} style={inputStyle}>
-                  <option value="">— Choisir un dessinateur —</option>
-                  {settings.dessinateurs.map(d => <option key={d}>{d}</option>)}
-                </select>
-              </div>
             </div>
 
             <div style={{ marginBottom: 14 }}>
@@ -628,7 +664,6 @@ export default function App() {
             {(() => {
               const manque = [];
               if (!form.client)      manque.push("client");
-              if (!form.dessinateur) manque.push("dessinateur");
               if (!form.delai)       manque.push("délai");
               else if (form.delai < new Date().toISOString().split("T")[0]) manque.push("délai invalide");
               if (form.fichiersPlan.length === 0) manque.push("1 fichier minimum");
@@ -646,6 +681,64 @@ export default function App() {
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Mon Compte */}
+      {showMonCompte && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}
+          onClick={() => setShowMonCompte(false)}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 440, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div style={{ fontWeight: 800, fontSize: 18, color: "#122131" }}>Mon compte</div>
+              <button onClick={() => setShowMonCompte(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94A3B8" }}>✕</button>
+            </div>
+            <form onSubmit={sauvegarderMonCompte} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Prénom</label>
+                  <input type="text" value={monCompteForm.prenom} onChange={e => setMonCompteForm(p => ({ ...p, prenom: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Nom</label>
+                  <input type="text" value={monCompteForm.nom} onChange={e => setMonCompteForm(p => ({ ...p, nom: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+              </div>
+              <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Changer le mot de passe</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Nouveau mot de passe</label>
+                    <input type="password" value={monCompteForm.mdp} onChange={e => setMonCompteForm(p => ({ ...p, mdp: e.target.value }))} minLength={8}
+                      placeholder="8 caractères min." style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Confirmer</label>
+                    <input type="password" value={monCompteForm.mdp_confirm} onChange={e => setMonCompteForm(p => ({ ...p, mdp_confirm: e.target.value }))}
+                      placeholder="••••••••" style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
+                  </div>
+                </div>
+              </div>
+              {monCompteMsg && (
+                <div style={{ background: monCompteMsg.startsWith("✅") ? "#F0FDF4" : "#FEF2F2", border: `1px solid ${monCompteMsg.startsWith("✅") ? "#BBF7D0" : "#FECACA"}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: monCompteMsg.startsWith("✅") ? "#166534" : "#DC2626" }}>
+                  {monCompteMsg}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setShowMonCompte(false)}
+                  style={{ padding: "10px 18px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                  Annuler
+                </button>
+                <button type="submit" disabled={monCompteSaving}
+                  style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: monCompteSaving ? 0.7 : 1 }}>
+                  {monCompteSaving ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
