@@ -9,7 +9,7 @@ import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 import ZoneUpload from "./ZoneUpload";
 import { formatDateCourt, tempsRestant } from "../helpers";
 
-export default function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, onEnvoyerMessage, onDeposerVersion }) {
+export default function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, onEnvoyerMessage, onDeposerVersion, noLayout = false }) {
   const [selected, setSelected]                 = useState(null);
   const [msgInput, setMsgInput]                 = useState("");
   const [fichiersNouveaux, setFichiersNouveaux] = useState([]);
@@ -56,7 +56,8 @@ export default function VueDessinateur({ commandes, versions, nomDessinateur, on
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+    <div style={noLayout ? {} : { display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+      {!noLayout && (
       <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
           <div style={{ width: 32, height: 32, background: "#FC6C1B", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -75,8 +76,9 @@ export default function VueDessinateur({ commandes, versions, nomDessinateur, on
           <div style={{ padding: "8px 12px", fontSize: 11, color: "#9CA3AF" }}>Mode test — vue dessinateur</div>
         </div>
       </div>
+      )}
 
-      <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
+      <div style={noLayout ? {} : { marginLeft: 220, flex: 1, padding: "32px 32px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Mes missions</h1>
 
         <BarreFiltres commandes={mesMissions} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} couleurAccent="#FC6C1B" />

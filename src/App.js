@@ -25,10 +25,6 @@ export default function App() {
   const [pageAuth, setPageAuth]                 = useState("connexion"); // connexion | inscription | mdp_oublie
   const [nbAttente, setNbAttente]               = useState(0);
   const [showMenuProfil, setShowMenuProfil]     = useState(false);
-  const [showMonCompte, setShowMonCompte]       = useState(false);
-  const [monCompteForm, setMonCompteForm]       = useState({ nom: "", prenom: "", mdp: "", mdp_confirm: "" });
-  const [monCompteSaving, setMonCompteSaving]   = useState(false);
-  const [monCompteMsg, setMonCompteMsg]         = useState("");
 
   const [commandes, setCommandes]               = useState([]);
   const [versions, setVersions]                 = useState([]);
@@ -289,34 +285,117 @@ export default function App() {
     );
   }
 
+  // Layout pour les rôles dessinateur et client
+  if (profil?.role === "dessinateur" || profil?.role === "client") {
+    const isDessinateur = profil.role === "dessinateur";
+    const nomDessinateur = settings.nomEntreprise;
+    const roleLabel = isDessinateur ? "Dessinateur" : "Client";
+    const roleNav = [
+      { id: "dashboard",   label: "Dashboard",  icon: "📊" },
+      { id: "commandes",   label: "Commandes",  icon: "📋" },
+      { id: "reglages",    label: "Réglages",   icon: "⚙️" },
+      { id: "mon-compte",  label: "Mon compte", icon: "👤" },
+    ];
+    return (
+      <div onClick={() => showMenuProfil && setShowMenuProfil(false)} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+        {/* Sidebar */}
+        <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: 0, height: "100dvh", overflowY: "auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
+            <div style={{ width: 32, height: 32, background: "#122131", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "white", fontSize: 16 }}>🔥</span>
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
+          </div>
+          {roleNav.map(item => (
+            <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left", width: "100%" }}>
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+          {/* Bas de sidebar — menu utilisateur */}
+          <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
+            {showMenuProfil && (
+              <div onClick={e => e.stopPropagation()} style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, boxShadow: "0 -4px 20px rgba(0,0,0,0.10)", overflow: "hidden" }}>
+                <div style={{ padding: "12px 14px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#122131" }}>{profil?.prenom} {profil?.nom}</div>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{session?.user?.email}</div>
+                </div>
+                <button onClick={() => supabase.auth.signOut()}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 14px", background: "none", border: "none", fontSize: 13, color: "#DC2626", cursor: "pointer" }}>
+                  ↪ Se déconnecter
+                </button>
+              </div>
+            )}
+            <button onClick={(e) => { e.stopPropagation(); setShowMenuProfil(v => !v); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: showMenuProfil ? "#F1F5F9" : "transparent", border: "none", borderTop: "1px solid #E5E7EB", cursor: "pointer", textAlign: "left" }}>
+              {profil?.avatar_url ? (
+                <img src={profil.avatar_url} alt="avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #E2E8F0" }} />
+              ) : (
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#122131", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+                  {profil ? `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}` : "?"}
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#122131", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {profil ? `${profil.prenom} ${profil.nom}` : "—"}
+                </div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{roleLabel}</div>
+              </div>
+              <span style={{ fontSize: 9, color: "#CBD5E1", flexShrink: 0 }}>{showMenuProfil ? "▼" : "▲"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Contenu principal */}
+        <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px", overflowY: "auto" }}>
+          {vue === "reglages" && <PageReglages />}
+
+          {vue === "mon-compte" && (
+            <PageMonCompte profil={profil} session={session} role={profil.role} commandes={commandes}
+              onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />
+          )}
+
+          {vue === "dashboard" && (
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0" }}>Dashboard</h1>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                {[
+                  { label: isDessinateur ? "Missions en cours" : "Commandes en cours", val: commandes.filter(c => (isDessinateur ? c.dessinateur === nomDessinateur : true) && c.statut !== "Validé").length, color: "#122131", bg: "#fff" },
+                  { label: "Terminées", val: commandes.filter(c => (isDessinateur ? c.dessinateur === nomDessinateur : true) && c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
+                  { label: "Total", val: commandes.filter(c => isDessinateur ? c.dessinateur === nomDessinateur : true).length, color: "#374151", bg: "#F8FAFC" },
+                ].map(s => (
+                  <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
+                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 5 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {vue === "commandes" && isDessinateur && (
+            <VueDessinateur noLayout commandes={commandes} versions={versions} nomDessinateur={nomDessinateur}
+              onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
+          )}
+
+          {vue === "commandes" && !isDessinateur && (
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0" }}>Commandes</h1>
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 48, textAlign: "center" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
+                <div style={{ fontSize: 14, color: "#94A3B8" }}>Aucune commande disponible pour le moment.</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const isAdmin = profil?.role === "admin";
   const barreVisible = isAdmin;
   const topOffset = barreVisible ? 44 : 0;
-
-  const sauvegarderMonCompte = async (e) => {
-    e.preventDefault();
-    setMonCompteMsg("");
-    setMonCompteSaving(true);
-    const updates = {};
-    if (monCompteForm.nom) updates.nom = monCompteForm.nom;
-    if (monCompteForm.prenom) updates.prenom = monCompteForm.prenom;
-    if (Object.keys(updates).length > 0) {
-      await supabase.from("profiles").update(updates).eq("id", session.user.id);
-      setProfil(prev => ({ ...prev, ...updates }));
-    }
-    if (monCompteForm.mdp) {
-      if (monCompteForm.mdp !== monCompteForm.mdp_confirm) {
-        setMonCompteMsg("Les mots de passe ne correspondent pas.");
-        setMonCompteSaving(false);
-        return;
-      }
-      const { error } = await supabase.auth.updateUser({ password: monCompteForm.mdp });
-      if (error) { setMonCompteMsg("Erreur lors du changement de mot de passe."); setMonCompteSaving(false); return; }
-    }
-    setMonCompteMsg("✅ Modifications enregistrées.");
-    setMonCompteForm({ nom: "", prenom: "", mdp: "", mdp_confirm: "" });
-    setMonCompteSaving(false);
-  };
 
   const ROLE_LABELS = { admin: "Admin", client: "Client", dessinateur: "Dessinateur" };
 
@@ -382,9 +461,9 @@ export default function App() {
         </div>
 
         <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
-          {vue === "reglages" && <PageReglages settings={settings} onSave={s => setSettings(s)} />}
+          {vue === "reglages" && <PageReglages />}
           {vue === "utilisateurs" && <GestionUtilisateurs />}
-          {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />}
+          {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} role="admin" commandes={commandes} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />}
 
           {vue !== "reglages" && vue !== "utilisateurs" && vue !== "mon-compte" && (
             <>
@@ -685,63 +764,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal Mon Compte */}
-      {showMonCompte && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}
-          onClick={() => setShowMonCompte(false)}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 440, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div style={{ fontWeight: 800, fontSize: 18, color: "#122131" }}>Mon compte</div>
-              <button onClick={() => setShowMonCompte(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94A3B8" }}>✕</button>
-            </div>
-            <form onSubmit={sauvegarderMonCompte} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Prénom</label>
-                  <input type="text" value={monCompteForm.prenom} onChange={e => setMonCompteForm(p => ({ ...p, prenom: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Nom</label>
-                  <input type="text" value={monCompteForm.nom} onChange={e => setMonCompteForm(p => ({ ...p, nom: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
-                </div>
-              </div>
-              <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Changer le mot de passe</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Nouveau mot de passe</label>
-                    <input type="password" value={monCompteForm.mdp} onChange={e => setMonCompteForm(p => ({ ...p, mdp: e.target.value }))} minLength={8}
-                      placeholder="8 caractères min." style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Confirmer</label>
-                    <input type="password" value={monCompteForm.mdp_confirm} onChange={e => setMonCompteForm(p => ({ ...p, mdp_confirm: e.target.value }))}
-                      placeholder="••••••••" style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
-                  </div>
-                </div>
-              </div>
-              {monCompteMsg && (
-                <div style={{ background: monCompteMsg.startsWith("✅") ? "#F0FDF4" : "#FEF2F2", border: `1px solid ${monCompteMsg.startsWith("✅") ? "#BBF7D0" : "#FECACA"}`, borderRadius: 8, padding: "10px 12px", fontSize: 13, color: monCompteMsg.startsWith("✅") ? "#166534" : "#DC2626" }}>
-                  {monCompteMsg}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button type="button" onClick={() => setShowMonCompte(false)}
-                  style={{ padding: "10px 18px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                  Annuler
-                </button>
-                <button type="submit" disabled={monCompteSaving}
-                  style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: monCompteSaving ? 0.7 : 1 }}>
-                  {monCompteSaving ? "Enregistrement..." : "Enregistrer"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

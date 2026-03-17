@@ -1,7 +1,10 @@
 import { useState, useRef } from "react";
 import { supabase } from "../supabase";
 
-export default function PageMonCompte({ profil, session, onProfilUpdate }) {
+export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [] }) {
+  const clientsAssignes = role === "dessinateur"
+    ? [...new Set(commandes.map(c => c.client).filter(Boolean))].sort()
+    : [];
   const [form, setForm] = useState({
     prenom: profil?.prenom || "",
     nom: profil?.nom || "",
@@ -233,6 +236,39 @@ export default function PageMonCompte({ profil, session, onProfilUpdate }) {
             </div>
           </div>
         </div>
+
+        {/* Section Dessinateur assigné — admin uniquement */}
+        {role === "admin" && (
+          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+            <div style={sectionTitle}>Dessinateur assigné</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FFF3ED", border: "1.5px solid #FED7AA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✏️</div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#122131" }}>{profil?.prenom || "—"}</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>Nom utilisé lors de la réalisation des plans</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section Clients assignés — dessinateur uniquement */}
+        {role === "dessinateur" && (
+          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+            <div style={sectionTitle}>Clients assignés</div>
+            {clientsAssignes.length === 0 ? (
+              <div style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", padding: "20px 0" }}>Aucun client assigné pour le moment.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {clientsAssignes.map((client, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E5E7EB" }}>
+                    <span style={{ fontSize: 15 }}>👤</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{client}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {msg && (
           <div style={{
