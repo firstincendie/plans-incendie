@@ -78,6 +78,7 @@ export default function GestionUtilisateurs() {
     setCreerErreur("");
     setCreerEnCours(true);
     // Créer le compte auth via signUp (sans se connecter)
+    // eslint-disable-next-line no-unused-vars
     const { data: _data, error: _error } = await supabase.auth.admin
       ? { data: null, error: { message: "admin_not_available" } }
       : { data: null, error: { message: "admin_not_available" } };
