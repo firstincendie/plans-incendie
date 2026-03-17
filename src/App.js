@@ -156,7 +156,7 @@ function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichie
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff" }}>
               <span style={{ fontSize: 18 }}>{isImage(f) ? "🖼️" : "📄"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</a>
+                <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: "#122131", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</a>
                 <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille} · {f.ajouteLe || "—"}</div>
               </div>
               <button onClick={() => onSupprimer(i)}
@@ -185,7 +185,7 @@ function VisuFichier({ fichier, onClose }) {
           </span>
           <div style={{ display: "flex", gap: 8 }}>
             <a href={fichier.url} download={fichier.nom}
-              style={{ padding: "5px 14px", borderRadius: 6, background: "#2563EB", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              style={{ padding: "5px 14px", borderRadius: 6, background: "#122131", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
               ⬇ Télécharger
             </a>
             <button onClick={onClose}
@@ -229,7 +229,7 @@ function LogoCliquable({ fichier }) {
 
 // ─── Liste de fichiers avec visionneuse ──────────────────────────────────────
 
-function ListeFichiers({ fichiers, couleurAccent = "#1D4ED8" }) {
+function ListeFichiers({ fichiers, couleurAccent = "#122131" }) {
   const [visuFichier, setVisuFichier] = useState(null);
   if (!fichiers || fichiers.length === 0) return null;
   return (
@@ -244,7 +244,7 @@ function ListeFichiers({ fichiers, couleurAccent = "#1D4ED8" }) {
               onClick={() => setVisuFichier(f)}>
               <span style={{ fontSize: 18 }}>{isImage ? "🖼️" : "📄"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#122131", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</div>
                 <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille}{f.ajouteLe ? ` · ${f.ajouteLe}` : ""}</div>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -331,7 +331,7 @@ function HistoriqueVersions({ versions }) {
 
 // ─── Filtres + tri ────────────────────────────────────────────────────────────
 
-function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateurs, showDessinateur = true }) {
+function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateurs, showDessinateur = true, couleurAccent = "#122131" }) {
   const periodes    = [...new Set(commandes.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
   const typesDispos = [...new Set(commandes.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
   const clients     = [...new Set(commandes.map(c => c.client).filter(Boolean))].sort();
@@ -383,7 +383,7 @@ function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, dessinateur
           ...(showDessinateur ? [{ col: "dessinateur", label: "Dessinateur" }] : []),
         ].map(({ col, label }) => (
           <button key={col} onClick={() => toggleTri(col)}
-            style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tri.col === col ? "#EFF6FF" : "#fff", color: tri.col === col ? "#1D4ED8" : "#6B7280" }}>
+            style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 11, fontWeight: 600, cursor: "pointer", background: tri.col === col ? "#EEF3F8" : "#fff", color: tri.col === col ? couleurAccent : "#6B7280" }}>
             {label}{tri.col === col ? (tri.dir === "asc" ? " ↑" : " ↓") : ""}
           </button>
         ))}
@@ -455,7 +455,7 @@ function PageReglages({ settings, onSave }) {
         <textarea value={local.dessinateurs.join("\n")} onChange={e => setLocal({ ...local, dessinateurs: e.target.value.split("\n").filter(d => d.trim()) })} rows={4} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
       <button onClick={() => { onSave(local); setSauve(true); setTimeout(() => setSauve(false), 2000); }}
-        style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: sauve ? "#059669" : "#DC2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.3s" }}>
+        style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: sauve ? "#059669" : "#122131", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.3s" }}>
         {sauve ? "✓ Sauvegardé !" : "Sauvegarder les réglages"}
       </button>
     </div>
@@ -535,13 +535,13 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
           return (
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
               <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2, textAlign: moi ? "right" : "left" }}>{m.auteur} · {m.date}</div>
-              <div style={{ background: moi ? "#FEF2F2" : "#F3F4F6", color: moi ? "#7F1D1D" : "#111827", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>
+              <div style={{ background: moi ? (auteurActif === "Simon" ? "#EEF3F8" : "#FFF3ED") : "#F3F4F6", color: moi ? (auteurActif === "Simon" ? "#122131" : "#9A3D08") : "#111827", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>
                 {m.texte}
                 {m.fichiers && m.fichiers.length > 0 && (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {m.fichiers.map((f, j) => (
                       <button key={j} onClick={() => setVisuFichier(f)}
-                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: `1px solid ${moi ? "#FECACA" : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: moi ? "#DC2626" : "#374151", cursor: "pointer" }}>
+                        style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 5, border: `1px solid ${moi ? (auteurActif === "Simon" ? "#C5D5E4" : "#FDDCC8") : "#E5E7EB"}`, background: "#fff", fontSize: 11, color: moi ? (auteurActif === "Simon" ? "#122131" : "#9A3D08") : "#374151", cursor: "pointer" }}>
                         📎 {f.nom} <span style={{ fontSize: 10, color: "#9CA3AF" }}>👁</span>
                       </button>
                     ))}
@@ -588,7 +588,7 @@ function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, a
           onKeyDown={e => e.key === "Enter" && handleEnvoyer()}
           placeholder="Écrire un message..." style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, outline: "none" }} />
         <button onClick={handleEnvoyer}
-          style={{ background: auteurActif === "Simon" ? "#DC2626" : "#2563EB", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+          style={{ background: auteurActif === "Simon" ? "#122131" : "#FC6C1B", color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
           Envoyer
         </button>
       </div>
@@ -645,17 +645,17 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
       <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
-          <div style={{ width: 32, height: 32, background: "#2563EB", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 32, height: 32, background: "#FC6C1B", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "white", fontSize: 16 }}>✏️</span>
           </div>
           <span style={{ fontWeight: 700, fontSize: 14 }}>Espace dessinateur</span>
         </div>
-        <div style={{ padding: "8px 12px", background: "#EFF6FF", borderRadius: 8, marginBottom: 8 }}>
-          <div style={{ fontSize: 11, color: "#93C5FD", marginBottom: 2 }}>Connecté en tant que</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#1D4ED8" }}>{nomDessinateur}</div>
+        <div style={{ padding: "8px 12px", background: "#FFF3ED", borderRadius: 8, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: "#FDB99A", marginBottom: 2 }}>Connecté en tant que</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#B84E10" }}>{nomDessinateur}</div>
         </div>
         <div style={{ fontSize: 11, color: "#9CA3AF", padding: "8px 12px" }}>
           {mesMissions.length} mission{mesMissions.length > 1 ? "s" : ""} en cours
@@ -668,7 +668,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
       <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Mes missions</h1>
 
-        <BarreFiltres commandes={mesMissions} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} />
+        <BarreFiltres commandes={mesMissions} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} couleurAccent="#FC6C1B" />
 
         {missionsFiltrees.length === 0 && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 14 }}>Aucune mission à afficher.</div>
@@ -685,7 +685,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
               const hasNouveauMsg = dernierMsg && dernierMsg.auteur !== nomDessinateur && selected?.id !== c.id;
               return (
                 <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
-                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent", transition: "background 0.1s" }}>
+                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3ED" : "transparent", transition: "background 0.1s" }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div>
                     <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
@@ -698,7 +698,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Badge statut={c.statut} />
                     {hasNouveauMsg && (
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FC6C1B", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
                     )}
                   </div>
                 </div>
@@ -735,7 +735,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   </div>
                 )}
                 <button onClick={() => onChangerStatut(selected.id, "Commencé")}
-                  style={{ padding: "12px 36px", borderRadius: 10, border: "none", background: "#2563EB", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  style={{ padding: "12px 36px", borderRadius: 10, border: "none", background: "#FC6C1B", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                   ▶ Commencer la mission
                 </button>
                 <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 12 }}>Les détails seront visibles après avoir commencé</div>
@@ -772,7 +772,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                 {selected.fichiersPlan?.length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources</div>
-                    <ListeFichiers fichiers={selected.fichiersPlan} couleurAccent="#2563EB" />
+                    <ListeFichiers fichiers={selected.fichiersPlan} couleurAccent="#FC6C1B" />
                   </div>
                 )}
 
@@ -816,7 +816,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                   <ZoneUpload label="" fichiers={fichiersNouveaux} onAjouter={f => setFichiersNouveaux(f)} onSupprimer={i => setFichiersNouveaux(fichiersNouveaux.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf,.ai" maxFichiers={20} />
                   {fichiersNouveaux.length > 0 && (
                     <button onClick={handleDeposer} disabled={deposant}
-                      style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#7C3AED", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
+                      style={{ marginTop: 10, padding: "8px 18px", borderRadius: 8, border: "none", background: deposant ? "#9CA3AF" : "#FC6C1B", color: "#fff", fontSize: 13, fontWeight: 700, cursor: deposant ? "not-allowed" : "pointer" }}>
                       {deposant ? "Dépôt en cours..." : `↩ Redéposer (${fichiersNouveaux.length} fichier${fichiersNouveaux.length > 1 ? "s" : ""})`}
                     </button>
                   )}
@@ -842,7 +842,7 @@ function VueDessinateur({ commandes, versions, nomDessinateur, onChangerStatut, 
                 </div>
                 {mesTerminees.map(c => (
                   <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
-                    style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EFF6FF" : "transparent" }}>
+                    style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3ED" : "transparent" }}>
                     <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
                     <div style={{ fontSize: 12 }}>{c.client}</div>
                     <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
@@ -1046,11 +1046,11 @@ export default function App() {
       <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em" }}>MODE TEST</span>
       <div style={{ display: "flex", gap: 4, background: "#0F172A", borderRadius: 8, padding: 3 }}>
         <button onClick={() => setModeVue("admin")}
-          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#DC2626" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
+          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#122131" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
           👤 Admin
         </button>
         <button onClick={() => setModeVue("dessinateur")}
-          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "dessinateur" ? "#2563EB" : "transparent", color: modeVue === "dessinateur" ? "#fff" : "#94A3B8" }}>
+          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "dessinateur" ? "#FC6C1B" : "transparent", color: modeVue === "dessinateur" ? "#fff" : "#94A3B8" }}>
           ✏️ Dessinateur
         </button>
       </div>
@@ -1087,22 +1087,22 @@ export default function App() {
   return (
     <div>
       <SwitcherBarre />
-      <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F9FAFB", color: "#111827", paddingTop: 44 }}>
+      <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827", paddingTop: 44 }}>
         <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px", gap: 4, position: "fixed", top: 44, height: "calc(100vh - 44px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
             {settings.logoUrl ? <img src={settings.logoUrl} alt="logo" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6 }} />
-              : <div style={{ width: 32, height: 32, background: "#DC2626", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>}
+              : <div style={{ width: 32, height: 32, background: "#122131", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "white", fontSize: 16 }}>🔥</span></div>}
             <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
           </div>
           {[{ id: "dashboard", label: "Dashboard", icon: "📊" }, { id: "commandes", label: "Commandes", icon: "📋" }, { id: "reglages", label: "Réglages", icon: "⚙️" }].map(item => (
             <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#FEF2F2" : "transparent", color: vue === item.id ? "#DC2626" : "#6B7280", textAlign: "left" }}>
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left" }}>
               <span>{item.icon}</span>{item.label}
             </button>
           ))}
           <div style={{ marginTop: "auto", borderTop: "1px solid #E5E7EB", paddingTop: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", fontSize: 13, color: "#6B7280" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#DC2626" }}>SR</div>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E8EDF2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#122131" }}>SR</div>
               Simon R. — Admin
             </div>
           </div>
@@ -1115,7 +1115,7 @@ export default function App() {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{vue === "dashboard" ? "Dashboard" : "Toutes les commandes"}</h1>
-                <button onClick={() => setShowForm(true)} style={{ background: "#DC2626", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => setShowForm(true)} style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Nouvelle commande
                 </button>
               </div>
@@ -1124,7 +1124,7 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
                   {[
                     { label: "Total commandes",     val: stats.total,   color: "#111827" },
-                    { label: "En cours",            val: stats.enCours, color: "#1D4ED8" },
+                    { label: "En cours",            val: stats.enCours, color: "#122131" },
                     { label: "En attente / modif.", val: stats.attente, color: "#B45309" },
                     { label: "Validés",             val: stats.valides, color: "#059669" },
                   ].map(s => (
@@ -1155,7 +1155,7 @@ export default function App() {
                   const hasNouveauMsg = dernierMsg && dernierMsg.auteur !== "Simon" && selected?.id !== c.id;
                   return (
                     <div onClick={() => setSelected(c)}
-                      style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FEF2F2" : "transparent", transition: "background 0.1s" }}>
+                      style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{c.client}</div>
                         <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
@@ -1167,7 +1167,7 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <Badge statut={c.statut} />
                         {hasNouveauMsg && (
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FC6C1B", display: "inline-block", flexShrink: 0 }} title="Nouveau message" />
                         )}
                       </div>
                     </div>
@@ -1247,7 +1247,7 @@ export default function App() {
                   {selected.fichiersPlan?.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
                       <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources ({selected.fichiersPlan.length})</div>
-                      <ListeFichiers fichiers={selected.fichiersPlan} couleurAccent="#DC2626" />
+                      <ListeFichiers fichiers={selected.fichiersPlan} couleurAccent="#122131" />
                     </div>
                   )}
 
@@ -1407,7 +1407,7 @@ export default function App() {
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                     <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
                     <button onClick={creerCommande} disabled={saving || !ok}
-                      style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !ok ? "not-allowed" : "pointer", background: !ok ? "#F3F4F6" : "#DC2626", color: !ok ? "#9CA3AF" : "#fff" }}>
+                      style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !ok ? "not-allowed" : "pointer", background: !ok ? "#F3F4F6" : "#122131", color: !ok ? "#9CA3AF" : "#fff" }}>
                       {saving ? "Enregistrement..." : "Créer la commande"}
                     </button>
                   </div>
