@@ -13,14 +13,14 @@ export const planVide = () => ({ type: "Évacuation", orientation: "Paysage", fo
 
 export const PATTERNS_CONTACTS = [
   // Email complet
-  { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, label: "adresse email" },
+  { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, label: "adresse email" }, // eslint-disable-line no-useless-escape
   // Téléphone FR format complet : 06 12 34 56 78 / +33612345678 / 0612345678
-  { regex: /(\+33|0033)[\s.\-]?[1-9]([\s.\-]?\d{2}){4}/g,        label: "numéro de téléphone" },
-  { regex: /\b0[1-9]([\s.\-]?\d{2}){4}\b/g,                       label: "numéro de téléphone" },
+  { regex: /(\+33|0033)[\s.\-]?[1-9]([\s.\-]?\d{2}){4}/g,        label: "numéro de téléphone" }, // eslint-disable-line no-useless-escape
+  { regex: /\b0[1-9]([\s.\-]?\d{2}){4}\b/g,                       label: "numéro de téléphone" }, // eslint-disable-line no-useless-escape
   // URL avec protocole ou www
   { regex: /(https?:\/\/|www\.)\S+/gi,                             label: "lien web" },
   // Domaine explicite avec extension
-  { regex: /\b[a-zA-Z0-9\-]{2,}\.(fr|com|net|org|io|co|eu|pro|biz)\b/gi, label: "nom de domaine" },
+  { regex: /\b[a-zA-Z0-9-]{2,}\.(fr|com|net|org|io|co|eu|pro|biz)\b/gi, label: "nom de domaine" },
   // Réseaux sociaux
   { regex: /\b(instagram|facebook|linkedin|twitter|tiktok|whatsapp|telegram|signal|skype|discord|snapchat|messenger)\b/gi, label: "contact externe" },
 ];

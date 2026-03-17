@@ -65,6 +65,7 @@ export function ListeFichiers({ fichiers, couleurAccent = "#122131" }) {
         {fichiers.map((f, i) => {
           const isPdf   = f.type === "application/pdf" || f.nom?.toLowerCase().endsWith(".pdf");
           const isImage = f.type && f.type.startsWith("image/");
+          // eslint-disable-next-line no-unused-vars
           const peutApercu = isPdf || isImage;
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", cursor: "pointer" }}

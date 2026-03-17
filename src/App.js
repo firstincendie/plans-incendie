@@ -45,6 +45,7 @@ export default function App() {
   const [validant, setValidant]                 = useState(false);
   const [showTermineesAdmin, setShowTermineesAdmin] = useState(false);
 
+  // eslint-disable-next-line no-unused-vars
   const [settings, setSettings] = useState({
     nomEntreprise: "First Incendie", email: "contact@firstincendie.fr",
     telephone: "02 XX XX XX XX", logoUrl: null, logoNom: null,
