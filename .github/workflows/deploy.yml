@@ -28,9 +28,9 @@ jobs:
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ftp.atkj3335.odns.fr
-          username: atkj3335@incendieplan.fr
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./build/
-          server-dir: incendieplan.fr/
+          server-dir: ./
           dangerous-clean-slate: true
