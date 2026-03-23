@@ -21,6 +21,8 @@ export default function GestionUtilisateurs() {
   const [roleEdit, setRoleEdit] = useState("client");
   const [chargement, setChargement] = useState(true);
   const [actionEnCours, setActionEnCours] = useState(false);
+  const [confirmSupprimer, setConfirmSupprimer] = useState(false);
+  const [mdpEnvoye, setMdpEnvoye] = useState(false);
   const [showNouvelUser, setShowNouvelUser] = useState(false);
   const [nouvelUser, setNouvelUser] = useState(NOUVEL_USER_INIT);
   const [creerErreur, setCreerErreur] = useState("");
@@ -51,6 +53,21 @@ export default function GestionUtilisateurs() {
     setSelectionne(profil);
     setNotesAdmin(profil.notes_admin || "");
     setRoleEdit(profil.role || "client");
+    setConfirmSupprimer(false);
+    setMdpEnvoye(false);
+  };
+
+  const reinitialiserMdp = async () => {
+    await supabase.auth.resetPasswordForEmail(selectionne.email);
+    setMdpEnvoye(true);
+  };
+
+  const supprimerCompte = async () => {
+    setActionEnCours(true);
+    await supabase.from("profiles").delete().eq("id", selectionne.id);
+    await charger();
+    setSelectionne(null);
+    setActionEnCours(false);
   };
 
   const changerStatut = async (profil_id, nouveau_statut) => {
@@ -257,7 +274,7 @@ export default function GestionUtilisateurs() {
             </div>
 
             {/* Assignation dessinateurs (clients uniquement) */}
-            {selectionne.role === "client" && dessinateurs.length > 0 && (
+            {roleEdit === "client" && dessinateurs.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                   Dessinateurs assignés
@@ -321,35 +338,57 @@ export default function GestionUtilisateurs() {
               />
             </div>
 
-            {/* Actions */}
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            {/* Actions principales */}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 20 }}>
               {selectionne.statut !== "actif" && (
-                <button
-                  onClick={() => changerStatut(selectionne.id, "actif")}
-                  disabled={actionEnCours}
-                  style={{ background: "#166534", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
+                <button onClick={() => changerStatut(selectionne.id, "actif")} disabled={actionEnCours}
+                  style={{ background: "#166534", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   ✅ Valider le compte
                 </button>
               )}
               {selectionne.statut !== "refuse" && (
-                <button
-                  onClick={() => changerStatut(selectionne.id, "refuse")}
-                  disabled={actionEnCours}
-                  style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
+                <button onClick={() => changerStatut(selectionne.id, "refuse")} disabled={actionEnCours}
+                  style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   ❌ Refuser
                 </button>
               )}
-              {selectionne.statut === "actif" && (
-                <button
-                  onClick={() => changerStatut(selectionne.id, selectionne.statut)}
-                  disabled={actionEnCours}
-                  style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
-                  💾 Sauvegarder
+              <button onClick={() => changerStatut(selectionne.id, selectionne.statut)} disabled={actionEnCours}
+                style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                💾 Sauvegarder
+              </button>
+            </div>
+
+            {/* Zone danger */}
+            <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Actions avancées</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => changerStatut(selectionne.id, "refuse")} disabled={actionEnCours}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #F97316", background: "#FFF7ED", color: "#C2410C", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  🚫 Bannir
                 </button>
-              )}
+                <button onClick={reinitialiserMdp} disabled={mdpEnvoye}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #93C5FD", background: "#EFF6FF", color: "#1D4ED8", fontSize: 12, fontWeight: 600, cursor: mdpEnvoye ? "default" : "pointer", opacity: mdpEnvoye ? 0.7 : 1 }}>
+                  {mdpEnvoye ? "✅ Email envoyé" : "🔑 Réinitialiser le mot de passe"}
+                </button>
+                {!confirmSupprimer ? (
+                  <button onClick={() => setConfirmSupprimer(true)}
+                    style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    🗑 Supprimer ce compte
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: "#DC2626", fontWeight: 600 }}>Confirmer ?</span>
+                    <button onClick={supprimerCompte} disabled={actionEnCours}
+                      style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      Oui, supprimer
+                    </button>
+                    <button onClick={() => setConfirmSupprimer(false)}
+                      style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Annuler
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
