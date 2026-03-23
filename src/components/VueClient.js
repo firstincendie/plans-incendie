@@ -311,7 +311,7 @@ export default function VueClient({
                 ) : (
                   <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
                     onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await onEnvoyerMessage(selected.id, auteurNom, texte, fichiers); }}
-                    auteurActif=auteurNom allowFichier={true} />
+                    auteurActif={auteurNom} allowFichier={true} />
                 )}
               </div>
             )}
