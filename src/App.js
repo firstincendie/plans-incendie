@@ -165,7 +165,8 @@ export default function App() {
       .from("profiles")
       .select("id, prenom, nom, role")
       .in("role", ["dessinateur", "client"])
-      .eq("statut", "actif");
+      .eq("statut", "actif")
+      .ilike("email", "%@test.com");
     if (error) { console.warn("chargerProfilesPreview:", error.message); return; }
     const dessinateurs = (data || []).filter(p => p.role === "dessinateur")
       .map(p => ({ ...p, nom_complet: `${p.prenom} ${p.nom}` }));
