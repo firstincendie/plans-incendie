@@ -41,8 +41,8 @@ function SwitcherBarre({
         <div style={{ position: "relative" }}>
           <button
             onClick={() => {
-              if (modeVue !== "dessinateur") { setModeVue("dessinateur"); setShowDropdownDessinateur(false); }
-              else setShowDropdownDessinateur(v => !v);
+              if (modeVue !== "dessinateur") { setModeVue("dessinateur"); setShowDropdownDessinateur(false); setShowDropdownClient(false); }
+              else if (profilesDessinateurs.length > 1) setShowDropdownDessinateur(v => !v);
             }}
             disabled={profilesDessinateurs.length === 0}
             style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: profilesDessinateurs.length === 0 ? "not-allowed" : "pointer", background: modeVue === "dessinateur" ? "#FC6C1B" : "transparent", color: modeVue === "dessinateur" ? "#fff" : profilesDessinateurs.length === 0 ? "#4B5563" : "#94A3B8", display: "flex", alignItems: "center", gap: 6 }}>
@@ -64,8 +64,8 @@ function SwitcherBarre({
         <div style={{ position: "relative" }}>
           <button
             onClick={() => {
-              if (modeVue !== "client") { setModeVue("client"); setShowDropdownClient(false); }
-              else setShowDropdownClient(v => !v);
+              if (modeVue !== "client") { setModeVue("client"); setShowDropdownClient(false); setShowDropdownDessinateur(false); }
+              else if (profilesClients.length > 1) setShowDropdownClient(v => !v);
             }}
             disabled={profilesClients.length === 0}
             style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: profilesClients.length === 0 ? "not-allowed" : "pointer", background: modeVue === "client" ? "#059669" : "transparent", color: modeVue === "client" ? "#fff" : profilesClients.length === 0 ? "#4B5563" : "#94A3B8", display: "flex", alignItems: "center", gap: 6 }}>
