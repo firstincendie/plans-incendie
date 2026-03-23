@@ -41,7 +41,8 @@ function SwitcherBarre({
         {/* Dessinateur */}
         <div style={{ position: "relative" }}>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (modeVue !== "dessinateur") { setModeVue("dessinateur"); setShowDropdownDessinateur(false); setShowDropdownClient(false); }
               else if (profilesDessinateurs.length > 1) setShowDropdownDessinateur(v => !v);
             }}
@@ -64,7 +65,8 @@ function SwitcherBarre({
         {/* Client */}
         <div style={{ position: "relative" }}>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (modeVue !== "client") { setModeVue("client"); setShowDropdownClient(false); setShowDropdownDessinateur(false); }
               else if (profilesClients.length > 1) setShowDropdownClient(v => !v);
             }}
