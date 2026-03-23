@@ -18,6 +18,7 @@ export default function GestionUtilisateurs() {
   const [filtre, setFiltre] = useState("en_attente");
   const [selectionne, setSelectionne] = useState(null);
   const [notesAdmin, setNotesAdmin] = useState("");
+  const [roleEdit, setRoleEdit] = useState("client");
   const [chargement, setChargement] = useState(true);
   const [actionEnCours, setActionEnCours] = useState(false);
   const [showNouvelUser, setShowNouvelUser] = useState(false);
@@ -49,11 +50,12 @@ export default function GestionUtilisateurs() {
   const ouvrirFiche = (profil) => {
     setSelectionne(profil);
     setNotesAdmin(profil.notes_admin || "");
+    setRoleEdit(profil.role || "client");
   };
 
   const changerStatut = async (profil_id, nouveau_statut) => {
     setActionEnCours(true);
-    await supabase.from("profiles").update({ statut: nouveau_statut, notes_admin: notesAdmin }).eq("id", profil_id);
+    await supabase.from("profiles").update({ statut: nouveau_statut, role: roleEdit, notes_admin: notesAdmin }).eq("id", profil_id);
     await charger();
     setSelectionne(null);
     setActionEnCours(false);
@@ -233,7 +235,6 @@ export default function GestionUtilisateurs() {
                 ["SIREN", selectionne.siren ? `${selectionne.siren} ${selectionne.siren_valide ? "✅" : "⚠"}` : "—"],
                 ["Adresse", selectionne.adresse || "—"],
                 ["Ville", selectionne.ville ? `${selectionne.code_postal} ${selectionne.ville}` : "—"],
-                ["Rôle", ROLE_LABEL[selectionne.role]],
                 ["Demande le", new Date(selectionne.created_at).toLocaleDateString("fr-FR")],
               ].map(([label, val]) => (
                 <div key={label}>
@@ -241,6 +242,19 @@ export default function GestionUtilisateurs() {
                   <div style={{ fontSize: 14, color: "#122131", marginTop: 2 }}>{val}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Sélecteur de rôle */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Rôle</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {["client", "dessinateur", "admin"].map(r => (
+                  <button key={r} type="button" onClick={() => setRoleEdit(r)}
+                    style={{ flex: 1, padding: "8px", borderRadius: 8, border: `2px solid ${roleEdit === r ? "#122131" : "#E2E8F0"}`, background: roleEdit === r ? "#122131" : "#fff", color: roleEdit === r ? "#fff" : "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    {ROLE_LABEL[r]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Assignation dessinateurs (clients uniquement) */}
