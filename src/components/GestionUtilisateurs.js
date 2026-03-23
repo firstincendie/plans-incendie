@@ -1,228 +1,167 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 
-const STATUT_STYLE = {
-  en_attente: { bg: "#FFF7ED", color: "#C2410C", label: "En attente" },
-  actif:      { bg: "#F0FDF4", color: "#166534", label: "Actif" },
-  refuse:     { bg: "#FEF2F2", color: "#DC2626", label: "Refusé" },
-};
-
-const ROLE_LABEL = { admin: "Admin", client: "Client", dessinateur: "Dessinateur" };
-
-const NOUVEL_USER_INIT = { prenom: "", nom: "", email: "", role: "client", mdp: "", telephone: "", entreprise: "", siren: "", adresse: "", code_postal: "", ville: "" };
-
 export default function GestionUtilisateurs() {
-  const [profils, setProfils] = useState([]);
+  const [comptes, setComptes] = useState([]);
   const [dessinateurs, setDessinateurs] = useState([]);
-  const [liaisons, setLiaisons] = useState([]);
-  const [filtre, setFiltre] = useState("en_attente");
-  const [selectionne, setSelectionne] = useState(null);
-  const [notesAdmin, setNotesAdmin] = useState("");
-  const [roleEdit, setRoleEdit] = useState("client");
-  const [chargement, setChargement] = useState(true);
-  const [actionEnCours, setActionEnCours] = useState(false);
-  const [confirmSupprimer, setConfirmSupprimer] = useState(false);
-  const [mdpEnvoye, setMdpEnvoye] = useState(false);
-  const [showNouvelUser, setShowNouvelUser] = useState(false);
-  const [nouvelUser, setNouvelUser] = useState(NOUVEL_USER_INIT);
-  const [creerErreur, setCreerErreur] = useState("");
-  const [creerEnCours, setCreerEnCours] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [filtre, setFiltre] = useState("tous");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: "", prenom: "", nom: "", role: "utilisateur" });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
-  const charger = async () => {
-    setChargement(true);
-    const [{ data: p }, { data: l }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("client_dessinateurs").select("*"),
-    ]);
-    setProfils(p || []);
-    setDessinateurs((p || []).filter(x => x.role === "dessinateur"));
-    setLiaisons(l || []);
-    setChargement(false);
-  };
+  useEffect(() => { chargerComptes(); }, []);
 
-  useEffect(() => { charger(); }, []);
+  async function chargerComptes() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) {
+      setComptes(data);
+      setDessinateurs(data.filter(p => p.role === "dessinateur" && p.statut === "actif"));
+    }
+    setLoading(false);
+  }
 
-  const profils_filtres = profils.filter(p => {
-    if (filtre === "tous") return true;
-    return p.statut === filtre;
-  });
+  async function mettreAJourStatut(id, statut) {
+    const { error } = await supabase.from("profiles").update({ statut }).eq("id", id);
+    if (!error) {
+      setComptes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
+      if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
+    }
+  }
 
-  const nbAttente = profils.filter(p => p.statut === "en_attente").length;
+  async function sauvegarderEdit() {
+    if (!editForm || !selected) return;
+    setSaving(true);
+    setSaveError("");
+    const { error } = await supabase.from("profiles").update({
+      prenom: editForm.prenom,
+      nom: editForm.nom,
+      role: editForm.role,
+      statut: editForm.statut,
+      is_owner: editForm.is_owner,
+      dessinateur_id: editForm.dessinateur_id || null,
+    }).eq("id", selected.id);
+    if (error) { setSaveError(error.message); setSaving(false); return; }
+    setComptes(prev => prev.map(c => c.id === selected.id ? { ...c, ...editForm } : c));
+    setSelected(prev => ({ ...prev, ...editForm }));
+    setEditForm(null);
+    setSaving(false);
+  }
 
-  const ouvrirFiche = (profil) => {
-    setSelectionne(profil);
-    setNotesAdmin(profil.notes_admin || "");
-    setRoleEdit(profil.role || "client");
-    setConfirmSupprimer(false);
-    setMdpEnvoye(false);
-  };
-
-  const reinitialiserMdp = async () => {
-    await supabase.auth.resetPasswordForEmail(selectionne.email);
-    setMdpEnvoye(true);
-  };
-
-  const supprimerCompte = async () => {
-    setActionEnCours(true);
-    await supabase.from("profiles").delete().eq("id", selectionne.id);
-    await charger();
-    setSelectionne(null);
-    setActionEnCours(false);
-  };
-
-  const changerStatut = async (profil_id, nouveau_statut) => {
-    setActionEnCours(true);
-    await supabase.from("profiles").update({ statut: nouveau_statut, role: roleEdit, notes_admin: notesAdmin }).eq("id", profil_id);
-    await charger();
-    setSelectionne(null);
-    setActionEnCours(false);
-  };
-
-  const toggleDessinateur = async (client_id, dessinateur_id) => {
-    const existe = liaisons.find(l => l.client_id === client_id && l.dessinateur_id === dessinateur_id);
-    if (existe) {
-      await supabase.from("client_dessinateurs").delete().eq("id", existe.id);
+  async function supprimerCompte(id) {
+    if (!window.confirm("Supprimer définitivement ce compte ? Cette action est irréversible.")) return;
+    // Supprimer via Supabase Admin API (Edge Function nécessaire pour supprimer auth.users)
+    const { error } = await supabase.functions.invoke("delete-user", { body: { user_id: id } });
+    if (!error) {
+      setComptes(prev => prev.filter(c => c.id !== id));
+      if (selected?.id === id) setSelected(null);
     } else {
-      await supabase.from("client_dessinateurs").insert({ client_id, dessinateur_id });
+      alert("Erreur lors de la suppression : " + error.message);
     }
-    const { data: l } = await supabase.from("client_dessinateurs").select("*");
-    setLiaisons(l || []);
-  };
+  }
 
-  const dessinateursClient = (client_id) =>
-    liaisons.filter(l => l.client_id === client_id).map(l => l.dessinateur_id);
-
-  const creerUtilisateur = async (e) => {
-    e.preventDefault();
-    setCreerErreur("");
-    setCreerEnCours(true);
-    // Créer le compte auth via signUp (sans se connecter)
-    // eslint-disable-next-line no-unused-vars
-    const { data: _data, error: _error } = await supabase.auth.admin
-      ? { data: null, error: { message: "admin_not_available" } }
-      : { data: null, error: { message: "admin_not_available" } };
-
-    // Fallback : insertion directe via RPC ou SQL n'est pas possible côté client.
-    // On utilise la méthode standard signUp et on patch le profil immédiatement.
-    const res = await supabase.auth.signUp({
-      email: nouvelUser.email,
-      password: nouvelUser.mdp,
-      options: { data: { nom: nouvelUser.nom, prenom: nouvelUser.prenom, role: nouvelUser.role } }
+  async function renvoyerResetMdp(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
     });
+    if (!error) alert(`Email de réinitialisation envoyé à ${email}`);
+    else alert("Erreur : " + error.message);
+  }
 
-    if (res.error) {
-      setCreerErreur(res.error.message === "User already registered" ? "Un compte existe déjà avec cet email." : res.error.message);
-      setCreerEnCours(false);
-      return;
-    }
+  async function creerCompte() {
+    if (!createForm.email || !createForm.prenom || !createForm.nom) return;
+    setCreating(true);
+    setCreateError("");
+    // Invite via Edge Function (Supabase Admin API)
+    const { error } = await supabase.functions.invoke("invite-user", {
+      body: { email: createForm.email, prenom: createForm.prenom, nom: createForm.nom, role: createForm.role },
+    });
+    if (error) { setCreateError(error.message); setCreating(false); return; }
+    setShowCreateModal(false);
+    setCreateForm({ email: "", prenom: "", nom: "", role: "utilisateur" });
+    setCreating(false);
+    await chargerComptes();
+  }
 
-    // Patch profil avec toutes les infos + statut actif direct
-    if (res.data?.user) {
-      await supabase.from("profiles").update({
-        role: nouvelUser.role,
-        statut: "actif",
-        nom: nouvelUser.nom,
-        prenom: nouvelUser.prenom,
-        telephone: nouvelUser.telephone,
-        entreprise: nouvelUser.entreprise,
-        siren: nouvelUser.siren,
-        adresse: nouvelUser.adresse,
-        code_postal: nouvelUser.code_postal,
-        ville: nouvelUser.ville,
-      }).eq("id", res.data.user.id);
-    }
+  const comptesFiltres = filtre === "tous" ? comptes : comptes.filter(c => c.statut === filtre);
 
-    await charger();
-    setShowNouvelUser(false);
-    setNouvelUser(NOUVEL_USER_INIT);
-    setCreerEnCours(false);
+  const statutBadge = (statut) => {
+    const styles = {
+      en_attente: { bg: "#FEF3C7", color: "#92400E", label: "En attente" },
+      actif: { bg: "#D1FAE5", color: "#065F46", label: "Actif" },
+      refuse: { bg: "#FEE2E2", color: "#991B1B", label: "Refusé" },
+      bloque: { bg: "#F3F4F6", color: "#374151", label: "Bloqué" },
+    };
+    const s = styles[statut] || styles.en_attente;
+    return <span style={{ background: s.bg, color: s.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{s.label}</span>;
   };
 
-  const setNU = (champ) => (e) => setNouvelUser(prev => ({ ...prev, [champ]: e.target.value }));
-
-  const inputStyle = { width: "100%", padding: "8px 10px", border: "1.5px solid #E2E8F0", borderRadius: 6, fontSize: 13, boxSizing: "border-box" };
+  const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
+  const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 };
 
   return (
-    <div style={{ padding: "24px 32px", maxWidth: 1000 }}>
-      <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#122131" }}>Gestion des utilisateurs</h2>
-          <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 14 }}>Gérez les demandes d'accès et les comptes clients</p>
-        </div>
-        <button onClick={() => { setShowNouvelUser(true); setCreerErreur(""); setNouvelUser(NOUVEL_USER_INIT); }}
-          style={{ background: "#122131", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-          + Ajouter un utilisateur
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Gestion des utilisateurs</h1>
+        <button onClick={() => setShowCreateModal(true)}
+          style={{ background: "#122131", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          + Nouveau compte
         </button>
       </div>
 
-      {/* Filtres */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[
-          { key: "en_attente", label: "En attente", badge: nbAttente },
-          { key: "actif", label: "Actifs" },
-          { key: "refuse", label: "Refusés" },
-          { key: "tous", label: "Tous" },
-        ].map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFiltre(f.key)}
-            style={{
-              padding: "7px 14px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer",
-              background: filtre === f.key ? "#122131" : "#F1F5F9",
-              color: filtre === f.key ? "#fff" : "#475569",
-              display: "flex", alignItems: "center", gap: 6
-            }}
-          >
-            {f.label}
-            {f.badge > 0 && (
-              <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 11, fontWeight: 700 }}>
-                {f.badge}
-              </span>
-            )}
+      {/* Filtres statut */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {["tous", "en_attente", "actif", "refuse", "bloque"].map(f => (
+          <button key={f} onClick={() => setFiltre(f)}
+            style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #E5E7EB", background: filtre === f ? "#122131" : "#fff", color: filtre === f ? "#fff" : "#6B7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            {f === "tous" ? "Tous" : f === "en_attente" ? "En attente" : f === "actif" ? "Actifs" : f === "refuse" ? "Refusés" : "Bloqués"}
+            {" "}({f === "tous" ? comptes.length : comptes.filter(c => c.statut === f).length})
           </button>
         ))}
       </div>
 
-      {/* Liste */}
-      {chargement ? (
-        <div style={{ color: "#64748B", fontSize: 14 }}>Chargement...</div>
-      ) : profils_filtres.length === 0 ? (
-        <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "40px", textAlign: "center", color: "#94A3B8", fontSize: 14 }}>
-          Aucun utilisateur dans cette catégorie
-        </div>
+      {loading ? (
+        <div style={{ textAlign: "center", color: "#94A3B8", padding: 40 }}>Chargement...</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {profils_filtres.map(profil => {
-            const st = STATUT_STYLE[profil.statut] || STATUT_STYLE.en_attente;
-            const dessinIds = dessinateursClient(profil.id);
-            const maitre = profil.master_id ? profils.find(p => p.id === profil.master_id) : null;
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1.5fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
+            <span>Nom</span><span>Email</span><span>Rôle</span><span>Statut</span><span>Dessinateur</span><span>Actions</span>
+          </div>
+          {comptesFiltres.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucun compte.</div>}
+          {comptesFiltres.map(c => {
+            const dessinateurAssigne = dessinateurs.find(d => d.id === c.dessinateur_id);
             return (
-              <div key={profil.id}
-                style={{ background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, padding: "16px 20px", cursor: "pointer", transition: "border-color 0.15s" }}
-                onClick={() => ouvrirFiche(profil)}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: "#122131" }}>
-                      {profil.prenom} {profil.nom}
-                      <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, background: "#F1F5F9", color: "#475569", borderRadius: 4, padding: "2px 7px" }}>
-                        {ROLE_LABEL[profil.role]}
-                      </span>
-                    </div>
-                    <div style={{ color: "#64748B", fontSize: 13, marginTop: 2 }}>{profil.email}</div>
-                    {profil.entreprise && <div style={{ color: "#94A3B8", fontSize: 12, marginTop: 1 }}>{profil.entreprise}{profil.siren ? ` — SIREN ${profil.siren}` : ""}</div>}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {profil.master_id && (
-                      <span style={{ fontSize: 11, color: "#6B7280", background: "#F1F5F9", borderRadius: 4, padding: "2px 7px" }}>
-                        Sous-compte de {maitre ? `${maitre.prenom} ${maitre.nom}` : "—"}
-                      </span>
-                    )}
-                    {profil.role === "client" && dessinIds.length > 0 && (
-                      <span style={{ fontSize: 11, color: "#64748B" }}>{dessinIds.length} dessinateur{dessinIds.length > 1 ? "s" : ""}</span>
-                    )}
-                    <span style={{ background: st.bg, color: st.color, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{st.label}</span>
-                  </div>
+              <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1.5fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", background: selected?.id === c.id ? "#F8FAFC" : "transparent" }}>
+                <div style={{ cursor: "pointer" }} onClick={() => { setSelected(c); setEditForm({ prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false, dessinateur_id: c.dessinateur_id || "" }); }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{c.prenom} {c.nom}</div>
+                  {c.is_owner && <div style={{ fontSize: 10, color: "#FC6C1B", fontWeight: 700 }}>OWNER</div>}
+                </div>
+                <div style={{ fontSize: 12, color: "#6B7280" }}>{c.email}</div>
+                <div style={{ fontSize: 12, color: "#374151" }}>{c.role === "dessinateur" ? "Dessinateur" : "Utilisateur"}</div>
+                <div>{statutBadge(c.statut)}</div>
+                <div style={{ fontSize: 12, color: "#6B7280" }}>{dessinateurAssigne ? `${dessinateurAssigne.prenom} ${dessinateurAssigne.nom}` : "—"}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {c.statut === "en_attente" && (
+                    <>
+                      <button onClick={() => mettreAJourStatut(c.id, "actif")} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: "#D1FAE5", color: "#065F46", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Activer</button>
+                      <button onClick={() => mettreAJourStatut(c.id, "refuse")} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: "#FEE2E2", color: "#991B1B", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Refuser</button>
+                    </>
+                  )}
+                  {c.statut === "actif" && (
+                    <button onClick={() => mettreAJourStatut(c.id, "bloque")} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: "#F3F4F6", color: "#374151", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Bloquer</button>
+                  )}
+                  {(c.statut === "refuse" || c.statut === "bloque") && (
+                    <button onClick={() => mettreAJourStatut(c.id, "actif")} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: "#D1FAE5", color: "#065F46", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Réactiver</button>
+                  )}
                 </div>
               </div>
             );
@@ -230,288 +169,100 @@ export default function GestionUtilisateurs() {
         </div>
       )}
 
-      {/* Modal fiche */}
-      {selectionne && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 540, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
-            onClick={e => e.stopPropagation()}>
+      {/* Panneau détail / édition */}
+      {selected && editForm && (
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.prenom} {selected.nom}</div>
+            <button onClick={() => { setSelected(null); setEditForm(null); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+          </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div style={{ fontWeight: 800, fontSize: 18, color: "#122131" }}>
-                {selectionne.prenom} {selectionne.nom}
-              </div>
-              <button onClick={() => setSelectionne(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94A3B8" }}>✕</button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <div><label style={labelStyle}>Prénom</label><input value={editForm.prenom} onChange={e => setEditForm({ ...editForm, prenom: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Nom</label><input value={editForm.nom} onChange={e => setEditForm({ ...editForm, nom: e.target.value })} style={inputStyle} /></div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={labelStyle}>Rôle</label>
+              <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} style={inputStyle}>
+                <option value="utilisateur">Utilisateur</option>
+                <option value="dessinateur">Dessinateur</option>
+              </select>
             </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 20px", marginBottom: 20 }}>
-              {[
-                ["Email", selectionne.email],
-                ["Téléphone", selectionne.telephone || "—"],
-                ["Entreprise", selectionne.entreprise || "—"],
-                ["SIREN", selectionne.siren ? `${selectionne.siren} ${selectionne.siren_valide ? "✅" : "⚠"}` : "—"],
-                ["Adresse", selectionne.adresse || "—"],
-                ["Ville", selectionne.ville ? `${selectionne.code_postal} ${selectionne.ville}` : "—"],
-                ["Demande le", new Date(selectionne.created_at).toLocaleDateString("fr-FR")],
-              ].map(([label, val]) => (
-                <div key={label}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
-                  <div style={{ fontSize: 14, color: "#122131", marginTop: 2 }}>{val}</div>
-                </div>
-              ))}
+            <div>
+              <label style={labelStyle}>Statut</label>
+              <select value={editForm.statut} onChange={e => setEditForm({ ...editForm, statut: e.target.value })} style={inputStyle}>
+                <option value="en_attente">En attente</option>
+                <option value="actif">Actif</option>
+                <option value="refuse">Refusé</option>
+                <option value="bloque">Bloqué</option>
+              </select>
             </div>
+          </div>
 
-            {/* Sélecteur de rôle */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Rôle</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {["client", "dessinateur", "admin"].map(r => (
-                  <button key={r} type="button" onClick={() => setRoleEdit(r)}
-                    style={{ flex: 1, padding: "8px", borderRadius: 8, border: `2px solid ${roleEdit === r ? "#122131" : "#E2E8F0"}`, background: roleEdit === r ? "#122131" : "#fff", color: roleEdit === r ? "#fff" : "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                    {ROLE_LABEL[r]}
-                  </button>
+          {editForm.role === "utilisateur" && (
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Dessinateur assigné</label>
+              <select value={editForm.dessinateur_id} onChange={e => setEditForm({ ...editForm, dessinateur_id: e.target.value })} style={inputStyle}>
+                <option value="">— Non assigné —</option>
+                {dessinateurs.map(d => (
+                  <option key={d.id} value={d.id}>{d.prenom} {d.nom}</option>
                 ))}
-              </div>
+              </select>
             </div>
+          )}
 
-            {/* Assignation dessinateurs (clients uniquement) */}
-            {roleEdit === "client" && dessinateurs.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                  Dessinateurs assignés
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {dessinateurs.map(d => {
-                    const assigne = liaisons.find(l => l.client_id === selectionne.id && l.dessinateur_id === d.id);
-                    return (
-                      <label key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: assigne ? "#EFF6FF" : "#F8FAFC", border: `1.5px solid ${assigne ? "#93C5FD" : "#E2E8F0"}` }}>
-                        <input type="checkbox" checked={!!assigne} onChange={() => toggleDessinateur(selectionne.id, d.id)} style={{ cursor: "pointer" }} />
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>{d.prenom} {d.nom}</span>
-                        <span style={{ fontSize: 12, color: "#64748B" }}>{d.email}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={editForm.is_owner} onChange={e => setEditForm({ ...editForm, is_owner: e.target.checked })} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Compte owner (accès gestion utilisateurs)</span>
+            </label>
+          </div>
 
-            {/* Clients assignés (dessinateurs uniquement) */}
-            {roleEdit === "dessinateur" && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                  Clients assignés
-                </div>
-                {profils.filter(p => p.role === "client" && !p.master_id).length === 0 ? (
-                  <div style={{ fontSize: 13, color: "#94A3B8" }}>Aucun client disponible</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {profils.filter(p => p.role === "client" && !p.master_id).map(client => {
-                      const assigne = liaisons.find(l => l.dessinateur_id === selectionne.id && l.client_id === client.id);
-                      return (
-                        <label key={client.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: assigne ? "#EFF6FF" : "#F8FAFC", border: `1.5px solid ${assigne ? "#93C5FD" : "#E2E8F0"}` }}>
-                          <input type="checkbox" checked={!!assigne} onChange={() => toggleDessinateur(client.id, selectionne.id)} style={{ cursor: "pointer" }} />
-                          <span style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>{client.prenom} {client.nom}</span>
-                          <span style={{ fontSize: 12, color: "#64748B" }}>{client.email}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+          {saveError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {saveError}</div>}
 
-            {/* Maître — si sous-compte */}
-            {selectionne.master_id && (
-              <div style={{ marginBottom: 20, padding: "12px 16px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Compte maître</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>
-                    {(() => { const m = profils.find(p => p.id === selectionne.master_id); return m ? `${m.prenom} ${m.nom}` : "—"; })()}
-                  </div>
-                </div>
-                <button
-                  onClick={async () => {
-                    setActionEnCours(true);
-                    await supabase.from("profiles").update({ master_id: null }).eq("id", selectionne.id);
-                    await charger();
-                    setSelectionne(null);
-                    setActionEnCours(false);
-                  }}
-                  disabled={actionEnCours}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Détacher
-                </button>
-              </div>
-            )}
-
-            {/* Notes admin */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>
-                Notes internes
-              </label>
-              <textarea
-                value={notesAdmin}
-                onChange={e => setNotesAdmin(e.target.value)}
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical" }}
-                placeholder="Notes visibles uniquement par les admins..."
-              />
-            </div>
-
-            {/* Actions principales */}
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 20 }}>
-              {selectionne.statut === "en_attente" && (
-                <button onClick={() => changerStatut(selectionne.id, "actif")} disabled={actionEnCours}
-                  style={{ background: "#166534", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  ✅ Valider le compte
-                </button>
-              )}
-              {selectionne.statut === "en_attente" && (
-                <button onClick={() => changerStatut(selectionne.id, "refuse")} disabled={actionEnCours}
-                  style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  ❌ Refuser
-                </button>
-              )}
-              <button onClick={() => changerStatut(selectionne.id, selectionne.statut)} disabled={actionEnCours}
-                style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                💾 Sauvegarder
+          <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => renvoyerResetMdp(selected.email)} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 12, cursor: "pointer", color: "#6B7280" }}>
+                Renvoyer reset mot de passe
+              </button>
+              <button onClick={() => supprimerCompte(selected.id)} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #FECACA", background: "#FEF2F2", fontSize: 12, cursor: "pointer", color: "#DC2626", fontWeight: 600 }}>
+                Supprimer le compte
               </button>
             </div>
-
-            {/* Zone danger */}
-            <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Actions avancées</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => changerStatut(selectionne.id, "refuse")} disabled={actionEnCours}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #F97316", background: "#FFF7ED", color: "#C2410C", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  🚫 Bannir
-                </button>
-                <button onClick={reinitialiserMdp} disabled={mdpEnvoye}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #93C5FD", background: "#EFF6FF", color: "#1D4ED8", fontSize: 12, fontWeight: 600, cursor: mdpEnvoye ? "default" : "pointer", opacity: mdpEnvoye ? 0.7 : 1 }}>
-                  {mdpEnvoye ? "✅ Email envoyé" : "🔑 Réinitialiser le mot de passe"}
-                </button>
-                {!confirmSupprimer ? (
-                  <button onClick={() => setConfirmSupprimer(true)}
-                    style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    🗑 Supprimer ce compte
-                  </button>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, color: "#DC2626", fontWeight: 600 }}>Confirmer ?</span>
-                    <button onClick={supprimerCompte} disabled={actionEnCours}
-                      style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                      Oui, supprimer
-                    </button>
-                    <button onClick={() => setConfirmSupprimer(false)}
-                      style={{ padding: "8px 14px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      Annuler
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <button onClick={sauvegarderEdit} disabled={saving} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              {saving ? "Enregistrement..." : "Sauvegarder"}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Modal nouvel utilisateur */}
-      {showNouvelUser && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 32, width: 520, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div style={{ fontWeight: 800, fontSize: 18, color: "#122131" }}>Nouvel utilisateur</div>
-              <button onClick={() => setShowNouvelUser(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94A3B8" }}>✕</button>
+      {/* Modal création compte */}
+      {showCreateModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 460 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Nouveau compte</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div><label style={labelStyle}>Prénom *</label><input value={createForm.prenom} onChange={e => setCreateForm({ ...createForm, prenom: e.target.value })} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Nom *</label><input value={createForm.nom} onChange={e => setCreateForm({ ...createForm, nom: e.target.value })} style={inputStyle} /></div>
             </div>
-
-            <form onSubmit={creerUtilisateur} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Rôle */}
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>Rôle</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {["client", "dessinateur", "admin"].map(r => (
-                    <button key={r} type="button" onClick={() => setNouvelUser(p => ({ ...p, role: r }))}
-                      style={{ flex: 1, padding: "8px", borderRadius: 8, border: `2px solid ${nouvelUser.role === r ? "#122131" : "#E2E8F0"}`, background: nouvelUser.role === r ? "#122131" : "#fff", color: nouvelUser.role === r ? "#fff" : "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                      {ROLE_LABEL[r]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Identité */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Prénom *</label>
-                  <input type="text" value={nouvelUser.prenom} onChange={setNU("prenom")} required style={inputStyle} placeholder="Jean" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Nom *</label>
-                  <input type="text" value={nouvelUser.nom} onChange={setNU("nom")} required style={inputStyle} placeholder="Dupont" />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Email *</label>
-                  <input type="email" value={nouvelUser.email} onChange={setNU("email")} required style={inputStyle} placeholder="jean@exemple.fr" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Téléphone</label>
-                  <input type="tel" value={nouvelUser.telephone} onChange={setNU("telephone")} style={inputStyle} placeholder="06 00 00 00 00" />
-                </div>
-              </div>
-
-              {nouvelUser.role === "client" && (
-                <>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Entreprise</label>
-                      <input type="text" value={nouvelUser.entreprise} onChange={setNU("entreprise")} style={inputStyle} placeholder="Mon Entreprise SAS" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>SIREN</label>
-                      <input type="text" value={nouvelUser.siren} onChange={setNU("siren")} maxLength={9} style={inputStyle} placeholder="123456789" />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Adresse</label>
-                    <input type="text" value={nouvelUser.adresse} onChange={setNU("adresse")} style={inputStyle} placeholder="12 rue de la Paix" />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Code postal</label>
-                      <input type="text" value={nouvelUser.code_postal} onChange={setNU("code_postal")} style={inputStyle} placeholder="75001" />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Ville</label>
-                      <input type="text" value={nouvelUser.ville} onChange={setNU("ville")} style={inputStyle} placeholder="Paris" />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#122131", display: "block", marginBottom: 4 }}>Mot de passe *</label>
-                <input type="password" value={nouvelUser.mdp} onChange={setNU("mdp")} required minLength={8} style={inputStyle} placeholder="8 caractères minimum" />
-              </div>
-
-              {creerErreur && (
-                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 12px", color: "#DC2626", fontSize: 13 }}>
-                  {creerErreur}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-                <button type="button" onClick={() => setShowNouvelUser(false)}
-                  style={{ padding: "10px 18px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: "#64748B", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                  Annuler
-                </button>
-                <button type="submit" disabled={creerEnCours}
-                  style={{ background: "#122131", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, fontSize: 13, cursor: creerEnCours ? "not-allowed" : "pointer", opacity: creerEnCours ? 0.7 : 1 }}>
-                  {creerEnCours ? "Création..." : "Créer le compte"}
-                </button>
-              </div>
-            </form>
+            <div style={{ marginBottom: 12 }}><label style={labelStyle}>Email *</label><input type="email" value={createForm.email} onChange={e => setCreateForm({ ...createForm, email: e.target.value })} style={inputStyle} /></div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Rôle</label>
+              <select value={createForm.role} onChange={e => setCreateForm({ ...createForm, role: e.target.value })} style={inputStyle}>
+                <option value="utilisateur">Utilisateur</option>
+                <option value="dessinateur">Dessinateur</option>
+              </select>
+            </div>
+            {createError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {createError}</div>}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => { setShowCreateModal(false); setCreateForm({ email: "", prenom: "", nom: "", role: "utilisateur" }); setCreateError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button onClick={creerCompte} disabled={creating || !createForm.email || !createForm.prenom || !createForm.nom}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                {creating ? "Création..." : "Créer et inviter"}
+              </button>
+            </div>
           </div>
         </div>
       )}
