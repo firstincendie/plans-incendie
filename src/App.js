@@ -123,6 +123,7 @@ export default function App() {
   const [validant, setValidant]                 = useState(false);
   const [showTermineesAdmin, setShowTermineesAdmin] = useState(false);
   const [dessinateurAssigne, setDessinateurAssigne] = useState(null);
+  const [sousComptes, setSousComptes] = useState([]);
 
   // eslint-disable-next-line no-unused-vars
   const [settings, setSettings] = useState({
@@ -163,6 +164,14 @@ export default function App() {
         .limit(1)
         .maybeSingle();
       setDessinateurAssigne(lien?.profiles ? `${lien.profiles.prenom} ${lien.profiles.nom}` : null);
+    }
+    // Sous-comptes pour client/dessinateur
+    if (data?.role === "client" || data?.role === "dessinateur") {
+      const { data: sub } = await supabase
+        .from("profiles")
+        .select("id, prenom, nom, role")
+        .eq("master_id", uid);
+      setSousComptes(sub || []);
     }
   };
 
@@ -484,17 +493,27 @@ export default function App() {
 
           {vue === "commandes" && isDessinateur && (
             <VueDessinateur noLayout commandes={commandes} versions={versions} nomDessinateur={nomDessinateur}
+              sousComptes={sousComptes}
               onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
           )}
 
           {vue === "commandes" && !isDessinateur && (
-            <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0" }}>Commandes</h1>
-              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 48, textAlign: "center" }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-                <div style={{ fontSize: 14, color: "#94A3B8" }}>Aucune commande disponible pour le moment.</div>
-              </div>
-            </div>
+            <VueClient
+              noLayout
+              commandes={commandes}
+              versions={versions}
+              clientSelectionne={{ ...profil, nom_complet: `${profil.prenom} ${profil.nom}` }}
+              sousComptes={sousComptes}
+              session={session}
+              profil={profil}
+              onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))}
+              onChangerStatut={changerStatut}
+              onEnvoyerMessage={envoyerMessage}
+              onNouvelleCommande={() => {
+                setForm({ ...formVide(), client: `${profil.prenom} ${profil.nom}` });
+                setShowForm(true);
+              }}
+            />
           )}
         </div>
       </div>
