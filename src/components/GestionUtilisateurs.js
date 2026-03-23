@@ -284,18 +284,38 @@ export default function GestionUtilisateurs() {
                     const assigne = liaisons.find(l => l.client_id === selectionne.id && l.dessinateur_id === d.id);
                     return (
                       <label key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: assigne ? "#EFF6FF" : "#F8FAFC", border: `1.5px solid ${assigne ? "#93C5FD" : "#E2E8F0"}` }}>
-                        <input
-                          type="checkbox"
-                          checked={!!assigne}
-                          onChange={() => toggleDessinateur(selectionne.id, d.id)}
-                          style={{ cursor: "pointer" }}
-                        />
+                        <input type="checkbox" checked={!!assigne} onChange={() => toggleDessinateur(selectionne.id, d.id)} style={{ cursor: "pointer" }} />
                         <span style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>{d.prenom} {d.nom}</span>
                         <span style={{ fontSize: 12, color: "#64748B" }}>{d.email}</span>
                       </label>
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Clients assignés (dessinateurs uniquement) */}
+            {roleEdit === "dessinateur" && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                  Clients assignés
+                </div>
+                {profils.filter(p => p.role === "client" && !p.master_id).length === 0 ? (
+                  <div style={{ fontSize: 13, color: "#94A3B8" }}>Aucun client disponible</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {profils.filter(p => p.role === "client" && !p.master_id).map(client => {
+                      const assigne = liaisons.find(l => l.dessinateur_id === selectionne.id && l.client_id === client.id);
+                      return (
+                        <label key={client.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: assigne ? "#EFF6FF" : "#F8FAFC", border: `1.5px solid ${assigne ? "#93C5FD" : "#E2E8F0"}` }}>
+                          <input type="checkbox" checked={!!assigne} onChange={() => toggleDessinateur(client.id, selectionne.id)} style={{ cursor: "pointer" }} />
+                          <span style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>{client.prenom} {client.nom}</span>
+                          <span style={{ fontSize: 12, color: "#64748B" }}>{client.email}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

@@ -161,11 +161,20 @@ export default function App() {
     if (data?.role === "client") {
       const { data: lien } = await supabase
         .from("client_dessinateurs")
-        .select("dessinateur_id, profiles!dessinateur_id(prenom, nom)")
+        .select("dessinateur_id")
         .eq("client_id", uid)
         .limit(1)
         .maybeSingle();
-      setDessinateurAssigne(lien?.profiles ? `${lien.profiles.prenom} ${lien.profiles.nom}` : null);
+      if (lien?.dessinateur_id) {
+        const { data: desProfil } = await supabase
+          .from("profiles")
+          .select("prenom, nom")
+          .eq("id", lien.dessinateur_id)
+          .single();
+        setDessinateurAssigne(desProfil ? `${desProfil.prenom} ${desProfil.nom}` : null);
+      } else {
+        setDessinateurAssigne(null);
+      }
     }
     // Sous-comptes pour client/dessinateur
     if (data?.role === "client" || data?.role === "dessinateur") {
