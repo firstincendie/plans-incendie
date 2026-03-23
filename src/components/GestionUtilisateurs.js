@@ -35,6 +35,14 @@ export default function GestionUtilisateurs() {
     if (!error) {
       setComptes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
       if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
+      if (["actif", "refuse", "bloque"].includes(statut)) {
+        const compte = comptes.find(c => c.id === id);
+        if (compte) {
+          await supabase.functions.invoke("notify-activation", {
+            body: { to: compte.email, prenom: compte.prenom, statut },
+          });
+        }
+      }
     }
   }
 

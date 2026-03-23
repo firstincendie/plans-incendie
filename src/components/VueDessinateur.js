@@ -89,6 +89,10 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     if (!error) {
       setCommandes(prev => prev.map(c => c.id === selected.id ? { ...c, statut: "Ébauche déposée" } : c));
       setSelected(prev => ({ ...prev, statut: "Ébauche déposée" }));
+      // Notifier l'utilisateur de l'ébauche déposée
+      supabase.functions.invoke("notify-version", {
+        body: { commande_id: selected.id, nom_plan: selected.nom_plan, numero_version: numero },
+      });
       await envoyerMessage(selected.id, auteurNom, `📎 Version ${numero} déposée.`);
     }
     setFichiersDepot([]); setShowDepotModal(false); setDeposant(false);
@@ -101,6 +105,15 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     if (!error && data) {
       setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c));
       if (selected?.id === commandeId) setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
+      // Notifier l'autre partie du nouveau message
+      supabase.functions.invoke("notify-message", {
+        body: {
+          commande_id: commandeId,
+          auteur_id: session.user.id,
+          auteur_nom: auteurNom,
+          nom_plan: commandes.find(c => c.id === commandeId)?.nom_plan ?? "",
+        },
+      });
     }
   }
 

@@ -98,6 +98,11 @@ export default function PageInscription({ onRetour }) {
       }).eq("id", user.id);
     }
 
+    // Notifier l'owner de la nouvelle inscription
+    await supabase.functions.invoke("notify-inscription", {
+      body: { prenom: champs.prenom, nom: champs.nom, email: champs.email },
+    });
+
     setChargement(false);
     setEtape(2);
   };

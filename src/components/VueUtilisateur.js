@@ -129,6 +129,10 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
       }
       setCommandes(prev => [nouvelleCommande, ...prev]);
     }
+    // Notifier le dessinateur de la nouvelle commande
+    supabase.functions.invoke("notify-commande", {
+      body: { utilisateur_id: form.utilisateur_id, nom_plan: form.nom_plan, ref },
+    });
     setSaving(false);
     setShowForm(false);
     setForm(formVide());
@@ -149,6 +153,15 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     if (!error && data) {
       setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c));
       if (selected?.id === commandeId) setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
+      // Notifier l'autre partie du nouveau message
+      supabase.functions.invoke("notify-message", {
+        body: {
+          commande_id: commandeId,
+          auteur_id: session.user.id,
+          auteur_nom: auteurNom,
+          nom_plan: commandes.find(c => c.id === commandeId)?.nom_plan ?? "",
+        },
+      });
     }
   }
 
