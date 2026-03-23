@@ -88,6 +88,7 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
       .update({ master_id: null })
       .eq("id", session.user.id);
     if (!error) { setNomMaitre(null); onProfilUpdate({ master_id: null }); }
+    else { setMsgInvit(error.message || "Erreur lors de la déconnexion du groupe."); }
     setQuittant(false);
   };
 
