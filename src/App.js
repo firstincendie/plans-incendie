@@ -5,18 +5,21 @@ import VueDessinateur from "./components/VueDessinateur";
 import PageConnexion from "./components/auth/PageConnexion";
 import PageInscription from "./components/auth/PageInscription";
 import PageMotDePasseOublie from "./components/auth/PageMotDePasseOublie";
+import PageResetMotDePasse from "./components/auth/PageResetMotDePasse";
 
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [profil, setProfil] = useState(null);
   const [pageAuth, setPageAuth] = useState("connexion");
+  const [resetMode, setResetMode] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) chargerProfil(session.user.id);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") { setResetMode(true); return; }
       setSession(session);
       if (session) chargerProfil(session.user.id);
       else { setProfil(null); }
@@ -31,6 +34,10 @@ export default function App() {
       .eq("id", uid)
       .single();
     setProfil(data);
+  }
+
+  if (resetMode) {
+    return <PageResetMotDePasse onSuccess={() => { setResetMode(false); supabase.auth.signOut(); }} />;
   }
 
   if (session === undefined) {
