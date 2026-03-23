@@ -19,6 +19,75 @@ import PageConnexion from "./components/auth/PageConnexion";
 import PageInscription from "./components/auth/PageInscription";
 import PageMotDePasseOublie from "./components/auth/PageMotDePasseOublie";
 
+function SwitcherBarre({
+  modeVue, setModeVue,
+  profilesDessinateurs, dessinateurSelectionne, setDessinateurSelectionne,
+  showDropdownDessinateur, setShowDropdownDessinateur,
+  profilesClients, clientSelectionne, setClientSelectionne,
+  showDropdownClient, setShowDropdownClient,
+}) {
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "#1E293B", padding: "8px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em", marginRight: 4 }}>VUE ADMIN</span>
+      <div style={{ display: "flex", gap: 4, background: "#0F172A", borderRadius: 8, padding: 3 }}>
+
+        {/* Admin */}
+        <button onClick={() => setModeVue("admin")}
+          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#386CA3" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
+          👤 Admin
+        </button>
+
+        {/* Dessinateur */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => {
+              if (modeVue !== "dessinateur") { setModeVue("dessinateur"); setShowDropdownDessinateur(false); }
+              else setShowDropdownDessinateur(v => !v);
+            }}
+            disabled={profilesDessinateurs.length === 0}
+            style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: profilesDessinateurs.length === 0 ? "not-allowed" : "pointer", background: modeVue === "dessinateur" ? "#FC6C1B" : "transparent", color: modeVue === "dessinateur" ? "#fff" : profilesDessinateurs.length === 0 ? "#4B5563" : "#94A3B8", display: "flex", alignItems: "center", gap: 6 }}>
+            ✏️ {dessinateurSelectionne?.nom_complet ?? "Aucun compte"}{profilesDessinateurs.length > 1 ? " ▾" : ""}
+          </button>
+          {showDropdownDessinateur && profilesDessinateurs.length > 0 && (
+            <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#1E293B", border: "1px solid #334155", borderRadius: 8, overflow: "hidden", minWidth: 160, zIndex: 200 }}>
+              {profilesDessinateurs.map(p => (
+                <button key={p.id} onClick={() => { setDessinateurSelectionne(p); setShowDropdownDessinateur(false); }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 14px", background: dessinateurSelectionne?.id === p.id ? "#0F172A" : "transparent", border: "none", fontSize: 12, color: dessinateurSelectionne?.id === p.id ? "#FC6C1B" : "#CBD5E1", cursor: "pointer", fontWeight: dessinateurSelectionne?.id === p.id ? 700 : 400 }}>
+                  {p.nom_complet}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Client */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => {
+              if (modeVue !== "client") { setModeVue("client"); setShowDropdownClient(false); }
+              else setShowDropdownClient(v => !v);
+            }}
+            disabled={profilesClients.length === 0}
+            style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: profilesClients.length === 0 ? "not-allowed" : "pointer", background: modeVue === "client" ? "#059669" : "transparent", color: modeVue === "client" ? "#fff" : profilesClients.length === 0 ? "#4B5563" : "#94A3B8", display: "flex", alignItems: "center", gap: 6 }}>
+            👥 {clientSelectionne?.nom_complet ?? "Aucun compte"}{profilesClients.length > 1 ? " ▾" : ""}
+          </button>
+          {showDropdownClient && profilesClients.length > 0 && (
+            <div onClick={e => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#1E293B", border: "1px solid #334155", borderRadius: 8, overflow: "hidden", minWidth: 160, zIndex: 200 }}>
+              {profilesClients.map(p => (
+                <button key={p.id} onClick={() => { setClientSelectionne(p); setShowDropdownClient(false); }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 14px", background: clientSelectionne?.id === p.id ? "#0F172A" : "transparent", border: "none", fontSize: 12, color: clientSelectionne?.id === p.id ? "#059669" : "#CBD5E1", cursor: "pointer", fontWeight: clientSelectionne?.id === p.id ? 700 : 400 }}>
+                  {p.nom_complet}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession]                   = useState(undefined); // undefined = chargement, null = non connecté
   const [profil, setProfil]                     = useState(null);
@@ -278,31 +347,21 @@ export default function App() {
   }
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
-  const SwitcherBarre = () => profil?.role !== "admin" ? null : (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "#1E293B", padding: "8px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, letterSpacing: "0.05em" }}>VUE ADMIN</span>
-      <div style={{ display: "flex", gap: 4, background: "#0F172A", borderRadius: 8, padding: 3 }}>
-        <button onClick={() => setModeVue("admin")}
-          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "admin" ? "#386CA3" : "transparent", color: modeVue === "admin" ? "#fff" : "#94A3B8" }}>
-          👤 Admin
-        </button>
-        <button onClick={() => setModeVue("dessinateur")}
-          style={{ padding: "5px 14px", borderRadius: 6, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", background: modeVue === "dessinateur" ? "#FC6C1B" : "transparent", color: modeVue === "dessinateur" ? "#fff" : "#94A3B8" }}>
-          ✏️ Dessinateur
-        </button>
-      </div>
-      {modeVue === "dessinateur" && (
-        <span style={{ fontSize: 12, color: "#FC6C1B", fontWeight: 600 }}>✏️ {settings.nomEntreprise}</span>
-      )}
-    </div>
-  );
-
   if (modeVue === "dessinateur" && profil?.role === "admin") {
     return (
-      <div>
-        <SwitcherBarre />
+      <div onClick={() => { setShowMenuProfil(false); setShowDropdownDessinateur(false); setShowDropdownClient(false); }}>
+        <SwitcherBarre
+          modeVue={modeVue} setModeVue={setModeVue}
+          profilesDessinateurs={profilesDessinateurs}
+          dessinateurSelectionne={dessinateurSelectionne} setDessinateurSelectionne={setDessinateurSelectionne}
+          showDropdownDessinateur={showDropdownDessinateur} setShowDropdownDessinateur={setShowDropdownDessinateur}
+          profilesClients={profilesClients}
+          clientSelectionne={clientSelectionne} setClientSelectionne={setClientSelectionne}
+          showDropdownClient={showDropdownClient} setShowDropdownClient={setShowDropdownClient}
+        />
         <div style={{ paddingTop: 44 }}>
-          <VueDessinateur commandes={commandes} versions={versions} nomDessinateur={settings.nomEntreprise}
+          <VueDessinateur commandes={commandes} versions={versions}
+            nomDessinateur={dessinateurSelectionne?.nom_complet ?? ""}
             onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
         </div>
       </div>
@@ -424,8 +483,16 @@ export default function App() {
   const ROLE_LABELS = { admin: "Admin", client: "Client", dessinateur: "Dessinateur" };
 
   return (
-    <div onClick={() => showMenuProfil && setShowMenuProfil(false)}>
-      <SwitcherBarre />
+    <div onClick={() => { setShowMenuProfil(false); setShowDropdownDessinateur(false); setShowDropdownClient(false); }}>
+      <SwitcherBarre
+        modeVue={modeVue} setModeVue={setModeVue}
+        profilesDessinateurs={profilesDessinateurs}
+        dessinateurSelectionne={dessinateurSelectionne} setDessinateurSelectionne={setDessinateurSelectionne}
+        showDropdownDessinateur={showDropdownDessinateur} setShowDropdownDessinateur={setShowDropdownDessinateur}
+        profilesClients={profilesClients}
+        clientSelectionne={clientSelectionne} setClientSelectionne={setClientSelectionne}
+        showDropdownClient={showDropdownClient} setShowDropdownClient={setShowDropdownClient}
+      />
       <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827", paddingTop: topOffset }}>
         <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: topOffset, height: `calc(100dvh - ${topOffset}px)`, overflowY: "auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
