@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Badge from "./Badge";
 import HistoriqueVersions from "./HistoriqueVersions";
 import { ListeFichiers, LogoCliquable } from "./VisuFichier";
 import PageReglages from "./PageReglages";
 import { formatDateCourt } from "../helpers";
 
-export default function VueClient({ commandes, versions, clientSelectionne, noLayout = false }) {
+export default function VueClient({ commandes = [], versions = [], clientSelectionne, noLayout = false }) {
   const [vue, setVue]       = useState("commandes");
   const [selected, setSelected] = useState(null);
 
@@ -13,6 +13,11 @@ export default function VueClient({ commandes, versions, clientSelectionne, noLa
   const actives         = mesCommandes.filter(c => c.statut !== "Validé");
   const terminees       = mesCommandes.filter(c => c.statut === "Validé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
+
+  useEffect(() => {
+    setSelected(null);
+    setVue("commandes");
+  }, [clientSelectionne]); // eslint-disable-line
 
   const nav = [
     { id: "commandes",  label: "Commandes",  icon: "📋" },
@@ -56,7 +61,7 @@ export default function VueClient({ commandes, versions, clientSelectionne, noLa
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 48, textAlign: "center", color: "#9CA3AF" }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>👤</div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#122131", marginBottom: 6 }}>
-              {clientSelectionne?.prenom} {clientSelectionne?.nom}
+              {clientSelectionne?.nom_complet ?? "—"}
             </div>
             <div style={{ fontSize: 13 }}>Aperçu — compte client</div>
           </div>
