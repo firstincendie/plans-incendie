@@ -340,13 +340,13 @@ export default function GestionUtilisateurs() {
 
             {/* Actions principales */}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginBottom: 20 }}>
-              {selectionne.statut !== "actif" && (
+              {selectionne.statut === "en_attente" && (
                 <button onClick={() => changerStatut(selectionne.id, "actif")} disabled={actionEnCours}
                   style={{ background: "#166534", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   ✅ Valider le compte
                 </button>
               )}
-              {selectionne.statut !== "refuse" && (
+              {selectionne.statut === "en_attente" && (
                 <button onClick={() => changerStatut(selectionne.id, "refuse")} disabled={actionEnCours}
                   style={{ background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   ❌ Refuser
