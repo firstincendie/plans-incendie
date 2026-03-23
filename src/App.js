@@ -523,6 +523,72 @@ export default function App() {
             />
           )}
         </div>
+
+        {/* Modal nouvelle commande */}
+        {showForm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+            onClick={e => e.target === e.currentTarget && setShowForm(false)}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 640, maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
+                <button onClick={() => setShowForm(false)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div><label style={labelStyle}>Client *</label><input type="text" value={form.client} placeholder="Nom de la société" onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} /></div>
+                <div><label style={labelStyle}>Bâtiment / Référence</label><input type="text" value={form.batiment} placeholder="Ex: Résidence Les Pins" onChange={e => setForm({ ...form, batiment: e.target.value })} style={inputStyle} /></div>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Adresse</label>
+                <input type="text" value={form.adresse1} placeholder="Adresse ligne 1" onChange={e => setForm({ ...form, adresse1: e.target.value })} style={{ ...inputStyle, marginBottom: 6 }} />
+                <input type="text" value={form.adresse2} placeholder="Complément d'adresse" onChange={e => setForm({ ...form, adresse2: e.target.value })} style={{ ...inputStyle, marginBottom: 6 }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
+                  <input type="text" value={form.code_postal} placeholder="Code postal" onChange={e => setForm({ ...form, code_postal: e.target.value })} style={inputStyle} />
+                  <input type="text" value={form.ville} placeholder="Ville" onChange={e => setForm({ ...form, ville: e.target.value })} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div>
+                  <label style={labelStyle}>Délai souhaité *</label>
+                  <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Plans à réaliser</label>
+                <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" }}>
+                  <TableauPlans plans={form.plans} onChange={plans => setForm({ ...form, plans })} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
+                <ZoneUpload label="📄 Fichiers du plan *" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
+                <ZoneUpload label="🏢 Logo du client" fichiers={form.logoClient} onAjouter={f => setForm({ ...form, logoClient: f })} onSupprimer={() => setForm({ ...form, logoClient: [] })} accept="image/*" unique={true} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Instructions pour le dessinateur</label>
+                <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Ce message sera envoyé automatiquement dans le chat de la commande..." style={{ ...inputStyle, resize: "vertical" }} />
+              </div>
+              {(() => {
+                const manque = [];
+                if (!form.client)      manque.push("client");
+                if (!form.delai)       manque.push("délai");
+                else if (form.delai < new Date().toISOString().split("T")[0]) manque.push("délai invalide");
+                if (form.fichiersPlan.length === 0) manque.push("1 fichier minimum");
+                const ok = manque.length === 0;
+                return (
+                  <div>
+                    {!ok && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Champs manquants : {manque.join(", ")}</div>}
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                      <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+                      <button onClick={creerCommande} disabled={saving || !ok}
+                        style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !ok ? "not-allowed" : "pointer", background: !ok ? "#F3F4F6" : "#122131", color: !ok ? "#9CA3AF" : "#fff" }}>
+                        {saving ? "Enregistrement..." : "Créer la commande"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
