@@ -89,11 +89,12 @@ export default function App() {
   };
 
   const chargerProfilesPreview = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("id, prenom, nom, role")
       .in("role", ["dessinateur", "client"])
       .eq("statut", "actif");
+    if (error) { console.warn("chargerProfilesPreview:", error.message); return; }
     const dessinateurs = (data || []).filter(p => p.role === "dessinateur")
       .map(p => ({ ...p, nom_complet: `${p.prenom} ${p.nom}` }));
     const clients = (data || []).filter(p => p.role === "client")
