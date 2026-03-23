@@ -252,7 +252,7 @@ export default function App() {
   }
 
   async function creerCommande() {
-    if (!form.client || !form.delai || form.fichiersPlan.length === 0) return;
+    if (!form.client || !form.delai) return;
     const aujourd_hui = new Date().toISOString().split("T")[0];
     if (form.delai < aujourd_hui) { alert("La date ne peut pas être inférieure à aujourd'hui."); return; }
     setSaving(true);
@@ -574,7 +574,7 @@ export default function App() {
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
-                <ZoneUpload label="📄 Fichiers du plan *" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
+                <ZoneUpload label="📄 Fichiers du plan (optionnel)" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
                 <ZoneUpload label="🏢 Logo du client" fichiers={form.logoClient} onAjouter={f => setForm({ ...form, logoClient: f })} onSupprimer={() => setForm({ ...form, logoClient: [] })} accept="image/*" unique={true} />
               </div>
               <div style={{ marginBottom: 20 }}>
@@ -586,7 +586,6 @@ export default function App() {
                 if (!form.client)      manque.push("client");
                 if (!form.delai)       manque.push("délai");
                 else if (form.delai < new Date().toISOString().split("T")[0]) manque.push("délai invalide");
-                if (form.fichiersPlan.length === 0) manque.push("1 fichier minimum");
                 const ok = manque.length === 0;
                 return (
                   <div>
