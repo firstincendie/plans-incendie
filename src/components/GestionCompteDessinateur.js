@@ -145,7 +145,6 @@ function NotesClientsTab({ profil, nomDessinateur, commandes }) {
   )].sort();
 
   useEffect(() => {
-    if (clients.length === 0) return;
     supabase
       .from("notes_clients")
       .select("client_nom, note")
@@ -155,7 +154,7 @@ function NotesClientsTab({ profil, nomDessinateur, commandes }) {
         (data || []).forEach(row => { map[row.client_nom] = row.note; });
         setNotes(map);
       });
-  }, []); // eslint-disable-line
+  }, [profil.id]); // eslint-disable-line
 
   const sauvegarder = async (clientNom) => {
     setSaving(clientNom);
