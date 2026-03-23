@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "../supabase";
 
-export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [] }) {
+export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [], dessinateurAssigne }) {
   const clientsAssignes = role === "dessinateur"
     ? [...new Set(commandes.map(c => c.client).filter(Boolean))].sort()
     : [];
@@ -159,6 +159,26 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         </div>
 
+        {/* Code d'invitation */}
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+          <div style={sectionTitle}>Code d'invitation</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.15em", color: "#122131", background: "#F1F5F9", padding: "8px 16px", borderRadius: 8 }}>
+              {profil?.invite_code ?? "—"}
+            </code>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(profil?.invite_code ?? "")}
+              style={{ padding: "8px 14px", border: "1.5px solid #E2E8F0", borderRadius: 8, background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151" }}
+            >
+              Copier
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8 }}>
+            Partagez ce code pour inviter quelqu'un à rejoindre votre espace.
+          </div>
+        </div>
+
         {/* Identité */}
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
           <div style={sectionTitle}>Informations personnelles</div>
@@ -208,6 +228,20 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         </div>
 
+        {/* Dessinateur assigné — clients uniquement */}
+        {role === "client" && (
+          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+            <div style={sectionTitle}>Dessinateur assigné</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FFF3ED", border: "1.5px solid #FED7AA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✏️</div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#122131" }}>{dessinateurAssigne ?? "—"}</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>Dessinateur en charge de vos plans</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Mot de passe */}
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
           <div style={sectionTitle}>Changer le mot de passe</div>
@@ -237,19 +271,6 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         </div>
 
-        {/* Section Dessinateur assigné — admin uniquement */}
-        {role === "admin" && (
-          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
-            <div style={sectionTitle}>Dessinateur assigné</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FFF3ED", border: "1.5px solid #FED7AA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✏️</div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#122131" }}>{profil?.prenom || "—"}</div>
-                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>Nom utilisé lors de la réalisation des plans</div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Section Clients assignés — dessinateur uniquement */}
         {role === "dessinateur" && (

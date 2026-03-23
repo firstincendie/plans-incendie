@@ -122,6 +122,7 @@ export default function App() {
   const [showValidModal, setShowValidModal]     = useState(false);
   const [validant, setValidant]                 = useState(false);
   const [showTermineesAdmin, setShowTermineesAdmin] = useState(false);
+  const [dessinateurAssigne, setDessinateurAssigne] = useState(null);
 
   // eslint-disable-next-line no-unused-vars
   const [settings, setSettings] = useState({
@@ -153,6 +154,16 @@ export default function App() {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
     setProfil(data);
     if (data?.role === "admin") { chargerNbAttente(); chargerProfilesPreview(); }
+    // Charger dessinateur assigné pour les clients
+    if (data?.role === "client") {
+      const { data: lien } = await supabase
+        .from("client_dessinateurs")
+        .select("dessinateur_id, profiles!dessinateur_id(prenom, nom)")
+        .eq("client_id", uid)
+        .limit(1)
+        .maybeSingle();
+      setDessinateurAssigne(lien ? `${lien.profiles.prenom} ${lien.profiles.nom}` : null);
+    }
   };
 
   const chargerNbAttente = async () => {
@@ -467,6 +478,7 @@ export default function App() {
 
           {vue === "mon-compte" && (
             <PageMonCompte profil={profil} session={session} role={profil.role} commandes={commandes}
+              dessinateurAssigne={dessinateurAssigne}
               onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />
           )}
 
@@ -566,7 +578,7 @@ export default function App() {
         <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px" }}>
           {vue === "reglages" && <PageReglages />}
           {vue === "utilisateurs" && <GestionUtilisateurs />}
-          {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} role="admin" commandes={commandes} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />}
+          {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} role="admin" commandes={commandes} dessinateurAssigne={dessinateurAssigne} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />}
 
           {vue !== "reglages" && vue !== "utilisateurs" && vue !== "mon-compte" && (
             <>
