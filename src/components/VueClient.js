@@ -8,12 +8,15 @@ import Messagerie from "./Messagerie";
 import ZoneUpload from "./ZoneUpload";
 import BlocAdresse from "./BlocAdresse";
 import ChampCopiable from "./ChampCopiable";
-import { formatDateCourt } from "../helpers";
+import { formatDateCourt, tempsRestant } from "../helpers";
+import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 
 export default function VueClient({
   commandes = [], versions = [], clientSelectionne, noLayout = false,
+  sousComptes = [],
   session, profil, onProfilUpdate,
   onChangerStatut, onEnvoyerMessage,
+  onNouvelleCommande,
 }) {
   const [vue, setVue]       = useState("commandes");
   const [selected, setSelected] = useState(null);
@@ -24,10 +27,24 @@ export default function VueClient({
   const [modifFichiers, setModifFichiers] = useState([]);
   const [envoyantModif, setEnvoyantModif] = useState(false);
   const [validant, setValidant]   = useState(false);
+  const [filtres, setFiltres]           = useState({ statut: "", type: "", periode: "", client: "", dessinateur: "" });
+  const [tri, setTri]                   = useState({ col: "created_at", dir: "desc" });
+  const [userFilter, setUserFilter]     = useState(null);
+  const [showTerminees, setShowTerminees] = useState(false);
 
-  const mesCommandes     = commandes.filter(c => c.client === clientSelectionne?.nom_complet);
-  const actives          = mesCommandes.filter(c => c.statut !== "Validé");
-  const terminees        = mesCommandes.filter(c => c.statut === "Validé");
+  const nomsVisibles = [
+    clientSelectionne?.nom_complet,
+    ...sousComptes.map(p => `${p.prenom} ${p.nom}`),
+  ].filter(Boolean);
+
+  const mesCommandes = commandes.filter(c => nomsVisibles.includes(c.client));
+  const commandesFiltrees = appliquerFiltresTri(
+    userFilter ? mesCommandes.filter(c => c.client === userFilter) : mesCommandes,
+    filtres,
+    tri
+  );
+  const actives   = commandesFiltrees.filter(c => c.statut !== "Validé");
+  const terminees = commandesFiltrees.filter(c => c.statut === "Validé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   useEffect(() => {
@@ -101,11 +118,22 @@ export default function VueClient({
 
         {vue === "commandes" && (
           <>
+            {/* En-tête avec bouton Nouvelle commande */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Commandes</h1>
+              {onNouvelleCommande && (
+                <button onClick={onNouvelleCommande}
+                  style={{ background: "#059669", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  + Nouvelle commande
+                </button>
+              )}
+            </div>
+
             {/* Stats */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "En cours",  val: actives.length,      color: "#122131", bg: "#fff" },
-                { label: "Validées",  val: terminees.length,    color: "#059669", bg: "#F0FDF4" },
+                { label: "En cours",  val: mesCommandes.filter(c => c.statut !== "Validé").length, color: "#122131", bg: "#fff" },
+                { label: "Validées",  val: mesCommandes.filter(c => c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
                 { label: "Total",     val: mesCommandes.length, color: "#374151", bg: "#F8FAFC" },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
@@ -115,30 +143,83 @@ export default function VueClient({
               ))}
             </div>
 
-            {/* Tableau */}
-            {mesCommandes.length === 0 ? (
-              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 48, textAlign: "center" }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-                <div style={{ fontSize: 14, color: "#94A3B8" }}>Aucune commande pour ce client.</div>
+            {/* Filtre sous-compte (super mode) */}
+            {sousComptes.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <select value={userFilter ?? ""} onChange={e => setUserFilter(e.target.value || null)}
+                  style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>
+                  <option value="">Tous les utilisateurs</option>
+                  <option value={clientSelectionne?.nom_complet}>{clientSelectionne?.nom_complet} (moi)</option>
+                  {sousComptes.map(p => (
+                    <option key={p.id} value={`${p.prenom} ${p.nom}`}>{p.prenom} {p.nom}</option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  <span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
-                </div>
-                {[...actives, ...terminees].map(c => (
-                  <div key={c.id} onClick={() => setSelected(c)}
-                    style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || "—"}</div>
-                      <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
-                    </div>
-                    <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
-                    <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                    <Badge statut={c.statut} />
+            )}
+
+            {/* BarreFiltres */}
+            <BarreFiltres
+              commandes={mesCommandes}
+              filtres={filtres} setFiltres={setFiltres}
+              tri={tri} setTri={setTri}
+              dessinateurs={[]} showDessinateur={false}
+              couleurAccent="#059669"
+            />
+
+            {/* Tableau actives */}
+            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {sousComptes.length > 0 && <span>User</span>}
+                <span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+              </div>
+              {actives.length === 0 && (
+                <div style={{ padding: "24px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>
+              )}
+              {actives.map(c => (
+                <div key={c.id} onClick={() => setSelected(c)}
+                  style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
+                  {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{c.client}</div>}
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || "—"}</div>
+                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                   </div>
-                ))}
+                  <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
+                  <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                  <Badge statut={c.statut} />
+                </div>
+              ))}
+            </div>
+
+            {/* Terminées repliables */}
+            {terminees.length > 0 && (
+              <div style={{ marginBottom: selected ? 24 : 0 }}>
+                <button onClick={() => setShowTerminees(v => !v)}
+                  style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
+                  {showTerminees ? "▲ Masquer les commandes validées" : `▼ Voir les ${terminees.length} commande${terminees.length > 1 ? "s" : ""} validée${terminees.length > 1 ? "s" : ""}`}
+                </button>
+                {showTerminees && (
+                  <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      {sousComptes.length > 0 && <span>User</span>}
+                      <span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+                    </div>
+                    {terminees.map(c => (
+                      <div key={c.id} onClick={() => setSelected(c)}
+                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent" }}>
+                        {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{c.client}</div>}
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || "—"}</div>
+                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans.length}</div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                        <Badge statut={c.statut} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
