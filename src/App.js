@@ -111,6 +111,7 @@ export default function App() {
   const [modeVue, setModeVue]                   = useState("admin");
   const [profilesDessinateurs, setProfilesDessinateurs] = useState([]);
   const [profilesClients, setProfilesClients]           = useState([]);
+  const [tousProfilsClients, setTousProfilsClients]     = useState([]);
   const [dessinateurSelectionne, setDessinateurSelectionne] = useState(null);
   const [clientSelectionne, setClientSelectionne]       = useState(null);
   const [showDropdownDessinateur, setShowDropdownDessinateur] = useState(false);
@@ -134,7 +135,7 @@ export default function App() {
   });
 
   const formVide = () => ({
-    client: "", batiment: "", adresse1: "", adresse2: "", code_postal: "", ville: "",
+    client: "", client_id: null, batiment: "", adresse1: "", adresse2: "", code_postal: "", ville: "",
     delai: "", dessinateur: settings.nomEntreprise, notes: "", plans: [planVide()], fichiersPlan: [], logoClient: [],
   });
   const [form, setForm] = useState(formVide());
@@ -266,6 +267,7 @@ export default function App() {
       adresse1: form.adresse1, adresse2: form.adresse2,
       code_postal: form.code_postal, ville: form.ville,
       plans_finalises: [], statut: "En attente",
+      client_id: form.client_id || (profil?.role === "client" ? profil.id : null),
     }]).select("*, messages(*)").single();
     if (error) {
       setSaveError(error.message);
@@ -533,7 +535,7 @@ export default function App() {
               onChangerStatut={changerStatut}
               onEnvoyerMessage={envoyerMessage}
               onNouvelleCommande={() => {
-                setForm(formVide());
+                setForm({ ...formVide(), client: `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim() });
                 setShowForm(true);
               }}
             />
@@ -691,7 +693,11 @@ export default function App() {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Commandes</h1>
-                <button onClick={() => setShowForm(true)} style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={async () => {
+                  const { data } = await supabase.from("profiles").select("id, prenom, nom, entreprise").eq("role", "client").eq("statut", "actif").order("nom");
+                  setTousProfilsClients(data || []);
+                  setShowForm(true);
+                }} style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Nouvelle commande
                 </button>
               </div>
@@ -920,7 +926,22 @@ export default function App() {
 
             {/* Client en premier */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>Client *</label><input type="text" value={form.client} placeholder="Nom de la société" onChange={e => setForm({ ...form, client: e.target.value })} style={inputStyle} /></div>
+              <div>
+                <label style={labelStyle}>Client *</label>
+                {tousProfilsClients.length > 0 ? (
+                  <select value={form.client_id || ""} onChange={e => {
+                    const p = tousProfilsClients.find(x => x.id === e.target.value);
+                    setForm({ ...form, client_id: p?.id || null, client: p ? `${p.prenom} ${p.nom}` : "" });
+                  }} style={inputStyle}>
+                    <option value="">— Sélectionner un client —</option>
+                    {tousProfilsClients.map(p => (
+                      <option key={p.id} value={p.id}>{p.prenom} {p.nom}{p.entreprise ? ` (${p.entreprise})` : ""}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={form.client} placeholder="Nom de la société" onChange={e => setForm({ ...form, client: e.target.value, client_id: null })} style={inputStyle} />
+                )}
+              </div>
               <div><label style={labelStyle}>Bâtiment / Référence</label><input type="text" value={form.batiment} placeholder="Ex: Résidence Les Pins" onChange={e => setForm({ ...form, batiment: e.target.value })} style={inputStyle} /></div>
             </div>
 

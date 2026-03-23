@@ -37,7 +37,11 @@ export default function VueClient({
     ...sousComptes.map(p => `${p.prenom} ${p.nom}`),
   ].filter(Boolean);
 
-  const mesCommandes = commandes.filter(c => nomsVisibles.includes(c.client));
+  const sousComptesIds = sousComptes.map(p => p.id).filter(Boolean);
+  const mesCommandes = commandes.filter(c => {
+    if (c.client_id) return c.client_id === clientSelectionne?.id || sousComptesIds.includes(c.client_id);
+    return nomsVisibles.includes(c.client);
+  });
   const commandesFiltrees = appliquerFiltresTri(
     userFilter ? mesCommandes.filter(c => c.client === userFilter) : mesCommandes,
     filtres,
