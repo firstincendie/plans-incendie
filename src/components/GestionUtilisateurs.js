@@ -176,6 +176,7 @@ export default function GestionUtilisateurs() {
           {profils_filtres.map(profil => {
             const st = STATUT_STYLE[profil.statut] || STATUT_STYLE.en_attente;
             const dessinIds = dessinateursClient(profil.id);
+            const maitre = profil.master_id ? profils.find(p => p.id === profil.master_id) : null;
             return (
               <div key={profil.id}
                 style={{ background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, padding: "16px 20px", cursor: "pointer", transition: "border-color 0.15s" }}
@@ -195,9 +196,7 @@ export default function GestionUtilisateurs() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {profil.master_id && (
                       <span style={{ fontSize: 11, color: "#6B7280", background: "#F1F5F9", borderRadius: 4, padding: "2px 7px" }}>
-                        Sous-compte de {profils.find(p => p.id === profil.master_id)
-                          ? `${profils.find(p => p.id === profil.master_id).prenom} ${profils.find(p => p.id === profil.master_id).nom}`
-                          : "—"}
+                        Sous-compte de {maitre ? `${maitre.prenom} ${maitre.nom}` : "—"}
                       </span>
                     )}
                     {profil.role === "client" && dessinIds.length > 0 && (
@@ -276,9 +275,7 @@ export default function GestionUtilisateurs() {
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Compte maître</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>
-                    {profils.find(p => p.id === selectionne.master_id)
-                      ? `${profils.find(p => p.id === selectionne.master_id).prenom} ${profils.find(p => p.id === selectionne.master_id).nom}`
-                      : "—"}
+                    {(() => { const m = profils.find(p => p.id === selectionne.master_id); return m ? `${m.prenom} ${m.nom}` : "—"; })()}
                   </div>
                 </div>
                 <button
