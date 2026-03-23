@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "../supabase";
 
 export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [], dessinateurAssigne }) {
@@ -20,6 +20,76 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
   const [avatarUrl, setAvatarUrl] = useState(profil?.avatar_url || null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef();
+  const [codeInvit, setCodeInvit]     = useState("");
+  const [rejoignant, setRejoignant]   = useState(false);
+  const [quittant, setQuittant]       = useState(false);
+  const [msgInvit, setMsgInvit]       = useState("");
+  const [nomMaitre, setNomMaitre]     = useState(null);
+
+  useEffect(() => {
+    if (!profil?.master_id) { setNomMaitre(null); return; }
+    supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("id", profil.master_id)
+      .single()
+      .then(({ data }) => {
+        if (data) setNomMaitre(`${data.prenom} ${data.nom}`);
+      });
+  }, [profil?.master_id]); // eslint-disable-line
+
+  const rejoindreGroupe = async () => {
+    if (!codeInvit.trim()) return;
+    setRejoignant(true);
+    setMsgInvit("");
+
+    const { data: maitre, error } = await supabase
+      .from("profiles")
+      .select("id, prenom, nom, master_id")
+      .eq("invite_code", codeInvit.trim().toUpperCase())
+      .eq("role", profil.role)
+      .maybeSingle();
+
+    if (error || !maitre) {
+      setMsgInvit("Code invalide ou aucun compte trouvé pour ce rôle.");
+      setRejoignant(false);
+      return;
+    }
+    if (maitre.master_id) {
+      setMsgInvit("Ce compte est lui-même un sous-compte et ne peut pas être maître.");
+      setRejoignant(false);
+      return;
+    }
+    if (maitre.id === profil.id) {
+      setMsgInvit("Vous ne pouvez pas rejoindre votre propre compte.");
+      setRejoignant(false);
+      return;
+    }
+    const { error: updErr } = await supabase
+      .from("profiles")
+      .update({ master_id: maitre.id })
+      .eq("id", session.user.id);
+
+    if (updErr) {
+      setMsgInvit(updErr.message || "Erreur lors du rattachement.");
+    } else {
+      setMsgInvit("ok");
+      setCodeInvit("");
+      setNomMaitre(`${maitre.prenom} ${maitre.nom}`);
+      onProfilUpdate({ master_id: maitre.id });
+    }
+    setRejoignant(false);
+  };
+
+  const quitterGroupe = async () => {
+    setQuittant(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ master_id: null })
+      .eq("id", session.user.id);
+    if (!error) { setNomMaitre(null); onProfilUpdate({ master_id: null }); }
+    setQuittant(false);
+  };
 
   const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
 
@@ -178,6 +248,59 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
             Partagez ce code pour inviter quelqu'un à rejoindre votre espace.
           </div>
         </div>
+
+        {/* Rejoindre un maître / Quitter le groupe */}
+        {role !== "admin" && (
+          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+            {profil?.master_id ? (
+              <>
+                <div style={sectionTitle}>Compte maître</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>
+                    {nomMaitre ?? "Chargement..."}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={quitterGroupe}
+                    disabled={quittant}
+                    style={{ padding: "8px 14px", border: "1.5px solid #FECACA", borderRadius: 8, background: "#FEF2F2", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#DC2626" }}>
+                    {quittant ? "..." : "Quitter le groupe"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={sectionTitle}>Rejoindre un groupe</div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <input
+                    type="text"
+                    value={codeInvit}
+                    onChange={e => { setCodeInvit(e.target.value.toUpperCase()); setMsgInvit(""); }}
+                    placeholder="Code d'invitation (ex: A3F7K2M9)"
+                    maxLength={8}
+                    style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={rejoindreGroupe}
+                    disabled={rejoignant || codeInvit.length < 8}
+                    style={{ padding: "9px 16px", borderRadius: 8, border: "none", background: codeInvit.length < 8 ? "#F3F4F6" : "#122131", color: codeInvit.length < 8 ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: codeInvit.length < 8 ? "not-allowed" : "pointer", flexShrink: 0 }}>
+                    {rejoignant ? "..." : "Rejoindre"}
+                  </button>
+                </div>
+                {msgInvit === "ok" && (
+                  <div style={{ fontSize: 12, color: "#059669", marginTop: 8 }}>✅ Rattachement effectué avec succès.</div>
+                )}
+                {msgInvit && msgInvit !== "ok" && (
+                  <div style={{ fontSize: 12, color: "#DC2626", marginTop: 8 }}>{msgInvit}</div>
+                )}
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8 }}>
+                  Entrez le code d'invitation d'un autre compte pour rejoindre son groupe.
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Identité */}
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
