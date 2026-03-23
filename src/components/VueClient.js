@@ -45,7 +45,8 @@ export default function VueClient({
   );
   const actives   = commandesFiltrees.filter(c => c.statut !== "Validé");
   const terminees = commandesFiltrees.filter(c => c.statut === "Validé");
-  const colsGrid  = colsGrid;
+  const colsGrid  = sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr";
+  const auteurNom = profil ? `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim() || auteurNom : auteurNom;
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function VueClient({
   async function envoyerDemandeModification() {
     if (!modifMsg.trim() || !selected) return;
     setEnvoyantModif(true);
-    await onEnvoyerMessage(selected.id, "Simon", modifMsg, modifFichiers);
+    await onEnvoyerMessage(selected.id, auteurNom, modifMsg, modifFichiers);
     await onChangerStatut(selected.id, "Modification dessinateur");
     setModifMsg(""); setModifFichiers([]); setShowModifModal(false); setEnvoyantModif(false);
   }
@@ -69,7 +70,7 @@ export default function VueClient({
     if (!selected) return;
     setValidant(true);
     await onChangerStatut(selected.id, "Validé");
-    await onEnvoyerMessage(selected.id, "Simon", "✅ Commande validée. Merci pour votre travail !");
+    await onEnvoyerMessage(selected.id, auteurNom, "✅ Commande validée. Merci pour votre travail !");
     setShowValidModal(false); setValidant(false);
   }
 
@@ -309,8 +310,8 @@ export default function VueClient({
                   </div>
                 ) : (
                   <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-                    onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await onEnvoyerMessage(selected.id, "Simon", texte, fichiers); }}
-                    auteurActif="Simon" allowFichier={true} />
+                    onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await onEnvoyerMessage(selected.id, auteurNom, texte, fichiers); }}
+                    auteurActif=auteurNom allowFichier={true} />
                 )}
               </div>
             )}
