@@ -35,6 +35,14 @@ L'application actuelle souffre d'une logique de rôles emmêlée (couche sur cou
 | `dessinateur_id` | uuid \| null | FK vers `profiles.id` — rempli pour les utilisateurs uniquement |
 | `avatar_url` | text \| null | |
 
+**Colonnes de préférences email (boolean, `true` par défaut) :**
+
+| Colonne | Rôle concerné | Description |
+|---|---|---|
+| `notif_nouvelle_commande` | dessinateur | Email quand une nouvelle commande lui est assignée |
+| `notif_nouveau_message` | utilisateur + dessinateur | Email quand un nouveau message est posté dans une commande |
+| `notif_nouvelle_version` | utilisateur | Email quand le dessinateur dépose une ébauche |
+
 **Suppression :** colonne `master_id`, table `client_dessinateurs`.
 
 ---
@@ -194,7 +202,49 @@ Accessible depuis la sidebar VueUtilisateur si `profil.is_owner === true`.
 
 ---
 
-## 7. Composants existants réutilisés sans modification
+## 7. Emails
+
+### Configuration SMTP (Supabase Dashboard → Authentication → SMTP)
+
+- **Host :** `incendieplan.fr`
+- **Port :** `465` (SSL/TLS)
+- **Username :** `noreply@incendieplan.fr`
+- **Password :** mot de passe du compte email
+- **From :** `noreply@incendieplan.fr`
+
+### Emails automatiques Supabase (aucun code nécessaire)
+
+| Déclencheur | Destinataire |
+|---|---|
+| Reset mot de passe | Utilisateur demandeur |
+| Confirmation email à l'inscription | Nouvel inscrit |
+
+### Emails métier (Supabase Edge Functions)
+
+Emails **toujours envoyés**, sans préférence utilisateur :
+
+| Déclencheur | Destinataire |
+|---|---|
+| Nouvelle inscription (compte en_attente) | `contact@firstincendie.com` |
+| Compte activé | L'utilisateur concerné |
+| Compte refusé | L'utilisateur concerné |
+| Compte bloqué | L'utilisateur concerné |
+
+Emails **optionnels**, contrôlés par les préférences dans Réglages :
+
+| Déclencheur | Destinataire | Préférence |
+|---|---|---|
+| Nouvelle commande créée | Dessinateur assigné | `notif_nouvelle_commande` |
+| Nouveau message dans une commande | Autre partie | `notif_nouveau_message` |
+| Ébauche déposée par le dessinateur | Utilisateur | `notif_nouvelle_version` |
+
+### Page Réglages
+
+Section **Notifications email** avec toggles (on/off) pour chaque préférence applicable au rôle connecté. Les préférences sont sauvegardées dans `profiles`.
+
+---
+
+## 8. Composants existants réutilisés sans modification
 
 - `Badge` — badges de statut
 - `Messagerie` — chat commande
@@ -210,7 +260,7 @@ Accessible depuis la sidebar VueUtilisateur si `profil.is_owner === true`.
 
 ---
 
-## 8. Fichiers à réécrire
+## 9. Fichiers à réécrire
 
 | Fichier | Action |
 |---|---|
@@ -222,7 +272,7 @@ Accessible depuis la sidebar VueUtilisateur si `profil.is_owner === true`.
 
 ---
 
-## 9. Migrations Supabase nécessaires
+## 10. Migrations Supabase nécessaires
 
 1. Ajouter `is_owner` (boolean, default false) sur `profiles`
 2. Ajouter `dessinateur_id` (uuid, nullable, FK profiles) sur `profiles`
@@ -232,4 +282,7 @@ Accessible depuis la sidebar VueUtilisateur si `profil.is_owner === true`.
 6. Supprimer table `client_dessinateurs`
 7. Supprimer colonne `profiles.master_id`
 8. Configurer RLS sur `commandes` et `profiles`
-9. Passer `contact@firstincendie.com` en `is_owner = true` manuellement
+9. Ajouter colonnes `notif_nouvelle_commande`, `notif_nouveau_message`, `notif_nouvelle_version` (boolean, default true) sur `profiles`
+10. Passer `contact@firstincendie.com` en `is_owner = true` manuellement
+11. Configurer SMTP dans Supabase Dashboard (host: incendieplan.fr, port: 465, user: noreply@incendieplan.fr)
+12. Créer les Edge Functions pour les emails métier
