@@ -154,6 +154,7 @@ export default function App() {
   const chargerProfil = async (uid) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
     setProfil(data);
+    setSousComptes([]);
     if (data?.role === "admin") { chargerNbAttente(); chargerProfilesPreview(); }
     // Charger dessinateur assigné pour les clients
     if (data?.role === "client") {
@@ -502,7 +503,7 @@ export default function App() {
               noLayout
               commandes={commandes}
               versions={versions}
-              clientSelectionne={{ ...profil, nom_complet: `${profil.prenom} ${profil.nom}` }}
+              clientSelectionne={{ ...profil, nom_complet: `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim() }}
               sousComptes={sousComptes}
               session={session}
               profil={profil}
