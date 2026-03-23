@@ -389,6 +389,11 @@ export default function App() {
             commandes={commandes}
             versions={versions}
             clientSelectionne={clientSelectionne}
+            session={session}
+            profil={profil}
+            onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))}
+            onChangerStatut={changerStatut}
+            onEnvoyerMessage={envoyerMessage}
           />
         </div>
       </div>

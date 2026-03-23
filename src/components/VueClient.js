@@ -3,21 +3,53 @@ import Badge from "./Badge";
 import HistoriqueVersions from "./HistoriqueVersions";
 import { ListeFichiers, LogoCliquable } from "./VisuFichier";
 import PageReglages from "./PageReglages";
+import PageMonCompte from "./PageMonCompte";
+import Messagerie from "./Messagerie";
+import ZoneUpload from "./ZoneUpload";
+import BlocAdresse from "./BlocAdresse";
+import ChampCopiable from "./ChampCopiable";
 import { formatDateCourt } from "../helpers";
 
-export default function VueClient({ commandes = [], versions = [], clientSelectionne, noLayout = false }) {
+export default function VueClient({
+  commandes = [], versions = [], clientSelectionne, noLayout = false,
+  session, profil, onProfilUpdate,
+  onChangerStatut, onEnvoyerMessage,
+}) {
   const [vue, setVue]       = useState("commandes");
   const [selected, setSelected] = useState(null);
+  const [msgInput, setMsgInput] = useState("");
+  const [showModifModal, setShowModifModal] = useState(false);
+  const [showValidModal, setShowValidModal] = useState(false);
+  const [modifMsg, setModifMsg]   = useState("");
+  const [modifFichiers, setModifFichiers] = useState([]);
+  const [envoyantModif, setEnvoyantModif] = useState(false);
+  const [validant, setValidant]   = useState(false);
 
-  const mesCommandes    = commandes.filter(c => c.client === clientSelectionne?.nom_complet);
-  const actives         = mesCommandes.filter(c => c.statut !== "Validé");
-  const terminees       = mesCommandes.filter(c => c.statut === "Validé");
+  const mesCommandes     = commandes.filter(c => c.client === clientSelectionne?.nom_complet);
+  const actives          = mesCommandes.filter(c => c.statut !== "Validé");
+  const terminees        = mesCommandes.filter(c => c.statut === "Validé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   useEffect(() => {
     setSelected(null);
     setVue("commandes");
   }, [clientSelectionne]); // eslint-disable-line
+
+  async function envoyerDemandeModification() {
+    if (!modifMsg.trim() || !selected) return;
+    setEnvoyantModif(true);
+    await onEnvoyerMessage(selected.id, "Simon", modifMsg, modifFichiers);
+    await onChangerStatut(selected.id, "Modification dessinateur");
+    setModifMsg(""); setModifFichiers([]); setShowModifModal(false); setEnvoyantModif(false);
+  }
+
+  async function validerCommande() {
+    if (!selected) return;
+    setValidant(true);
+    await onChangerStatut(selected.id, "Validé");
+    await onEnvoyerMessage(selected.id, "Simon", "✅ Commande validée. Merci pour votre travail !");
+    setShowValidModal(false); setValidant(false);
+  }
 
   const nav = [
     { id: "commandes",  label: "Commandes",  icon: "📋" },
@@ -58,13 +90,13 @@ export default function VueClient({ commandes = [], versions = [], clientSelecti
         {vue === "reglages" && <PageReglages />}
 
         {vue === "mon-compte" && (
-          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 48, textAlign: "center", color: "#9CA3AF" }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>👤</div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#122131", marginBottom: 6 }}>
-              {clientSelectionne?.nom_complet ?? "—"}
-            </div>
-            <div style={{ fontSize: 13 }}>Aperçu — compte client</div>
-          </div>
+          <PageMonCompte
+            profil={profil}
+            session={session}
+            role="client"
+            commandes={mesCommandes}
+            onProfilUpdate={onProfilUpdate}
+          />
         )}
 
         {vue === "commandes" && (
@@ -72,8 +104,8 @@ export default function VueClient({ commandes = [], versions = [], clientSelecti
             {/* Stats */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "En cours",  val: actives.length,    color: "#122131", bg: "#fff" },
-                { label: "Validées",  val: terminees.length,  color: "#059669", bg: "#F0FDF4" },
+                { label: "En cours",  val: actives.length,      color: "#122131", bg: "#fff" },
+                { label: "Validées",  val: terminees.length,    color: "#059669", bg: "#F0FDF4" },
                 { label: "Total",     val: mesCommandes.length, color: "#374151", bg: "#F8FAFC" },
               ].map(s => (
                 <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
@@ -112,11 +144,11 @@ export default function VueClient({ commandes = [], versions = [], clientSelecti
 
             {/* Panneau détail */}
             {selected && (
-              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+              <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.batiment || selected.client}</div>
-                    <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.client}</div>
+                    <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}{selected.batiment ? ` · ${selected.batiment}` : ""}</div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <Badge statut={selected.statut} />
@@ -124,11 +156,13 @@ export default function VueClient({ commandes = [], versions = [], clientSelecti
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
                   {[
-                    { label: "Créé le",   val: formatDateCourt(selected.created_at) },
-                    { label: "Délai",     val: selected.delai ? formatDateCourt(selected.delai) : "—" },
-                    { label: "Nb. plans", val: selected.plans.length },
+                    { label: "Client",      val: <ChampCopiable valeur={selected.client} label="le client" /> },
+                    { label: "Dessinateur", val: selected.dessinateur || "Non assigné" },
+                    { label: "Créé le",     val: formatDateCourt(selected.created_at) },
+                    { label: "Délai",       val: selected.delai ? formatDateCourt(selected.delai) : "—" },
+                    { label: "Nb. plans",   val: selected.plans.length },
                   ].map(f => (
                     <div key={f.label}>
                       <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
@@ -137,10 +171,27 @@ export default function VueClient({ commandes = [], versions = [], clientSelecti
                   ))}
                 </div>
 
-                {selected.plansFinalises?.length > 0 && (
+                <BlocAdresse commande={selected} copiable={true} />
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Détail des plans</div>
+                  <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr 1fr", padding: "8px 14px", background: "#F9FAFB", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>
+                      <span>N°</span><span>Type</span><span>Orientation</span><span>Format</span>
+                    </div>
+                    {selected.plans.map((p, i) => (
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr 1fr 1fr", padding: "9px 14px", borderBottom: i < selected.plans.length - 1 ? "1px solid #F3F4F6" : "none", fontSize: 13 }}>
+                        <span style={{ color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</span>
+                        <span>{p.type}</span><span style={{ color: "#6B7280" }}>{p.orientation}</span><span style={{ color: "#6B7280" }}>{p.format}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selected.fichiersPlan?.length > 0 && (
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Plans finalisés</div>
-                    <ListeFichiers fichiers={selected.plansFinalises} couleurAccent="#059669" />
+                    <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources ({selected.fichiersPlan.length})</div>
+                    <ListeFichiers fichiers={selected.fichiersPlan} couleurAccent="#122131" />
                   </div>
                 )}
 
@@ -153,15 +204,79 @@ export default function VueClient({ commandes = [], versions = [], clientSelecti
 
                 <HistoriqueVersions versions={versionsSelected} />
 
-                <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46", fontWeight: 500 }}>
-                  Vue en lecture seule — mode preview client
-                </div>
+                {selected.statut === "Ébauche déposée" && (
+                  <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+                    <button onClick={() => setShowModifModal(true)}
+                      style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      ✏️ Demander une modification
+                    </button>
+                    <button onClick={() => setShowValidModal(true)}
+                      style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      ✅ Valider la commande
+                    </button>
+                  </div>
+                )}
+
+                {selected.statut === "Validé" ? (
+                  <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46", fontWeight: 500 }}>
+                    ✅ Commande validée — messagerie fermée
+                  </div>
+                ) : (
+                  <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
+                    onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && (!fichiers || fichiers.length === 0)) return; await onEnvoyerMessage(selected.id, "Simon", texte, fichiers); }}
+                    auteurActif="Simon" allowFichier={true} />
+                )}
               </div>
             )}
           </>
         )}
 
       </div>
+
+      {/* Modal demande modification */}
+      {showModifModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 500 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>✏️ Demander une modification</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur".</div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>Message *</label>
+              <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)} rows={4} placeholder="Décrivez les modifications..."
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <ZoneUpload label="📎 Fichiers joints (optionnel)" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => { setShowModifModal(false); setModifMsg(""); setModifFichiers([]); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button onClick={envoyerDemandeModification} disabled={!modifMsg.trim() || envoyantModif}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: !modifMsg.trim() ? "#F3F4F6" : "#D97706", color: !modifMsg.trim() ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: !modifMsg.trim() ? "not-allowed" : "pointer" }}>
+                {envoyantModif ? "Envoi..." : "Envoyer la demande"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal validation */}
+      {showValidModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 420, textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Confirmer la validation</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 8 }}>{selected?.client}</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 24 }}>Cette action est irréversible. La commande sera clôturée.</div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => setShowValidModal(false)} style={{ padding: "10px 24px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button onClick={validerCommande} disabled={validant}
+                style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#059669", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {validant ? "Validation..." : "Confirmer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
