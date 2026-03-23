@@ -107,6 +107,7 @@ export default function App() {
   const [showForm, setShowForm]                 = useState(false);
   const [msgInput, setMsgInput]                 = useState("");
   const [saving, setSaving]                     = useState(false);
+  const [saveError, setSaveError]               = useState("");
   const [modeVue, setModeVue]                   = useState("admin");
   const [profilesDessinateurs, setProfilesDessinateurs] = useState([]);
   const [profilesClients, setProfilesClients]           = useState([]);
@@ -255,7 +256,9 @@ export default function App() {
     const aujourd_hui = new Date().toISOString().split("T")[0];
     if (form.delai < aujourd_hui) { alert("La date ne peut pas être inférieure à aujourd'hui."); return; }
     setSaving(true);
+    setSaveError("");
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
+    const auteurNom = profil ? `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim() : "Utilisateur";
     const { data, error } = await supabase.from("commandes").insert([{
       ref, client: form.client, batiment: form.batiment, delai: form.delai,
       dessinateur: form.dessinateur, plans: form.plans,
@@ -264,12 +267,16 @@ export default function App() {
       code_postal: form.code_postal, ville: form.ville,
       plans_finalises: [], statut: "En attente",
     }]).select("*, messages(*)").single();
-    if (!error && data) {
+    if (error) {
+      setSaveError(error.message);
+      setSaving(false);
+      return;
+    }
+    if (data) {
       const nouvelleCommande = { ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] };
-      // Si des instructions ont été saisies, les envoyer comme premier message
       if (form.notes.trim()) {
         const { data: msg } = await supabase.from("messages").insert([{
-          commande_id: data.id, auteur: "Simon", texte: form.notes.trim(), fichiers: [],
+          commande_id: data.id, auteur: auteurNom, texte: form.notes.trim(), fichiers: [],
           date: formatDateMsg(),
         }]).select().single();
         if (msg) nouvelleCommande.messages = [msg];
@@ -584,8 +591,9 @@ export default function App() {
                 return (
                   <div>
                     {!ok && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Champs manquants : {manque.join(", ")}</div>}
+                    {saveError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {saveError}</div>}
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                      <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+                      <button onClick={() => { setShowForm(false); setForm(formVide()); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
                       <button onClick={creerCommande} disabled={saving || !ok}
                         style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !ok ? "not-allowed" : "pointer", background: !ok ? "#F3F4F6" : "#122131", color: !ok ? "#9CA3AF" : "#fff" }}>
                         {saving ? "Enregistrement..." : "Créer la commande"}
@@ -962,8 +970,9 @@ export default function App() {
               return (
                 <div>
                   {!ok && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Champs manquants : {manque.join(", ")}</div>}
+                  {saveError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {saveError}</div>}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button onClick={() => { setShowForm(false); setForm(formVide()); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+                    <button onClick={() => { setShowForm(false); setForm(formVide()); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
                     <button onClick={creerCommande} disabled={saving || !ok}
                       style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: !ok ? "not-allowed" : "pointer", background: !ok ? "#F3F4F6" : "#122131", color: !ok ? "#9CA3AF" : "#fff" }}>
                       {saving ? "Enregistrement..." : "Créer la commande"}
