@@ -101,7 +101,7 @@ export default function App() {
   const [commandes, setCommandes]               = useState([]);
   const [versions, setVersions]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
-  const [vue, setVue]                           = useState("dashboard");
+  const [vue, setVue]                           = useState("commandes");
   const [selected, setSelected]                 = useState(null);
   const [showForm, setShowForm]                 = useState(false);
   const [msgInput, setMsgInput]                 = useState("");
@@ -533,7 +533,6 @@ export default function App() {
             <span style={{ fontWeight: 700, fontSize: 14 }}>{settings.nomEntreprise}</span>
           </div>
           {[
-            { id: "dashboard", label: "Dashboard", icon: "📊" },
             { id: "commandes", label: "Commandes", icon: "📋" },
             { id: "utilisateurs", label: "Utilisateurs", icon: "👥", badge: nbAttente },
             { id: "reglages", label: "Réglages", icon: "⚙️" },
@@ -591,27 +590,25 @@ export default function App() {
           {vue !== "reglages" && vue !== "utilisateurs" && vue !== "mon-compte" && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{vue === "dashboard" ? "Dashboard" : "Toutes les commandes"}</h1>
+                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Commandes</h1>
                 <button onClick={() => setShowForm(true)} style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Nouvelle commande
                 </button>
               </div>
 
-              {vue === "dashboard" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-                  {[
-                    { label: "Total commandes",     val: stats.total,   color: "#111827" },
-                    { label: "En cours",            val: stats.enCours, color: "#122131" },
-                    { label: "En attente / modif.", val: stats.attente, color: "#B45309" },
-                    { label: "Validés",             val: stats.valides, color: "#059669" },
-                  ].map(s => (
-                    <div key={s.label} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "16px 20px" }}>
-                      <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 6 }}>{s.label}</div>
-                      <div style={{ fontSize: 26, fontWeight: 700, color: s.color }}>{s.val}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: "Total commandes",     val: stats.total,   color: "#111827" },
+                  { label: "En cours",            val: stats.enCours, color: "#122131" },
+                  { label: "En attente / modif.", val: stats.attente, color: "#B45309" },
+                  { label: "Validés",             val: stats.valides, color: "#059669" },
+                ].map(s => (
+                  <div key={s.label} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "16px 20px" }}>
+                    <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 6 }}>{s.label}</div>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: s.color }}>{s.val}</div>
+                  </div>
+                ))}
+              </div>
 
               <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} showDessinateur={true} />
 
