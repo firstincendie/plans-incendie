@@ -152,6 +152,10 @@ export default function GestionUtilisateurs() {
                 <div style={{ cursor: "pointer" }} onClick={() => { setSelected(c); setEditForm({ prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false, dessinateur_id: c.dessinateur_id || "" }); }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{c.prenom} {c.nom}</div>
                   {c.is_owner && <div style={{ fontSize: 10, color: "#FC6C1B", fontWeight: 700 }}>OWNER</div>}
+                  {c.master_id && (() => {
+                    const maitre = comptes.find(p => p.id === c.master_id);
+                    return maitre ? <div style={{ fontSize: 10, color: "#6B7280", background: "#F1F5F9", borderRadius: 4, padding: "1px 6px", marginTop: 2, display: "inline-block" }}>Sous-compte de {maitre.prenom} {maitre.nom}</div> : null;
+                  })()}
                 </div>
                 <div style={{ fontSize: 12, color: "#6B7280" }}>{c.email}</div>
                 <div style={{ fontSize: 12, color: "#374151" }}>{c.role === "dessinateur" ? "Dessinateur" : "Utilisateur"}</div>
@@ -227,6 +231,27 @@ export default function GestionUtilisateurs() {
               <span style={{ fontSize: 13, fontWeight: 600 }}>Compte owner (accès gestion utilisateurs)</span>
             </label>
           </div>
+
+          {selected.master_id && (() => {
+            const maitre = comptes.find(p => p.id === selected.master_id);
+            return (
+              <div style={{ marginBottom: 14, padding: "12px 16px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Compte maître</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>{maitre ? `${maitre.prenom} ${maitre.nom}` : "—"}</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    await supabase.from("profiles").update({ master_id: null }).eq("id", selected.id);
+                    setComptes(prev => prev.map(c => c.id === selected.id ? { ...c, master_id: null } : c));
+                    setSelected(prev => ({ ...prev, master_id: null }));
+                  }}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  Détacher
+                </button>
+              </div>
+            );
+          })()}
 
           {saveError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {saveError}</div>}
 
