@@ -46,7 +46,7 @@ export default function VueClient({
   const actives   = commandesFiltrees.filter(c => c.statut !== "Validé");
   const terminees = commandesFiltrees.filter(c => c.statut === "Validé");
   const colsGrid  = sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr";
-  const auteurNom = profil ? `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim() || auteurNom : auteurNom;
+  const auteurNom = profil ? `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim() : "";
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   useEffect(() => {
