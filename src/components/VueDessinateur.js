@@ -101,7 +101,7 @@ export default function VueDessinateur({ commandes, versions, nomDessinateur, on
             {missionsFiltrees.map(c => {
               const tr = tempsRestant(c.delai);
               const dernierMsg = c.messages[c.messages.length - 1];
-              const hasNouveauMsg = dernierMsg && dernierMsg.auteur !== nomDessinateur && selected?.id !== c.id;
+              const hasNouveauMsg = dernierMsg && !nomsVisibles.includes(dernierMsg.auteur) && selected?.id !== c.id;
               return (
                 <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
                   style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr" : "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3ED" : "transparent", transition: "background 0.1s" }}>
@@ -257,12 +257,14 @@ export default function VueDessinateur({ commandes, versions, nomDessinateur, on
             </button>
             {showTermineesDessin && (
               <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16, opacity: 0.85 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr" : "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  {sousComptes.length > 0 && <span>Dessinateur</span>}
                   <span>Bâtiment</span><span>Client</span><span>Créé le</span><span>Plans</span><span>Délai</span><span></span><span>Statut</span>
                 </div>
                 {mesTerminees.map(c => (
                   <div key={c.id} onClick={() => { setSelected(c); setFichiersNouveaux([]); }}
-                    style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3ED" : "transparent" }}>
+                    style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr" : "2fr 1fr 1fr 0.6fr 1fr 1fr 1.2fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3ED" : "transparent" }}>
+                    {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur}</div>}
                     <div><div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || c.client}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div></div>
                     <div style={{ fontSize: 12 }}>{c.client}</div>
                     <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
