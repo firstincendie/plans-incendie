@@ -13,6 +13,7 @@ import BarreFiltres from "./components/BarreFiltres";
 import Messagerie from "./components/Messagerie";
 import PageReglages from "./components/PageReglages";
 import VueDessinateur from "./components/VueDessinateur";
+import VueClient from "./components/VueClient";
 import GestionUtilisateurs from "./components/GestionUtilisateurs";
 import PageMonCompte from "./components/PageMonCompte";
 import PageConnexion from "./components/auth/PageConnexion";
@@ -363,6 +364,29 @@ export default function App() {
           <VueDessinateur commandes={commandes} versions={versions}
             nomDessinateur={dessinateurSelectionne?.nom_complet ?? ""}
             onChangerStatut={changerStatut} onEnvoyerMessage={envoyerMessage} onDeposerVersion={deposerVersion} />
+        </div>
+      </div>
+    );
+  }
+
+  if (modeVue === "client" && profil?.role === "admin") {
+    return (
+      <div onClick={() => { setShowMenuProfil(false); setShowDropdownDessinateur(false); setShowDropdownClient(false); }}>
+        <SwitcherBarre
+          modeVue={modeVue} setModeVue={setModeVue}
+          profilesDessinateurs={profilesDessinateurs}
+          dessinateurSelectionne={dessinateurSelectionne} setDessinateurSelectionne={setDessinateurSelectionne}
+          showDropdownDessinateur={showDropdownDessinateur} setShowDropdownDessinateur={setShowDropdownDessinateur}
+          profilesClients={profilesClients}
+          clientSelectionne={clientSelectionne} setClientSelectionne={setClientSelectionne}
+          showDropdownClient={showDropdownClient} setShowDropdownClient={setShowDropdownClient}
+        />
+        <div style={{ paddingTop: 44 }}>
+          <VueClient
+            commandes={commandes}
+            versions={versions}
+            clientSelectionne={clientSelectionne}
+          />
         </div>
       </div>
     );
