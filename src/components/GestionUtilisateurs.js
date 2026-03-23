@@ -193,6 +193,13 @@ export default function GestionUtilisateurs() {
                     {profil.entreprise && <div style={{ color: "#94A3B8", fontSize: 12, marginTop: 1 }}>{profil.entreprise}{profil.siren ? ` — SIREN ${profil.siren}` : ""}</div>}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {profil.master_id && (
+                      <span style={{ fontSize: 11, color: "#6B7280", background: "#F1F5F9", borderRadius: 4, padding: "2px 7px" }}>
+                        Sous-compte de {profils.find(p => p.id === profil.master_id)
+                          ? `${profils.find(p => p.id === profil.master_id).prenom} ${profils.find(p => p.id === profil.master_id).nom}`
+                          : "—"}
+                      </span>
+                    )}
                     {profil.role === "client" && dessinIds.length > 0 && (
                       <span style={{ fontSize: 11, color: "#64748B" }}>{dessinIds.length} dessinateur{dessinIds.length > 1 ? "s" : ""}</span>
                     )}
@@ -260,6 +267,33 @@ export default function GestionUtilisateurs() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Maître — si sous-compte */}
+            {selectionne.master_id && (
+              <div style={{ marginBottom: 20, padding: "12px 16px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Compte maître</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>
+                    {profils.find(p => p.id === selectionne.master_id)
+                      ? `${profils.find(p => p.id === selectionne.master_id).prenom} ${profils.find(p => p.id === selectionne.master_id).nom}`
+                      : "—"}
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setActionEnCours(true);
+                    await supabase.from("profiles").update({ master_id: null }).eq("id", selectionne.id);
+                    await charger();
+                    setSelectionne(null);
+                    setActionEnCours(false);
+                  }}
+                  disabled={actionEnCours}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Détacher
+                </button>
               </div>
             )}
 
