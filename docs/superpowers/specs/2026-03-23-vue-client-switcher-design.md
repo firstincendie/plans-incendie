@@ -23,6 +23,8 @@ const [profilesDessinateurs, setProfilesDessinateurs] = useState([]);
 const [profilesClients, setProfilesClients] = useState([]);
 const [dessinateurSelectionne, setDessinateurSelectionne] = useState(null);
 const [clientSelectionne, setClientSelectionne] = useState(null);
+const [showDropdownDessinateur, setShowDropdownDessinateur] = useState(false);
+const [showDropdownClient, setShowDropdownClient] = useState(false);
 ```
 
 ### Chargement depuis Supabase
@@ -34,11 +36,11 @@ const { data } = await supabase
   .from("profiles")
   .select("id, prenom, nom, role")
   .in("role", ["dessinateur", "client"])
-  .eq("statut", "actif");
+  .eq("statut", "actif"); // "actif" confirmé dans GestionUtilisateurs.js
 
-const dessinateurs = data.filter(p => p.role === "dessinateur")
+const dessinateurs = (data || []).filter(p => p.role === "dessinateur")
   .map(p => ({ ...p, nom_complet: `${p.prenom} ${p.nom}` }));
-const clients = data.filter(p => p.role === "client")
+const clients = (data || []).filter(p => p.role === "client")
   .map(p => ({ ...p, nom_complet: `${p.prenom} ${p.nom}` }));
 
 setProfilesDessinateurs(dessinateurs);
@@ -49,12 +51,32 @@ setClientSelectionne(clients[0] ?? null);
 
 ### Filtrage des commandes
 
-- Mode dessinateur : `c.dessinateur === dessinateurSelectionne.nom_complet`
-- Mode client : `c.client === clientSelectionne.nom_complet`
+- Mode dessinateur : `c.dessinateur === dessinateurSelectionne?.nom_complet`
+- Mode client : `c.client === clientSelectionne?.nom_complet`
+
+Quand la valeur est `null` (aucun profil dispo), le filtre ne retourne aucune commande.
+
+### Impact sur le rendu dessinateur existant
+
+Le bloc `if (modeVue === "dessinateur")` dans App.js passe actuellement `nomDessinateur={settings.nomEntreprise}` à `VueDessinateur`. Ce doit être remplacé par `nomDessinateur={dessinateurSelectionne?.nom_complet ?? ""}` pour que le dropdown ait un effet réel.
 
 ---
 
 ## Section 2 : SwitcherBarre
+
+### Extraction en composant stable
+
+`SwitcherBarre` est actuellement une fonction interne redéfinie à chaque render de `App`, ce qui causerait l'unmount/remount des dropdowns à chaque re-render du parent. Elle doit être **extraite hors de `App()`** et recevoir ses dépendances via props.
+
+```js
+function SwitcherBarre({
+  modeVue, setModeVue,
+  profilesDessinateurs, dessinateurSelectionne, setDessinateurSelectionne,
+  showDropdownDessinateur, setShowDropdownDessinateur,
+  profilesClients, clientSelectionne, setClientSelectionne,
+  showDropdownClient, setShowDropdownClient,
+}) { ... }
+```
 
 ### Layout
 
@@ -75,11 +97,13 @@ setClientSelectionne(clients[0] ?? null);
 | Dessinateur | `#FC6C1B` (orange) |
 | Client | `#059669` (vert) |
 
-### Comportement du dropdown
+### Comportement des dropdowns
 
-- S'affiche sous le bouton correspondant (position absolute)
-- Se ferme au clic en dehors (via le `onClick` sur le wrapper principal déjà présent dans App)
-- Sélection d'un profil → met à jour `dessinateurSelectionne` ou `clientSelectionne`
+- Chaque dropdown a son propre state : `showDropdownDessinateur` / `showDropdownClient`
+- Ouverture : clic sur le bouton Dessinateur/Client (quand déjà dans ce mode)
+- Fermeture : via le handler `onClick` existant sur le wrapper principal de App (`onClick={() => { setShowMenuProfil(false); setShowDropdownDessinateur(false); setShowDropdownClient(false); }}`), et via `e.stopPropagation()` à l'intérieur du dropdown
+- Sélection d'un profil → met à jour `dessinateurSelectionne` ou `clientSelectionne`, ferme le dropdown
+- Le label affiché dans le bouton Dessinateur (actuellement `settings.nomEntreprise` à la ligne 272 de App.js) doit être remplacé par `dessinateurSelectionne?.nom_complet ?? "Aucun compte"`. Idem pour le label Client : `clientSelectionne?.nom_complet ?? "Aucun compte"`
 
 ---
 
@@ -94,13 +118,25 @@ setClientSelectionne(clients[0] ?? null);
 VueClient({ commandes, versions, clientSelectionne, noLayout = false })
 ```
 
+Vue **read-only** : aucune action possible (pas de messagerie en écriture, pas de changement de statut).
+
 ### Sidebar — 3 onglets (Dashboard + Commandes fusionnés)
 
 | Onglet | Icône | Contenu |
 |---|---|---|
 | Commandes | 📋 | Stats + liste des commandes du client |
 | Réglages | ⚙️ | `<PageReglages />` |
-| Mon compte | 👤 | `<PageMonCompte profil={clientSelectionne} role="client" />` |
+| Mon compte | 👤 | Placeholder preview (voir ci-dessous) |
+
+**Note sur Mon compte :** `PageMonCompte` accède à `session.user.id` sans null guard (lignes 31, 42, 71) — passer `session={null}` provoquerait un crash runtime. Pour éviter toute modification de `PageMonCompte`, l'onglet Mon compte dans `VueClient` affiche un simple placeholder :
+
+```jsx
+<div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 32, textAlign: "center", color: "#9CA3AF" }}>
+  <div style={{ fontSize: 32, marginBottom: 12 }}>👤</div>
+  <div style={{ fontWeight: 600, color: "#122131", marginBottom: 4 }}>{clientSelectionne?.prenom} {clientSelectionne?.nom}</div>
+  <div style={{ fontSize: 12 }}>Aperçu — compte client</div>
+</div>
+```
 
 ### Onglet Commandes (vue fusionnée)
 
@@ -109,7 +145,7 @@ VueClient({ commandes, versions, clientSelectionne, noLayout = false })
 │  [En cours: N]  [Validées: N]  [Total: N] │
 ├──────────────────────────────────────────┤
 │  Tableau des commandes filtrées           │
-│  (c.client === clientSelectionne.nom_complet) │
+│  (c.client === clientSelectionne?.nom_complet) │
 │  - Read-only (pas de boutons d'action)    │
 │  - Clic sur une ligne → panneau détail   │
 │    (messagerie et fichiers visibles,     │
@@ -122,14 +158,25 @@ VueClient({ commandes, versions, clientSelectionne, noLayout = false })
 ```jsx
 if (modeVue === "client" && profil?.role === "admin") {
   return (
-    <div>
-      <SwitcherBarre />
+    <div onClick={() => { setShowMenuProfil(false); setShowDropdownDessinateur(false); setShowDropdownClient(false); }}>
+      <SwitcherBarre
+        modeVue={modeVue} setModeVue={setModeVue}
+        profilesDessinateurs={profilesDessinateurs}
+        dessinateurSelectionne={dessinateurSelectionne}
+        setDessinateurSelectionne={setDessinateurSelectionne}
+        showDropdownDessinateur={showDropdownDessinateur}
+        setShowDropdownDessinateur={setShowDropdownDessinateur}
+        profilesClients={profilesClients}
+        clientSelectionne={clientSelectionne}
+        setClientSelectionne={setClientSelectionne}
+        showDropdownClient={showDropdownClient}
+        setShowDropdownClient={setShowDropdownClient}
+      />
       <div style={{ paddingTop: 44 }}>
         <VueClient
           commandes={commandes}
           versions={versions}
           clientSelectionne={clientSelectionne}
-          onEnvoyerMessage={envoyerMessage}
         />
       </div>
     </div>
@@ -160,5 +207,5 @@ Les commandes associées doivent avoir :
 
 | Fichier | Action |
 |---|---|
-| `src/App.js` | Ajout state, chargement profils, rendu conditionnel mode client, SwitcherBarre étendue |
-| `src/components/VueClient.js` | Nouveau composant |
+| `src/App.js` | Ajout state dropdowns, chargement profils, `SwitcherBarre` extraite et étendue, rendu conditionnel mode client, `nomDessinateur` basculé sur `dessinateurSelectionne?.nom_complet` |
+| `src/components/VueClient.js` | Nouveau composant (read-only) |
