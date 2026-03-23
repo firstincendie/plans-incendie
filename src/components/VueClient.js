@@ -8,7 +8,7 @@ import Messagerie from "./Messagerie";
 import ZoneUpload from "./ZoneUpload";
 import BlocAdresse from "./BlocAdresse";
 import ChampCopiable from "./ChampCopiable";
-import { formatDateCourt, tempsRestant } from "../helpers";
+import { formatDateCourt } from "../helpers";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 
 export default function VueClient({
@@ -45,11 +45,16 @@ export default function VueClient({
   );
   const actives   = commandesFiltrees.filter(c => c.statut !== "Validé");
   const terminees = commandesFiltrees.filter(c => c.statut === "Validé");
+  const colsGrid  = colsGrid;
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   useEffect(() => {
     setSelected(null);
     setVue("commandes");
+    setFiltres({ statut: "", type: "", periode: "", client: "", dessinateur: "" });
+    setTri({ col: "created_at", dir: "desc" });
+    setUserFilter(null);
+    setShowTerminees(false);
   }, [clientSelectionne]); // eslint-disable-line
 
   async function envoyerDemandeModification() {
@@ -168,7 +173,7 @@ export default function VueClient({
 
             {/* Tableau actives */}
             <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <div style={{ display: "grid", gridTemplateColumns: colsGrid, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 {sousComptes.length > 0 && <span>User</span>}
                 <span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
               </div>
@@ -177,7 +182,7 @@ export default function VueClient({
               )}
               {actives.map(c => (
                 <div key={c.id} onClick={() => setSelected(c)}
-                  style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
+                  style={{ display: "grid", gridTemplateColumns: colsGrid, padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
                   {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{c.client}</div>}
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || "—"}</div>
@@ -200,13 +205,13 @@ export default function VueClient({
                 </button>
                 {showTerminees && (
                   <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: colsGrid, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       {sousComptes.length > 0 && <span>User</span>}
                       <span>Bâtiment</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                     </div>
                     {terminees.map(c => (
                       <div key={c.id} onClick={() => setSelected(c)}
-                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent" }}>
+                        style={{ display: "grid", gridTemplateColumns: colsGrid, padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent" }}>
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{c.client}</div>}
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{c.batiment || "—"}</div>
