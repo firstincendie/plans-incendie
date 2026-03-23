@@ -16,6 +16,7 @@ import VueDessinateur from "./components/VueDessinateur";
 import VueClient from "./components/VueClient";
 import GestionUtilisateurs from "./components/GestionUtilisateurs";
 import PageMonCompte from "./components/PageMonCompte";
+import GestionCompteDessinateur from "./components/GestionCompteDessinateur";
 import PageConnexion from "./components/auth/PageConnexion";
 import PageInscription from "./components/auth/PageInscription";
 import PageMotDePasseOublie from "./components/auth/PageMotDePasseOublie";
@@ -427,9 +428,10 @@ export default function App() {
     const nomDessinateur = `${profil.prenom} ${profil.nom}`;
     const roleLabel = isDessinateur ? "Dessinateur" : "Client";
     const roleNav = [
-      { id: "commandes",   label: isDessinateur ? "Mes missions" : "Commandes",  icon: "📋" },
-      { id: "reglages",    label: "Réglages",   icon: "⚙️" },
-      { id: "mon-compte",  label: "Mon compte", icon: "👤" },
+      { id: "commandes",      label: isDessinateur ? "Mes missions" : "Commandes", icon: "📋" },
+      ...(isDessinateur ? [{ id: "gestion-compte", label: "Gestion de compte", icon: "📁" }] : []),
+      { id: "reglages",       label: "Réglages",   icon: "⚙️" },
+      { id: "mon-compte",     label: "Mon compte", icon: "👤" },
     ];
     return (
       <div onClick={() => showMenuProfil && setShowMenuProfil(false)} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
@@ -490,6 +492,10 @@ export default function App() {
             <PageMonCompte profil={profil} session={session} role={profil.role} commandes={commandes}
               dessinateurAssigne={dessinateurAssigne}
               onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />
+          )}
+
+          {vue === "gestion-compte" && isDessinateur && (
+            <GestionCompteDessinateur profil={profil} commandes={commandes} />
           )}
 
           {vue === "commandes" && isDessinateur && (
