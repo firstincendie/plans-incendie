@@ -8,6 +8,7 @@ import HistoriqueVersions from "./HistoriqueVersions";
 import ZoneUpload from "./ZoneUpload";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
+import GestionCompteDessinateur from "./GestionCompteDessinateur";
 import BlocAdresse from "./BlocAdresse";
 import { ListeFichiers, LogoCliquable } from "./VisuFichier";
 
@@ -25,10 +26,13 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [showDepotModal, setShowDepotModal] = useState(false);
   const [fichiersDepot, setFichiersDepot] = useState([]);
   const [deposant, setDeposant] = useState(false);
+  const [sousComptes, setSousComptes] = useState([]);
+  const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-dessinateur filtré
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const nav = [
     { id: "commandes", label: "Mes missions", icon: "📋" },
+    { id: "gestion-compte", label: "Gestion de compte", icon: "📁" },
     { id: "reglages", label: "Réglages", icon: "⚙️" },
     { id: "mon-compte", label: "Mon compte", icon: "👤" },
   ];
@@ -52,9 +56,10 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
   async function chargerTout() {
     setLoading(true);
-    const [{ data: cmd }, { data: ver }] = await Promise.all([
+    const [{ data: cmd }, { data: ver }, { data: sub }] = await Promise.all([
       supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false }),
       supabase.from("versions").select("*").order("numero", { ascending: true }),
+      supabase.from("profiles").select("id, prenom, nom").eq("master_id", profil.id),
     ]);
     if (cmd) setCommandes(cmd.map(c => ({
       ...c,
@@ -65,6 +70,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
     })));
     if (ver) setVersions(ver);
+    if (sub) setSousComptes(sub);
     setLoading(false);
   }
 
@@ -117,7 +123,14 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     }
   }
 
-  const cmdFiltrees = appliquerFiltresTri(commandes, filtres, tri);
+  const commandesVisibles = userFilter
+    ? commandes.filter(c => {
+        const sousDessinateur = sousComptes.find(s => s.id === userFilter);
+        // Filtrer par sous-dessinateur : missions directement assignées (dessinateur_id = sous.id)
+        return sousDessinateur && c.dessinateur_id === userFilter;
+      })
+    : commandes;
+  const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
   const actives = cmdFiltrees.filter(c => c.statut !== "Validé");
   const terminees = cmdFiltrees.filter(c => c.statut === "Validé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
@@ -167,6 +180,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px", overflowY: "auto" }}>
         {vue === "reglages" && <PageReglages profil={profil} onProfilUpdate={onProfilUpdate} />}
         {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} role="dessinateur" commandes={commandes} onProfilUpdate={onProfilUpdate} />}
+        {vue === "gestion-compte" && <GestionCompteDessinateur profil={profil} sousComptes={sousComptes} />}
 
         {vue === "commandes" && (
           <>
@@ -193,23 +207,41 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
               <>
                 <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} couleurAccent="#FC6C1B" />
 
+                {sousComptes.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <select value={userFilter ?? ""} onChange={e => setUserFilter(e.target.value || null)}
+                      style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>
+                      <option value="">Toutes les missions</option>
+                      <option value={profil.id}>Mes missions</option>
+                      {sousComptes.map(p => (
+                        <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
+                    {sousComptes.length > 0 && <span>Dessinateur</span>}
                     <span>Plan</span><span>Créé le</span><span>Délai</span><span>Statut</span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
-                  {actives.map(c => (
-                    <div key={c.id} onClick={() => setSelected(c)}
-                      style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3EE" : "transparent", transition: "background 0.1s" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                        <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                  {actives.map(c => {
+                    const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
+                    return (
+                      <div key={c.id} onClick={() => setSelected(c)}
+                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3EE" : "transparent", transition: "background 0.1s" }}>
+                        {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                        <Badge statut={c.statut} />
                       </div>
-                      <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                      <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                      <Badge statut={c.statut} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {terminees.length > 0 && (
@@ -219,18 +251,22 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                     </button>
                     {showTerminees && (
                       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
-                        {terminees.map(c => (
-                          <div key={c.id} onClick={() => setSelected(c)}
-                            style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                        {terminees.map(c => {
+                          const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
+                          return (
+                            <div key={c.id} onClick={() => setSelected(c)}
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                              </div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                              <Badge statut={c.statut} />
                             </div>
-                            <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                            <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            <Badge statut={c.statut} />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

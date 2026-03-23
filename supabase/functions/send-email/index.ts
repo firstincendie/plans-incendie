@@ -1,39 +1,51 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const SMTP_HOST = Deno.env.get("SMTP_HOST") ?? "incendieplan.fr";
-const SMTP_PORT = parseInt(Deno.env.get("SMTP_PORT") ?? "465");
-const SMTP_USER = Deno.env.get("SMTP_USER") ?? "noreply@incendieplan.fr";
-const SMTP_PASS = Deno.env.get("SMTP_PASS") ?? "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const FROM_EMAIL = "noreply@send.incendieplan.fr";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 serve(async (req) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   const { to, subject, html } = await req.json();
   if (!to || !subject || !html) {
-    return new Response(JSON.stringify({ error: "Missing fields: to, subject, html" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Missing fields: to, subject, html" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  try {
-    const nodemailer = await import("npm:nodemailer@6");
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: true,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-
-    await transporter.sendMail({
-      from: `"First Incendie" <${SMTP_USER}>`,
-      to,
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `First Incendie <${FROM_EMAIL}>`,
+      to: [to],
       subject,
       html,
-    });
+    }),
+  });
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error("Resend error:", data);
+    return new Response(JSON.stringify({ error: data }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("send-email error:", err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
+
+  return new Response(JSON.stringify({ success: true, id: data.id }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });

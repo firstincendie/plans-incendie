@@ -36,6 +36,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [showValidModal, setShowValidModal] = useState(false);
   const [validant, setValidant] = useState(false);
   const [sousComptes, setSousComptes] = useState([]);
+  const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
 
   const formVide = () => ({
     utilisateur_id: profil.id,
@@ -77,7 +78,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     const [{ data: cmd }, { data: ver }, { data: sub }] = await Promise.all([
       supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false }),
       supabase.from("versions").select("*").order("numero", { ascending: true }),
-      supabase.from("profiles").select("id, prenom, nom").eq("dessinateur_id", profil.dessinateur_id ?? "00000000-0000-0000-0000-000000000000"),
+      supabase.from("profiles").select("id, prenom, nom").eq("master_id", profil.id),
     ]);
     if (cmd) setCommandes(cmd.map(c => ({
       ...c,
@@ -88,7 +89,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
       messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
     })));
     if (ver) setVersions(ver);
-    if (sub) setSousComptes(sub.filter(s => s.id !== profil.id));
+    if (sub) setSousComptes(sub);
     setLoading(false);
   }
 
@@ -181,7 +182,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setShowValidModal(false); setValidant(false);
   }
 
-  const cmdFiltrees = appliquerFiltresTri(commandes, filtres, tri);
+  const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
+  const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
   const actives = cmdFiltrees.filter(c => c.statut !== "Validé");
   const terminees = cmdFiltrees.filter(c => c.statut === "Validé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
@@ -269,24 +271,42 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
               <>
                 <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} couleurAccent="#122131" />
 
+                {sousComptes.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <select value={userFilter ?? ""} onChange={e => setUserFilter(e.target.value || null)}
+                      style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>
+                      <option value="">Tous les comptes</option>
+                      <option value={profil.id}>{profil.prenom} {profil.nom} (moi)</option>
+                      {sousComptes.map(p => (
+                        <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    {sousComptes.length > 0 && <span>User</span>}
                     <span>Plan</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
-                  {actives.map(c => (
-                    <div key={c.id} onClick={() => setSelected(c)}
-                      style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                        <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                  {actives.map(c => {
+                    const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+                    return (
+                      <div key={c.id} onClick={() => setSelected(c)}
+                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
+                        {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                        <Badge statut={c.statut} />
                       </div>
-                      <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
-                      <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                      <Badge statut={c.statut} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {terminees.length > 0 && (
@@ -297,19 +317,23 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                     </button>
                     {showTerminees && (
                       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
-                        {terminees.map(c => (
-                          <div key={c.id} onClick={() => setSelected(c)}
-                            style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                        {terminees.map(c => {
+                          const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+                          return (
+                            <div key={c.id} onClick={() => setSelected(c)}
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                              </div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                              <Badge statut={c.statut} />
                             </div>
-                            <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                            <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
-                            <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            <Badge statut={c.statut} />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
