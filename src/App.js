@@ -526,7 +526,7 @@ export default function App() {
               onChangerStatut={changerStatut}
               onEnvoyerMessage={envoyerMessage}
               onNouvelleCommande={() => {
-                setForm({ ...formVide(), client: `${profil.prenom} ${profil.nom}` });
+                setForm(formVide());
                 setShowForm(true);
               }}
             />
