@@ -35,6 +35,12 @@ export default function App() {
   const [msgInput, setMsgInput]                 = useState("");
   const [saving, setSaving]                     = useState(false);
   const [modeVue, setModeVue]                   = useState("admin");
+  const [profilesDessinateurs, setProfilesDessinateurs] = useState([]);
+  const [profilesClients, setProfilesClients]           = useState([]);
+  const [dessinateurSelectionne, setDessinateurSelectionne] = useState(null);
+  const [clientSelectionne, setClientSelectionne]       = useState(null);
+  const [showDropdownDessinateur, setShowDropdownDessinateur] = useState(false);
+  const [showDropdownClient, setShowDropdownClient]     = useState(false);
   const [filtres, setFiltres]                   = useState({ statut: "", dessinateur: "", type: "", periode: "", client: "" });
   const [tri, setTri]                           = useState({ col: "created_at", dir: "desc" });
   const [showModifModal, setShowModifModal]     = useState(false);
@@ -74,12 +80,28 @@ export default function App() {
   const chargerProfil = async (uid) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
     setProfil(data);
-    if (data?.role === "admin") chargerNbAttente();
+    if (data?.role === "admin") { chargerNbAttente(); chargerProfilesPreview(); }
   };
 
   const chargerNbAttente = async () => {
     const { count } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("statut", "en_attente");
     setNbAttente(count || 0);
+  };
+
+  const chargerProfilesPreview = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, prenom, nom, role")
+      .in("role", ["dessinateur", "client"])
+      .eq("statut", "actif");
+    const dessinateurs = (data || []).filter(p => p.role === "dessinateur")
+      .map(p => ({ ...p, nom_complet: `${p.prenom} ${p.nom}` }));
+    const clients = (data || []).filter(p => p.role === "client")
+      .map(p => ({ ...p, nom_complet: `${p.prenom} ${p.nom}` }));
+    setProfilesDessinateurs(dessinateurs);
+    setProfilesClients(clients);
+    setDessinateurSelectionne(dessinateurs[0] ?? null);
+    setClientSelectionne(clients[0] ?? null);
   };
 
   useEffect(() => {
