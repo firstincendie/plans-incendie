@@ -162,7 +162,7 @@ export default function App() {
         .eq("client_id", uid)
         .limit(1)
         .maybeSingle();
-      setDessinateurAssigne(lien ? `${lien.profiles.prenom} ${lien.profiles.nom}` : null);
+      setDessinateurAssigne(lien?.profiles ? `${lien.profiles.prenom} ${lien.profiles.nom}` : null);
     }
   };
 
