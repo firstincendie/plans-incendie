@@ -403,11 +403,10 @@ export default function App() {
   // Layout pour les rôles dessinateur et client
   if (profil?.role === "dessinateur" || profil?.role === "client") {
     const isDessinateur = profil.role === "dessinateur";
-    const nomDessinateur = settings.nomEntreprise;
+    const nomDessinateur = `${profil.prenom} ${profil.nom}`;
     const roleLabel = isDessinateur ? "Dessinateur" : "Client";
     const roleNav = [
-      { id: "dashboard",   label: "Dashboard",  icon: "📊" },
-      { id: "commandes",   label: "Commandes",  icon: "📋" },
+      { id: "commandes",   label: isDessinateur ? "Mes missions" : "Commandes",  icon: "📋" },
       { id: "reglages",    label: "Réglages",   icon: "⚙️" },
       { id: "mon-compte",  label: "Mon compte", icon: "👤" },
     ];
@@ -469,24 +468,6 @@ export default function App() {
           {vue === "mon-compte" && (
             <PageMonCompte profil={profil} session={session} role={profil.role} commandes={commandes}
               onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />
-          )}
-
-          {vue === "dashboard" && (
-            <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0" }}>Dashboard</h1>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                {[
-                  { label: isDessinateur ? "Missions en cours" : "Commandes en cours", val: commandes.filter(c => (isDessinateur ? c.dessinateur === nomDessinateur : true) && c.statut !== "Validé").length, color: "#122131", bg: "#fff" },
-                  { label: "Terminées", val: commandes.filter(c => (isDessinateur ? c.dessinateur === nomDessinateur : true) && c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
-                  { label: "Total", val: commandes.filter(c => isDessinateur ? c.dessinateur === nomDessinateur : true).length, color: "#374151", bg: "#F8FAFC" },
-                ].map(s => (
-                  <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
-                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 5 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
 
           {vue === "commandes" && isDessinateur && (
