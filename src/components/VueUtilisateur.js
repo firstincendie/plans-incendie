@@ -11,9 +11,7 @@ import TableauPlans from "./TableauPlans";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
 import GestionUtilisateurs from "./GestionUtilisateurs";
-import { ListeFichiers, LogoCliquable } from "./VisuFichier";
 import BlocAdresse from "./BlocAdresse";
-import ChampCopiable from "./ChampCopiable";
 
 export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);
