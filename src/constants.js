@@ -1,9 +1,10 @@
-export const STATUTS_ADMIN = ["En attente", "Commencé", "Ébauche déposée", "Modification dessinateur", "Validé"];
+export const STATUTS_ADMIN = ["En attente", "Commencé", "Ébauche déposée", "Modification dessinateur", "Validation en cours", "Validé"];
 export const STATUT_STYLE = {
   "En attente":               { bg: "#FEF3C7", color: "#92400E" },
   "Commencé":                 { bg: "#DBEAFE", color: "#1E40AF" },
   "Ébauche déposée":          { bg: "#EDE9FE", color: "#5B21B6" },
   "Modification dessinateur": { bg: "#FFE4E6", color: "#9F1239" },
+  "Validation en cours":      { bg: "#ECFDF5", color: "#047857" },
   "Validé":                   { bg: "#D1FAE5", color: "#065F46" },
   "Archivé":                  { bg: "#F3F4F6", color: "#6B7280", border: "1px solid #D1D5DB" },
 };
