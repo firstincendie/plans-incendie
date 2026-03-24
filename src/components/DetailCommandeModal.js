@@ -211,7 +211,8 @@ export default function DetailCommandeModal({
   const chatContent = (
     <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
       onEnvoyer={onEnvoyer} auteurActif={auteurNom} allowFichier
-      readOnly={selected.statut === "Validé"} />
+      readOnly={selected.statut === "Validé"}
+      instructions={selected.instructions || null} />
   );
 
   return (

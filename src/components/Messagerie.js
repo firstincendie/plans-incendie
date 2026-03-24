@@ -3,10 +3,11 @@ import { supabase } from "../supabase";
 import { analyserMessage, fichierAvecDate } from "../helpers";
 import VisuFichier from "./VisuFichier";
 
-export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false, readOnly = false }) {
+export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false, readOnly = false, instructions = null }) {
   const [fichierMsg, setFichierMsg]     = useState([]);
   const [alerte, setAlerte]             = useState(null);
   const [visuFichier, setVisuFichier]   = useState(null);
+  const [instrOuvert, setInstrOuvert]   = useState(false);
   const inputRef  = useRef();
   const bottomRef = useRef();
 
@@ -40,11 +41,27 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
     setFichierMsg([]);
   }
 
+  const messagesAfficher = instructions
+    ? selected.messages.filter((m, i) => i !== 0 || m.texte !== instructions)
+    : selected.messages;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      {instructions && (
+        <div style={{ flexShrink: 0, margin: "8px 12px 0", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, overflow: "hidden" }}>
+          <button onClick={() => setInstrOuvert(v => !v)}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#92400E", textAlign: "left" }}>
+            <span>📌 Instructions</span>
+            <span style={{ fontSize: 11 }}>{instrOuvert ? "▲" : "▼"}</span>
+          </button>
+          {instrOuvert && (
+            <div style={{ padding: "0 12px 10px", fontSize: 12, color: "#78350F", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{instructions}</div>
+          )}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, overflowY: "auto", padding: 12 }}>
-        {selected.messages.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>Aucun message.</div>}
-        {selected.messages.map((m, i) => {
+        {messagesAfficher.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>{instructions ? "Aucun autre message." : "Aucun message."}</div>}
+        {messagesAfficher.map((m, i) => {
           const moi = m.auteur === auteurActif;
           return (
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
