@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { formatDateCourt, joursRestants } from "../helpers";
+import { useState, useEffect } from "react";
+import { formatDateCourt, formatDateBulle, joursRestants } from "../helpers";
 import Badge from "./Badge";
 import BlocAdresse from "./BlocAdresse";
 import Messagerie from "./Messagerie";
@@ -55,7 +55,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
 
   // Fichiers de toutes les versions
   const fichiersVersions = versionsSelected.flatMap(v =>
-    (v.fichiers || []).map(f => ({ ...f, version: v.numero }))
+    (v.fichiers || []).map(f => ({ ...f, version: v.numero, versionDate: v.created_at }))
   );
 
   return (
@@ -156,7 +156,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
               <span style={{ fontSize: 16 }}>📐</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</div>
-                <div style={{ fontSize: 10, color: "#9CA3AF" }}>Version {f.version}</div>
+                <div style={{ fontSize: 10, color: "#9CA3AF" }}>{formatDateBulle(f.versionDate)}</div>
               </div>
               <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}>Ouvrir</a>
             </div>
@@ -193,9 +193,19 @@ export default function DetailCommandeModal({
   onArchiver, showContacts,
   actionButtons,
   msgInput, setMsgInput, onEnvoyer, auteurNom,
+  onMarquerLu,
 }) {
   const [mobTab, setMobTab] = useState("infos");
+
+  useEffect(() => {
+    onMarquerLu?.();
+  }, [selected?.id]); // eslint-disable-line
+
   if (!selected) return null;
+
+  const nonLus = selected.messages.filter(m =>
+    m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+  );
 
   // Nom du demandeur (sous-titre header)
   const nomDemandeur = `${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim() ||
@@ -239,8 +249,8 @@ export default function DetailCommandeModal({
         {/* Onglets mobile */}
         <div className="detail-mobile-tabs">
           <div onClick={() => setMobTab("infos")} style={{ flex: 1, padding: 12, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: mobTab === "infos" ? "#122131" : "#9CA3AF", borderBottom: `3px solid ${mobTab === "infos" ? "#122131" : "transparent"}`, marginBottom: -2 }}>📋 Infos</div>
-          <div onClick={() => setMobTab("chat")} style={{ flex: 1, padding: 12, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: mobTab === "chat" ? "#122131" : "#9CA3AF", borderBottom: `3px solid ${mobTab === "chat" ? "#122131" : "transparent"}`, marginBottom: -2 }}>
-            💬 Chat {selected.messages?.length > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, marginLeft: 4 }}>{selected.messages.length}</span>}
+          <div onClick={() => { setMobTab("chat"); onMarquerLu?.(); }} style={{ flex: 1, padding: 12, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer", color: mobTab === "chat" ? "#122131" : "#9CA3AF", borderBottom: `3px solid ${mobTab === "chat" ? "#122131" : "transparent"}`, marginBottom: -2 }}>
+            💬 Chat {nonLus.length > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, marginLeft: 4 }}>{nonLus.length}</span>}
           </div>
         </div>
 

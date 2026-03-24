@@ -68,6 +68,19 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           prev && prev.id === msg.commande_id ? { ...prev, messages: [...prev.messages, msg] } : prev
         );
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
+        const msg = payload.new;
+        setCommandes(prev => prev.map(c =>
+          c.id === msg.commande_id
+            ? { ...c, messages: c.messages.map(m => m.id === msg.id ? { ...m, lu_par: msg.lu_par } : m) }
+            : c
+        ));
+        setSelected(prev =>
+          prev && prev.id === msg.commande_id
+            ? { ...prev, messages: prev.messages.map(m => m.id === msg.id ? { ...m, lu_par: msg.lu_par } : m) }
+            : prev
+        );
+      })
       .subscribe();
     return () => supabase.removeChannel(canal);
   }, []); // eslint-disable-line
@@ -187,6 +200,22 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut: "Archivé" } : c));
       setSelected(null);
     }
+  }
+
+  async function marquerMessagesLus(commandeId) {
+    if (!commandeId) return;
+    const commande = commandes.find(c => c.id === commandeId);
+    if (!commande) return;
+    const nonLus = commande.messages.filter(m =>
+      m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+    );
+    if (nonLus.length === 0) return;
+    await Promise.all(nonLus.map(m =>
+      supabase.from("messages").update({ lu_par: [...(m.lu_par || []), auteurNom] }).eq("id", m.id)
+    ));
+    const marquer = m => nonLus.some(n => n.id === m.id) ? { ...m, lu_par: [...(m.lu_par || []), auteurNom] } : m;
+    setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: c.messages.map(marquer) } : c));
+    setSelected(prev => prev && prev.id === commandeId ? { ...prev, messages: prev.messages.map(marquer) } : prev);
   }
 
   const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
@@ -440,6 +469,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                       await envoyerMessage(selected.id, auteurNom, texte, fichiers);
                     }}
                     auteurNom={auteurNom}
+                    onMarquerLu={() => marquerMessagesLus(selected?.id)}
                   />
                 )}
               </>
@@ -450,7 +480,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
       {/* Modal nouvelle commande */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 680, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
@@ -537,7 +567,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
       {/* Modal demande modification */}
       {showModifModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 500 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>✏️ Demander une modification</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur".</div>
@@ -556,7 +586,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
       {/* Modal validation */}
       {showValidModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 420, textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Confirmer la validation</div>

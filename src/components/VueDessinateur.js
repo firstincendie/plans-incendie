@@ -50,6 +50,19 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
           prev && prev.id === msg.commande_id ? { ...prev, messages: [...prev.messages, msg] } : prev
         );
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
+        const msg = payload.new;
+        setCommandes(prev => prev.map(c =>
+          c.id === msg.commande_id
+            ? { ...c, messages: c.messages.map(m => m.id === msg.id ? { ...m, lu_par: msg.lu_par } : m) }
+            : c
+        ));
+        setSelected(prev =>
+          prev && prev.id === msg.commande_id
+            ? { ...prev, messages: prev.messages.map(m => m.id === msg.id ? { ...m, lu_par: msg.lu_par } : m) }
+            : prev
+        );
+      })
       .subscribe();
     return () => supabase.removeChannel(canal);
   }, []); // eslint-disable-line
@@ -121,6 +134,22 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
         },
       });
     }
+  }
+
+  async function marquerMessagesLus(commandeId) {
+    if (!commandeId) return;
+    const commande = commandes.find(c => c.id === commandeId);
+    if (!commande) return;
+    const nonLus = commande.messages.filter(m =>
+      m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+    );
+    if (nonLus.length === 0) return;
+    await Promise.all(nonLus.map(m =>
+      supabase.from("messages").update({ lu_par: [...(m.lu_par || []), auteurNom] }).eq("id", m.id)
+    ));
+    const marquer = m => nonLus.some(n => n.id === m.id) ? { ...m, lu_par: [...(m.lu_par || []), auteurNom] } : m;
+    setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: c.messages.map(marquer) } : c));
+    setSelected(prev => prev && prev.id === commandeId ? { ...prev, messages: prev.messages.map(marquer) } : prev);
   }
 
   const commandesVisibles = userFilter
@@ -367,6 +396,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                       await envoyerMessage(selected.id, auteurNom, texte, fichiers);
                     }}
                     auteurNom={auteurNom}
+                    onMarquerLu={() => marquerMessagesLus(selected?.id)}
                   />
                 )}
               </>
@@ -377,7 +407,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
       {/* Modal dépôt ébauche */}
       {showDepotModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 500 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📤 Déposer une ébauche</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Ébauche déposée" automatiquement.</div>

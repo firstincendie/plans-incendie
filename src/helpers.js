@@ -1,5 +1,13 @@
 import { PATTERNS_CONTACTS } from "./constants";
 
+export function formatDateBulle(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const jour = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  const heure = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${jour} à ${heure}`;
+}
+
 export function formatDateMsg() {
   const now = new Date();
   const d = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });

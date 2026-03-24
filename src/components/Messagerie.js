@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "../supabase";
-import { analyserMessage, fichierAvecDate } from "../helpers";
+import { analyserMessage, fichierAvecDate, formatDateBulle } from "../helpers";
 import VisuFichier from "./VisuFichier";
 
-export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false, readOnly = false, instructions = null }) {
+export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, auteurActif, allowFichier = false, readOnly = false, instructions = null, onMarquerLu }) {
   const [fichierMsg, setFichierMsg]     = useState([]);
   const [alerte, setAlerte]             = useState(null);
   const [visuFichier, setVisuFichier]   = useState(null);
@@ -78,7 +78,9 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
                     ))}
                   </div>
                 )}
-                <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 5 }}>{m.date}</div>
+              </div>
+              <div style={{ fontSize: 10, color: (m.lu_par || []).length > 0 && moi ? "#2563EB" : "#9CA3AF", textAlign: moi ? "right" : "left", marginTop: 3, paddingInline: 2 }}>
+                {formatDateBulle(m.created_at)}{moi ? ` ${(m.lu_par || []).length > 0 ? "✓✓ Lu" : "✓✓"}` : ""}
               </div>
             </div>
           );
@@ -109,10 +111,17 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
               📎
             </button>
             <input ref={inputRef} type="file" accept=".png,.jpg,.jpeg,.pdf" multiple style={{ display: "none" }}
-              onChange={e => {
-                const nouveaux = Array.from(e.target.files).map(f => fichierAvecDate({ nom: f.name, taille: (f.size / 1024).toFixed(0) + " Ko", url: URL.createObjectURL(f), type: f.type }));
-                setFichierMsg(prev => [...prev, ...nouveaux].slice(0, 5));
+              onChange={async e => {
+                const files = Array.from(e.target.files);
                 e.target.value = "";
+                const nouveaux = await Promise.all(files.map(async f => {
+                  const chemin = `chat/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+                  const { error } = await supabase.storage.from("fichiers").upload(chemin, f);
+                  if (error) { console.error("Upload:", error); return null; }
+                  const { data: urlData } = supabase.storage.from("fichiers").getPublicUrl(chemin);
+                  return fichierAvecDate({ nom: f.name, taille: (f.size / 1024).toFixed(0) + " Ko", url: urlData.publicUrl, type: f.type });
+                }));
+                setFichierMsg(prev => [...prev, ...nouveaux.filter(Boolean)].slice(0, 5));
               }} />
           </>
         )}

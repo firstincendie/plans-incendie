@@ -1,25 +1,35 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { supabase } from "../supabase";
 import { fichierAvecDate } from "../helpers";
 
 export default function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichiers = 10, unique = false }) {
   const inputRef = useRef();
-  function handleFiles(e) {
-    const nouveaux = Array.from(e.target.files).map(f => fichierAvecDate({
-      nom: f.name, taille: (f.size / 1024).toFixed(0) + " Ko",
-      url: URL.createObjectURL(f), type: f.type,
-    }));
-    if (unique) { onAjouter([nouveaux[0]]); }
-    else        { onAjouter([...fichiers, ...nouveaux].slice(0, maxFichiers)); }
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFiles(e) {
+    const files = Array.from(e.target.files);
     e.target.value = "";
+    setUploading(true);
+    const nouveaux = await Promise.all(files.map(async f => {
+      const chemin = `${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error } = await supabase.storage.from("fichiers").upload(chemin, f);
+      if (error) { console.error("Upload:", error); return null; }
+      const { data: urlData } = supabase.storage.from("fichiers").getPublicUrl(chemin);
+      return fichierAvecDate({ nom: f.name, taille: (f.size / 1024).toFixed(0) + " Ko", url: urlData.publicUrl, type: f.type });
+    }));
+    setUploading(false);
+    const valides = nouveaux.filter(Boolean);
+    if (unique) { onAjouter([valides[0]]); }
+    else        { onAjouter([...fichiers, ...valides].slice(0, maxFichiers)); }
   }
   const isImage = (f) => f.type && f.type.startsWith("image/");
   return (
     <div>
       {label ? <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 6, fontWeight: 600 }}>{label}</label> : null}
-      <div onClick={() => inputRef.current.click()}
-        style={{ border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: "14px", textAlign: "center", cursor: "pointer", background: "#F9FAFB", marginBottom: fichiers.length > 0 ? 10 : 0 }}>
-        <div style={{ fontSize: 20, marginBottom: 4 }}>📎</div>
-        <div style={{ fontSize: 12, color: "#6B7280" }}>{unique ? "Cliquer pour choisir" : `Ajouter fichiers (max ${maxFichiers})`}</div>
+      <div onClick={() => !uploading && inputRef.current.click()}
+        style={{ border: "1.5px dashed #D1D5DB", borderRadius: 8, padding: "14px", textAlign: "center", cursor: uploading ? "wait" : "pointer", background: "#F9FAFB", marginBottom: fichiers.length > 0 ? 10 : 0, opacity: uploading ? 0.6 : 1 }}>
+        <div style={{ fontSize: 20, marginBottom: 4 }}>{uploading ? "⏳" : "📎"}</div>
+        <div style={{ fontSize: 12, color: "#6B7280" }}>{uploading ? "Envoi en cours..." : unique ? "Cliquer pour choisir" : `Ajouter fichiers (max ${maxFichiers})`}</div>
         <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{accept}</div>
         <input ref={inputRef} type="file" accept={accept} multiple={!unique} style={{ display: "none" }} onChange={handleFiles} />
       </div>
