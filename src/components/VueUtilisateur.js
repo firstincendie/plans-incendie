@@ -4,14 +4,12 @@ import { formatDateMsg, formatDateCourt, joursRestants } from "../helpers";
 import { planVide } from "../constants";
 import Badge from "./Badge";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
-import Messagerie from "./Messagerie";
 import DetailCommandeModal from "./DetailCommandeModal";
 import ZoneUpload from "./ZoneUpload";
 import TableauPlans from "./TableauPlans";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
 import GestionUtilisateurs from "./GestionUtilisateurs";
-import BlocAdresse from "./BlocAdresse";
 
 export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);

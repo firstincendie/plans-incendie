@@ -3,12 +3,10 @@ import { supabase } from "../supabase";
 import { formatDateMsg, formatDateCourt, appliquerFiltresTri, joursRestants } from "../helpers";
 import Badge from "./Badge";
 import BarreFiltres from "./BarreFiltres";
-import Messagerie from "./Messagerie";
 import ZoneUpload from "./ZoneUpload";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
 import GestionCompteDessinateur from "./GestionCompteDessinateur";
-import BlocAdresse from "./BlocAdresse";
 import DetailCommandeModal from "./DetailCommandeModal";
 
 export default function VueDessinateur({ session, profil, onProfilUpdate }) {
