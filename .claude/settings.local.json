@@ -18,7 +18,11 @@
       "Bash(find C:/Users/simon/Desktop/plans-incendie -name *.sql -o -name *schema* -o -name *migration*)",
       "mcp__claude_ai_Supabase__list_projects",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "mcp__claude_ai_Supabase__get_logs",
+      "Bash(git push:*)",
+      "Bash(curl:*)"
     ]
   }
 }

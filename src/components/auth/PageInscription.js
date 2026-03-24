@@ -7,14 +7,38 @@ const CHAMPS_INIT = {
   mdp: "", mdp_confirm: ""
 };
 
+const inputStyle = { width: "100%", padding: "10px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 14, boxSizing: "border-box", outline: "none" };
+const labelStyle = { fontSize: 13, fontWeight: 600, color: "#122131", display: "block", marginBottom: 6 };
+const rowStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
+
+function SectionHeader({ children, marginTop }) {
+  return (
+    <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginTop, marginBottom: 4 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>{children}</div>
+    </div>
+  );
+}
+
+function PasswordInput({ value, onChange, placeholder, required, minLength }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <input type={show ? "text" : "password"} value={value} onChange={onChange} required={required} minLength={minLength}
+        autoComplete="new-password" style={{ ...inputStyle, paddingRight: 38 }} placeholder={placeholder} />
+      <button type="button" onClick={() => setShow(v => !v)}
+        style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, padding: 0, lineHeight: 1 }}>
+        {show ? "🙈" : "👁"}
+      </button>
+    </div>
+  );
+}
+
 export default function PageInscription({ onRetour }) {
-  const [role, setRole] = useState("client"); // "client" | "dessinateur"
+  const [role, setRole] = useState("client");
   const [champs, setChamps] = useState(CHAMPS_INIT);
-  const [etape, setEtape] = useState(1); // 1 = infos, 2 = confirmé
+  const [etape, setEtape] = useState(1);
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
-  const [showMdp, setShowMdp] = useState(false);
-  const [showMdpConfirm, setShowMdpConfirm] = useState(false);
 
   const set = (champ) => (e) => setChamps(prev => ({ ...prev, [champ]: e.target.value }));
 
@@ -24,50 +48,36 @@ export default function PageInscription({ onRetour }) {
     if (champs.mdp !== champs.mdp_confirm) { setErreur("Les mots de passe ne correspondent pas."); return; }
     if (champs.mdp.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); return; }
     setChargement(true);
-    const { error } = await supabase.auth.signUp({
-      email: champs.email,
-      password: champs.mdp,
-      options: {
-        data: {
-          nom: champs.nom,
-          prenom: champs.prenom,
-          role,
-        }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: champs.email,
+        password: champs.mdp,
+        options: { data: { nom: champs.nom, prenom: champs.prenom, role } }
+      });
+      if (error) {
+        setErreur(error.message === "User already registered" ? "Un compte existe déjà avec cet email." : "Une erreur est survenue. Réessayez.");
+        return;
       }
-    });
-
-    if (error) {
-      setErreur(error.message === "User already registered" ? "Un compte existe déjà avec cet email." : "Une erreur est survenue. Réessayez.");
+      const user = data?.user;
+      await Promise.all([
+        user && supabase.from("profiles").update({
+          telephone: champs.telephone,
+          entreprise: champs.entreprise,
+          adresse: champs.adresse,
+          code_postal: champs.code_postal,
+          ville: champs.ville,
+          siren: champs.siren.replace(/\s/g, ""),
+          raison_sociale: champs.entreprise,
+        }).eq("id", user.id),
+        supabase.functions.invoke("notify-inscription", {
+          body: { prenom: champs.prenom, nom: champs.nom, email: champs.email },
+        }),
+      ]);
+      setEtape(2);
+    } finally {
       setChargement(false);
-      return;
     }
-
-    // Compléter le profil après inscription
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").update({
-        telephone: champs.telephone,
-        entreprise: champs.entreprise,
-        adresse: champs.adresse,
-        code_postal: champs.code_postal,
-        ville: champs.ville,
-        siren: champs.siren.replace(/\s/g, ""),
-        raison_sociale: champs.entreprise,
-      }).eq("id", user.id);
-    }
-
-    // Notifier l'owner de la nouvelle inscription
-    await supabase.functions.invoke("notify-inscription", {
-      body: { prenom: champs.prenom, nom: champs.nom, email: champs.email },
-    });
-
-    setChargement(false);
-    setEtape(2);
   };
-
-  const inputStyle = { width: "100%", padding: "10px 12px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 14, boxSizing: "border-box", outline: "none" };
-  const labelStyle = { fontSize: 13, fontWeight: 600, color: "#122131", display: "block", marginBottom: 6 };
-  const rowStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
 
   if (etape === 2) {
     return (
@@ -97,10 +107,7 @@ export default function PageInscription({ onRetour }) {
 
         <form onSubmit={handleSoumettre} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* Type de compte */}
-          <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginBottom: 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Type de compte</div>
-          </div>
+          <SectionHeader>Type de compte</SectionHeader>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[
               { value: "client", label: "Utilisateur", desc: "Je commande des plans", activeColor: "#1D4ED8", activeBg: "#EFF6FF", activeBorder: "#93C5FD" },
@@ -114,10 +121,7 @@ export default function PageInscription({ onRetour }) {
             ))}
           </div>
 
-          {/* Identité */}
-          <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginTop: 8, marginBottom: 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Identité</div>
-          </div>
+          <SectionHeader marginTop={8}>Identité</SectionHeader>
           <div style={rowStyle}>
             <div>
               <label style={labelStyle}>Prénom *</label>
@@ -139,10 +143,7 @@ export default function PageInscription({ onRetour }) {
             </div>
           </div>
 
-          {/* Entreprise */}
-          <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginTop: 8, marginBottom: 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Entreprise</div>
-          </div>
+          <SectionHeader marginTop={8}>Entreprise</SectionHeader>
           <div>
             <label style={labelStyle}>Nom de l'entreprise *</label>
             <input type="text" value={champs.entreprise} onChange={set("entreprise")} required style={inputStyle} placeholder="Mon Entreprise SAS" />
@@ -166,28 +167,15 @@ export default function PageInscription({ onRetour }) {
             </div>
           </div>
 
-          {/* Sécurité */}
-          <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginTop: 8, marginBottom: 4 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Sécurité</div>
-          </div>
+          <SectionHeader marginTop={8}>Sécurité</SectionHeader>
           <div style={rowStyle}>
             <div>
               <label style={labelStyle}>Mot de passe *</label>
-              <div style={{ position: "relative" }}>
-                <input type={showMdp ? "text" : "password"} value={champs.mdp} onChange={set("mdp")} required minLength={8} autoComplete="new-password" style={{ ...inputStyle, paddingRight: 38 }} placeholder="8 caractères min." />
-                <button type="button" onClick={() => setShowMdp(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, padding: 0, lineHeight: 1 }}>
-                  {showMdp ? "🙈" : "👁"}
-                </button>
-              </div>
+              <PasswordInput value={champs.mdp} onChange={set("mdp")} required minLength={8} placeholder="8 caractères min." />
             </div>
             <div>
               <label style={labelStyle}>Confirmer *</label>
-              <div style={{ position: "relative" }}>
-                <input type={showMdpConfirm ? "text" : "password"} value={champs.mdp_confirm} onChange={set("mdp_confirm")} required autoComplete="new-password" style={{ ...inputStyle, paddingRight: 38 }} placeholder="••••••••" />
-                <button type="button" onClick={() => setShowMdpConfirm(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, padding: 0, lineHeight: 1 }}>
-                  {showMdpConfirm ? "🙈" : "👁"}
-                </button>
-              </div>
+              <PasswordInput value={champs.mdp_confirm} onChange={set("mdp_confirm")} required placeholder="••••••••" />
             </div>
           </div>
 
