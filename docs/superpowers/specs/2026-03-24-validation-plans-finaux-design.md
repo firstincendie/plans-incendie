@@ -14,18 +14,23 @@
 
 ```
 En attente → Commencé → Ébauche déposée ⇄ Modification dessinateur
-                                              ↓
-                                    Validation en cours  ← NOUVEAU
-                                              ↓ (auto quand plans.length === plans_finalises.length)
-                                           Validé
+                               ↓
+                       Validation en cours  ← NOUVEAU (déclenché depuis "Ébauche déposée" par l'utilisateur)
+                               ↓ (auto quand plans.length === plans_finalises.length)
+                            Validé
 ```
+
+Note : L'utilisateur peut demander la validation depuis le statut "Ébauche déposée". Dans STATUTS_ADMIN, "Validation en cours" est positionné après "Modification dessinateur" car c'est un stade logiquement plus avancé (les deux états "Ébauche déposée" et "Modification dessinateur" peuvent mener à "Validation en cours").
 
 ---
 
 ## Section 1 — constants.js
 
 ### Changements
-- Ajouter `"Validation en cours"` dans `STATUTS_ADMIN` entre `"Modification dessinateur"` et `"Validé"`
+- Ajouter `"Validation en cours"` dans `STATUTS_ADMIN` entre `"Modification dessinateur"` et `"Validé"` :
+  ```js
+  export const STATUTS_ADMIN = ["En attente", "Commencé", "Ébauche déposée", "Modification dessinateur", "Validation en cours", "Validé"];
+  ```
 - Ajouter le style badge dans `STATUT_STYLE` :
   ```js
   "Validation en cours": { bg: "#ECFDF5", color: "#047857" }
@@ -63,7 +68,7 @@ Le matching se fait par `plan_index` (0-based, correspond à l'index dans `selec
 ### Nommage des fichiers
 Format : `{nom_plan}-{ref_number}-{plan_index+1}.{ext}`
 - `nom_plan` : champ `nom_plan` de la commande (ex: "REZE")
-- `ref_number` : partie numérique du champ `ref` (ex: "003" extrait de "CMD-003")
+- `ref_number` : extrait du champ `ref` avec `selected.ref.split("-")[1]` (ex: "003" depuis "CMD-003")
 - `plan_index+1` : numéro du plan (1-based)
 - `ext` : extension du fichier uploadé
 
@@ -74,6 +79,12 @@ Chemin Storage : `finals/{commande_id}/{nom_fichier_renomme}`
 ---
 
 ## Section 3 — VueUtilisateur.js
+
+### Suppression du code obsolète
+Supprimer les éléments suivants qui ne servent plus :
+- State : `showValidModal`, `validant`
+- Fonction : `validerCommande()`
+- Le modal de validation existant (JSX `{showValidModal && ...}`)
 
 ### actionButtons dans DetailCommandeModal
 
@@ -111,33 +122,46 @@ async function demanderValidation() {
 Les `actionButtons` sont passés en prop à `DetailCommandeModal` et affichés dans le tab "infos" — aucune modification supplémentaire nécessaire, le système existant couvre le mobile automatiquement.
 
 ### readOnly
-La messagerie est `readOnly` quand `statut === "Validé"` (ligne existante `selected.statut === "Validé"`). Aucun changement : "Validation en cours" laisse la messagerie ouverte.
+La messagerie est `readOnly` quand `statut === "Validé"` (ligne existante). Aucun changement : "Validation en cours" laisse la messagerie ouverte.
 
 ---
 
 ## Section 4 — VueDessinateur.js
 
+### Ajout de changerStatut
+`VueDessinateur.js` n'a pas de fonction `changerStatut`. L'ajouter :
+```js
+async function changerStatut(id, statut) {
+  const { error } = await supabase.from("commandes").update({ statut }).eq("id", id);
+  if (!error) {
+    setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
+    if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
+  }
+}
+```
+
 ### Nouveau bouton "Déposer les plans finaux"
 
 Condition d'affichage : `selected && selected.statut === "Validation en cours"`
 
-Placement : même zone que le bouton "Déposer une ébauche" (section latérale droite desktop, ou section mobile dédiée).
+Placement : même zone que le bouton "Déposer une ébauche" (panneau latéral droit desktop + section mobile).
 
-**Desktop** — dans le panneau latéral droit (section where `peutDeposer` button currently lives), ajouter en parallèle :
 ```jsx
 {selected && selected.statut === "Validation en cours" && (
   <button onClick={() => setShowPlansFinalModal(true)}
-    style={{ ... /* même style que le bouton ébauche, couleur verte */ }}>
+    style={{ /* même style que bouton ébauche, couleur verte */ }}>
     📐 Déposer les plans finaux
   </button>
 )}
 ```
 
-**Mobile** — même section, affichée sous les onglets dans le tab "infos".
-
 ### Nouveau modal ShowPlansFinalModal
 
-État : `const [showPlansFinalModal, setShowPlansFinalModal] = useState(false)`
+États nécessaires :
+```js
+const [showPlansFinalModal, setShowPlansFinalModal] = useState(false);
+const [uploadingPlanIndex, setUploadingPlanIndex] = useState(null); // null = aucun upload en cours
+```
 
 Structure du modal (overlay zIndex: 600) :
 ```
@@ -157,18 +181,23 @@ Pour chaque plan (selected.plans.map) :
 Bouton fermer : [✕ Fermer]
 ```
 
+Chaque bouton "Choisir"/"Remplacer" :
+- Déclenche un `<input type="file" style={{ display:"none" }}>` (1 par plan, via ref ou index)
+- Est **désactivé** (`disabled`) quand `uploadingPlanIndex !== null` (upload global en cours)
+- Affiche `"⏳ Envoi..."` quand `uploadingPlanIndex === planIndex`
+
 ### Fonction deposerPlanFinal(planIndex, file)
 
 ```js
 async function deposerPlanFinal(planIndex, file) {
+  setUploadingPlanIndex(planIndex);
   const ext = file.name.split(".").pop();
-  const refNumber = selected.ref.replace(/\D/g, "").replace(/^0+/, "").padStart(3, "0");
-  // ex: "CMD-003" → "003"
+  const refNumber = selected.ref.split("-")[1]; // "CMD-003" → "003"
   const nomFichier = `${selected.nom_plan}-${refNumber}-${planIndex + 1}.${ext}`;
   const chemin = `finals/${selected.id}/${nomFichier}`;
 
   const { error: uploadError } = await supabase.storage.from("fichiers").upload(chemin, file, { upsert: true });
-  if (uploadError) { console.error(uploadError); return; }
+  if (uploadError) { console.error(uploadError); setUploadingPlanIndex(null); return; }
 
   const { data: urlData } = supabase.storage.from("fichiers").getPublicUrl(chemin);
   const nouvelleEntree = {
@@ -180,6 +209,8 @@ async function deposerPlanFinal(planIndex, file) {
   };
 
   // Remplacer ou ajouter dans plans_finalises
+  // Note: on lit selected.plansFinalises au moment de l'appel ; les boutons sont désactivés
+  // pendant l'upload (uploadingPlanIndex !== null), évitant les soumissions concurrentes.
   const anciens = (selected.plansFinalises || []).filter(p => p.plan_index !== planIndex);
   const nouveaux = [...anciens, nouvelleEntree];
 
@@ -188,8 +219,11 @@ async function deposerPlanFinal(planIndex, file) {
   // Mise à jour locale
   setCommandes(prev => prev.map(c => c.id === selected.id ? { ...c, plansFinalises: nouveaux } : c));
   setSelected(prev => ({ ...prev, plansFinalises: nouveaux }));
+  setUploadingPlanIndex(null);
 
   // Auto-validation si tous les plans sont couverts
+  // On utilise `nouveaux` (construit localement) pour le check, pas selected.plansFinalises
+  // (qui pourrait être stale). Les boutons désactivés pendant l'upload éliminent la race condition.
   if (nouveaux.length === selected.plans.length) {
     await changerStatut(selected.id, "Validé");
     await envoyerMessage(selected.id, auteurNom, "✅ Plans finaux déposés. Commande validée.");
@@ -209,9 +243,10 @@ Le tableau passe de 4 à 5 colonnes : `N° / Type de plan / Orientation / Format
 Le composant reçoit déjà `selected.plansFinalises` via `selected`.
 
 ```jsx
-// En-tête
+// En-tête — reprendre exactement les styles existants du <th>, seul changement :
+// borderRight passe de `i < 3` à `i < 4` (5 colonnes au lieu de 4)
 {["N°", "Type de plan", "Orientation", "Format", "Fichier final"].map((h, i) => (
-  <th key={h} style={{ ..., borderRight: i < 4 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
+  <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 4 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
 ))}
 
 // Lignes
@@ -237,7 +272,7 @@ Le composant reçoit déjà `selected.plansFinalises` via `selected`.
 })}
 ```
 
-Cette colonne est visible par tous (utilisateur, dessinateur, admin) en desktop et mobile (le tableau est dans l'accordéon "Infos" du mobile existant).
+Cette colonne est visible par tous (utilisateur, dessinateur, admin) en desktop et mobile.
 
 ---
 
@@ -245,7 +280,7 @@ Cette colonne est visible par tous (utilisateur, dessinateur, admin) en desktop 
 
 Les deux vues mappent `c.plans_finalises || []` vers `plansFinalises` dans l'objet commande local. Cette ligne existe déjà. Aucun changement nécessaire.
 
-Vérifier que le `select("*")` au chargement inclut bien `plans_finalises` — c'est le cas avec `select("*, messages(*)")` existant.
+`select("*, messages(*)")` au chargement inclut bien `plans_finalises`. Confirmé.
 
 ---
 
@@ -254,8 +289,8 @@ Vérifier que le `select("*")` au chargement inclut bien `plans_finalises` — c
 | Fichier | Nature |
 |---|---|
 | `src/constants.js` | Nouveau statut + badge |
-| `src/components/VueUtilisateur.js` | Renommer bouton, nouvelle fonction `demanderValidation`, bannière "Validation en cours" |
-| `src/components/VueDessinateur.js` | Nouveau bouton + modal `ShowPlansFinalModal`, fonction `deposerPlanFinal` |
+| `src/components/VueUtilisateur.js` | Supprimer `validerCommande`/`showValidModal`/`validant`, renommer bouton, nouvelle fonction `demanderValidation`, bannière "Validation en cours" |
+| `src/components/VueDessinateur.js` | Ajouter `changerStatut`, nouveau bouton + modal `ShowPlansFinalModal`, fonction `deposerPlanFinal`, état `uploadingPlanIndex` |
 | `src/components/DetailCommandeModal.js` | Colonne "Fichier final" dans le tableau Plans |
 
 ## Aucune migration DB requise
