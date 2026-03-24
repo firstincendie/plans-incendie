@@ -209,26 +209,9 @@ export default function DetailCommandeModal({
   };
 
   const chatContent = (
-    <>
-      <div style={{ flex: 1, padding: 12, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto" }}>
-        {selected.messages?.map((m, i) => {
-          const estAdmin = m.auteur !== auteurNom;
-          return (
-            <div key={i} style={{ background: estAdmin ? "#EFF6FF" : "#fff", border: `1px solid ${estAdmin ? "#BFDBFE" : "#E5E7EB"}`, borderRadius: 8, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: estAdmin ? "#1E40AF" : "#374151" }}>{m.auteur}</div>
-              <div style={{ fontSize: 12, color: "#374151", marginTop: 4 }}>{m.texte}</div>
-              <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 5 }}>{m.date}</div>
-            </div>
-          );
-        })}
-      </div>
-      {selected.statut !== "Validé" && (
-        <div style={{ padding: 10, borderTop: "2px solid #E5E7EB", background: "#fff", flexShrink: 0 }}>
-          <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-            onEnvoyer={onEnvoyer} auteurActif={auteurNom} allowFichier />
-        </div>
-      )}
-    </>
+    <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
+      onEnvoyer={onEnvoyer} auteurActif={auteurNom} allowFichier
+      readOnly={selected.statut === "Validé"} />
   );
 
   return (
