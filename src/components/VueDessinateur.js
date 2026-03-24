@@ -4,13 +4,12 @@ import { formatDateMsg, formatDateCourt, appliquerFiltresTri } from "../helpers"
 import Badge from "./Badge";
 import BarreFiltres from "./BarreFiltres";
 import Messagerie from "./Messagerie";
-import HistoriqueVersions from "./HistoriqueVersions";
 import ZoneUpload from "./ZoneUpload";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
 import GestionCompteDessinateur from "./GestionCompteDessinateur";
 import BlocAdresse from "./BlocAdresse";
-import { ListeFichiers, LogoCliquable } from "./VisuFichier";
+import DetailCommandeModal from "./DetailCommandeModal";
 
 export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);
@@ -234,7 +233,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+                            {(() => {
+                              const nomClient = `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim();
+                              return nomClient ? `${nomClient} — ${c.ref}` : c.ref;
+                            })()}
+                          </div>
                         </div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
@@ -259,7 +263,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+                                  {(() => {
+                                    const nomClient = `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim();
+                                    return nomClient ? `${nomClient} — ${c.ref}` : c.ref;
+                                  })()}
+                                </div>
                               </div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
@@ -273,80 +282,41 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                 )}
 
                 {selected && (
-                  <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                      <div>
-                        <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.nom_plan}</div>
-                        <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <Badge statut={selected.statut} />
-                        <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
-                      {[
-                        { label: "Client", val: `${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim() || "—" },
-                        { label: "Créé le", val: formatDateCourt(selected.created_at) },
-                        { label: "Délai", val: selected.delai ? formatDateCourt(selected.delai) : "—" },
-                      ].map(f => (
-                        <div key={f.label}>
-                          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <BlocAdresse commande={selected} />
-
-                    {selected.instructions && (
-                      <div style={{ background: "#F8FAFC", border: "1px solid #E5E7EB", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 4 }}>Instructions</div>
-                        <div style={{ fontSize: 13, color: "#374151" }}>{selected.instructions}</div>
-                      </div>
-                    )}
-
-                    {selected.fichiersPlan?.length > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Fichiers sources</div>
-                        <ListeFichiers fichiers={selected.fichiersPlan} couleurAccent="#FC6C1B" />
-                      </div>
-                    )}
-
-                    {selected.logoClient?.length > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 8 }}>Logo client</div>
-                        <LogoCliquable fichier={selected.logoClient[0]} />
-                      </div>
-                    )}
-
-                    <HistoriqueVersions versions={versionsSelected} />
-
-                    {selected.statut === "En attente" && (
-                      <button onClick={() => commencer(selected.id)}
-                        style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#FC6C1B", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
-                        🚀 Commencer la mission
-                      </button>
-                    )}
-
-                    {peutDeposer && (
-                      <button onClick={() => setShowDepotModal(true)}
-                        style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
-                        📤 Déposer une ébauche
-                      </button>
-                    )}
-
-                    {selected.statut === "Validé" ? (
-                      <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
-                        ✅ Mission validée par le client
-                      </div>
-                    ) : (
-                      <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-                        onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && !fichiers?.length) return; await envoyerMessage(selected.id, auteurNom, texte, fichiers); }}
-                        auteurActif={auteurNom} allowFichier />
-                    )}
-                  </div>
+                  <DetailCommandeModal
+                    selected={selected}
+                    versionsSelected={versionsSelected}
+                    onClose={() => setSelected(null)}
+                    onArchiver={null}
+                    showContacts={false}
+                    actionButtons={
+                      <>
+                        {selected.statut === "En attente" && (
+                          <button onClick={() => commencer(selected.id)}
+                            style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#FC6C1B", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
+                            🚀 Commencer la mission
+                          </button>
+                        )}
+                        {peutDeposer && (
+                          <button onClick={() => setShowDepotModal(true)}
+                            style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
+                            📤 Déposer une ébauche
+                          </button>
+                        )}
+                        {selected.statut === "Validé" && (
+                          <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
+                            ✅ Mission validée par le client
+                          </div>
+                        )}
+                      </>
+                    }
+                    msgInput={msgInput}
+                    setMsgInput={setMsgInput}
+                    onEnvoyer={async (texte, fichiers) => {
+                      if (!texte.trim() && !fichiers?.length) return;
+                      await envoyerMessage(selected.id, auteurNom, texte, fichiers);
+                    }}
+                    auteurNom={auteurNom}
+                  />
                 )}
               </>
             )}
