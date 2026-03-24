@@ -24,6 +24,8 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [showDepotModal, setShowDepotModal] = useState(false);
   const [fichiersDepot, setFichiersDepot] = useState([]);
   const [deposant, setDeposant] = useState(false);
+  const [showPlansFinalModal, setShowPlansFinalModal] = useState(false);
+  const [uploadingPlanIndex, setUploadingPlanIndex] = useState(null);
   const [sousComptes, setSousComptes] = useState([]);
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-dessinateur filtré
 
@@ -95,6 +97,49 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut: "Commencé" } : c));
       if (selected?.id === id) setSelected(prev => ({ ...prev, statut: "Commencé" }));
       await envoyerMessage(id, auteurNom, "🚀 Mission commencée.");
+    }
+  }
+
+  async function changerStatut(id, statut) {
+    const { error } = await supabase.from("commandes").update({ statut }).eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
+      if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
+    }
+  }
+
+  async function deposerPlanFinal(planIndex, file) {
+    setUploadingPlanIndex(planIndex);
+    const ext = file.name.split(".").pop();
+    const refNumber = selected.ref.split("-")[1]; // "CMD-003" → "003"
+    const nomFichier = `${selected.nom_plan}-${refNumber}-${planIndex + 1}.${ext}`;
+    const chemin = `finals/${selected.id}/${nomFichier}`;
+
+    const { error: uploadError } = await supabase.storage.from("fichiers").upload(chemin, file, { upsert: true });
+    if (uploadError) { console.error(uploadError); setUploadingPlanIndex(null); return; }
+
+    const { data: urlData } = supabase.storage.from("fichiers").getPublicUrl(chemin);
+    const nouvelleEntree = {
+      plan_index: planIndex,
+      nom: nomFichier,
+      url: urlData.publicUrl,
+      taille: (file.size / 1024).toFixed(0) + " Ko",
+      ajouteLe: new Date().toLocaleDateString("fr-FR"),
+    };
+
+    const anciens = (selected.plansFinalises || []).filter(p => p.plan_index !== planIndex);
+    const nouveaux = [...anciens, nouvelleEntree];
+
+    await supabase.from("commandes").update({ plans_finalises: nouveaux }).eq("id", selected.id);
+
+    setCommandes(prev => prev.map(c => c.id === selected.id ? { ...c, plansFinalises: nouveaux } : c));
+    setSelected(prev => ({ ...prev, plansFinalises: nouveaux }));
+    setUploadingPlanIndex(null);
+
+    if (nouveaux.length === selected.plans.length) {
+      await changerStatut(selected.id, "Validé");
+      await envoyerMessage(selected.id, auteurNom, "✅ Plans finaux déposés. Commande validée.");
+      setShowPlansFinalModal(false);
     }
   }
 
@@ -384,6 +429,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                             📤 Déposer une ébauche
                           </button>
                         )}
+                        {selected.statut === "Validation en cours" && (
+                          <button onClick={() => setShowPlansFinalModal(true)}
+                            style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#047857", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
+                            📐 Déposer les plans finaux
+                          </button>
+                        )}
                         {selected.statut === "Validé" && (
                           <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
                             ✅ Mission validée par le client
@@ -406,6 +457,47 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
           </>
         )}
       </div>
+
+      {/* Modal dépôt plans finaux */}
+      {showPlansFinalModal && selected && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 560, maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📐 Déposer les plans finaux</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>1 fichier requis par plan. Le statut passera à "Validé" automatiquement.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {selected.plans.map((p, i) => {
+                const fichierExistant = (selected.plansFinalises || []).find(f => f.plan_index === i);
+                const enUpload = uploadingPlanIndex === i;
+                const disabled = uploadingPlanIndex !== null;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: fichierExistant ? "#F0FDF4" : "#F9FAFB" }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>N°{i + 1} — {p.type} · {p.orientation} · {p.format}</div>
+                      <div style={{ fontSize: 11, color: fichierExistant ? "#047857" : "#9CA3AF", marginTop: 2 }}>
+                        {fichierExistant ? `✅ ${fichierExistant.nom} (${fichierExistant.taille})` : "Pas encore déposé"}
+                      </div>
+                    </div>
+                    <label style={{ flexShrink: 0 }}>
+                      <input type="file" accept=".pdf,.png,.jpg,.jpeg,.dwg,.dxf" style={{ display: "none" }}
+                        disabled={disabled}
+                        onChange={e => { const f = e.target.files[0]; e.target.value = ""; if (f) deposerPlanFinal(i, f); }} />
+                      <span style={{ display: "inline-block", padding: "7px 14px", borderRadius: 7, border: "1px solid #D1D5DB", background: disabled ? "#F3F4F6" : "#fff", color: disabled ? "#9CA3AF" : "#374151", fontSize: 12, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer" }}>
+                        {enUpload ? "⏳ Envoi..." : fichierExistant ? "🔄 Remplacer" : "📎 Choisir"}
+                      </span>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+              <button onClick={() => setShowPlansFinalModal(false)} disabled={uploadingPlanIndex !== null}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: uploadingPlanIndex !== null ? "not-allowed" : "pointer" }}>
+                ✕ Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal dépôt ébauche */}
       {showDepotModal && (
