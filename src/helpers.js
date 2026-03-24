@@ -59,3 +59,11 @@ export function appliquerFiltresTri(commandes, filtres, tri) {
   });
   return r;
 }
+
+// Retourne le nombre de jours entre aujourd'hui et une date ISO string.
+// Négatif = dépassé. Null si pas de date.
+export function joursRestants(dateStr) {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr).setHours(0,0,0,0) - new Date().setHours(0,0,0,0);
+  return Math.round(diff / (1000 * 60 * 60 * 24));
+}
