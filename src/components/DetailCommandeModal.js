@@ -122,20 +122,32 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "#E5E7EB" }}>
-                {["N°", "Type de plan", "Orientation", "Format"].map((h, i) => (
-                  <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 3 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
+                {["N°", "Type de plan", "Orientation", "Format", "Fichier final"].map((h, i) => (
+                  <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 4 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {selected.plans.map((p, i) => (
-                <tr key={i} style={{ background: i % 2 === 1 ? "#F9FAFB" : "#fff", borderBottom: i < selected.plans.length - 1 ? "1px solid #E5E7EB" : "none" }}>
-                  <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", textAlign: "center", color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</td>
-                  <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.type || "—"}</td>
-                  <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.orientation || "—"}</td>
-                  <td style={{ padding: "9px 12px", color: "#111827" }}>{p.format || "—"}</td>
-                </tr>
-              ))}
+              {selected.plans.map((p, i) => {
+                const fichierFinal = (selected.plansFinalises || []).find(f => f.plan_index === i);
+                return (
+                  <tr key={i} style={{ background: i % 2 === 1 ? "#F9FAFB" : "#fff", borderBottom: i < selected.plans.length - 1 ? "1px solid #E5E7EB" : "none" }}>
+                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", textAlign: "center", color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.type || "—"}</td>
+                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.orientation || "—"}</td>
+                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.format || "—"}</td>
+                    <td style={{ padding: "9px 12px", color: "#111827" }}>
+                      {fichierFinal
+                        ? <a href={fichierFinal.url} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>
+                            📐 {fichierFinal.nom}
+                          </a>
+                        : <span style={{ color: "#9CA3AF", fontSize: 11 }}>—</span>
+                      }
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
