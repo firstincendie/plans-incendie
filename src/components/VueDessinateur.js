@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import { formatDateMsg, formatDateCourt, appliquerFiltresTri } from "../helpers";
+import { formatDateMsg, formatDateCourt, appliquerFiltresTri, joursRestants } from "../helpers";
 import Badge from "./Badge";
 import BarreFiltres from "./BarreFiltres";
 import Messagerie from "./Messagerie";
@@ -244,7 +244,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                         </div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
-                        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                        {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
+                          <div>
+                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
+                          </div>
+                        ); })()}
                         <Badge statut={c.statut} />
                       </div>
                     );
@@ -274,7 +279,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                                 </div>
                               </div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                              {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
+                          <div>
+                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
+                          </div>
+                        ); })()}
                               <Badge statut={c.statut} />
                             </div>
                           );
@@ -307,7 +317,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                                 </div>
                               </div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                              {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
+                          <div>
+                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
+                          </div>
+                        ); })()}
                               <Badge statut={c.statut} />
                             </div>
                           );
