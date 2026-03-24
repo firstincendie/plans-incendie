@@ -13,6 +13,8 @@ export default function PageInscription({ onRetour }) {
   const [etape, setEtape] = useState(1); // 1 = infos, 2 = confirmé
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
+  const [showMdp, setShowMdp] = useState(false);
+  const [showMdpConfirm, setShowMdpConfirm] = useState(false);
 
   const set = (champ) => (e) => setChamps(prev => ({ ...prev, [champ]: e.target.value }));
 
@@ -100,10 +102,13 @@ export default function PageInscription({ onRetour }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Type de compte</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[{ value: "client", label: "Utilisateur", desc: "Je commande des plans" }, { value: "dessinateur", label: "Dessinateur", desc: "Je réalise des plans" }].map(opt => (
+            {[
+              { value: "client", label: "Utilisateur", desc: "Je commande des plans", activeColor: "#1D4ED8", activeBg: "#EFF6FF", activeBorder: "#93C5FD" },
+              { value: "dessinateur", label: "Dessinateur", desc: "Je réalise des plans", activeColor: "#FC6C1B", activeBg: "#FFF7F3", activeBorder: "#FC6C1B" },
+            ].map(opt => (
               <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
-                style={{ padding: "12px 14px", borderRadius: 10, border: `2px solid ${role === opt.value ? "#FC6C1B" : "#E2E8F0"}`, background: role === opt.value ? "#FFF7F3" : "#fff", cursor: "pointer", textAlign: "left" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: role === opt.value ? "#FC6C1B" : "#122131" }}>{opt.label}</div>
+                style={{ padding: "12px 14px", borderRadius: 10, border: `2px solid ${role === opt.value ? opt.activeBorder : "#E2E8F0"}`, background: role === opt.value ? opt.activeBg : "#fff", cursor: "pointer", textAlign: "left" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: role === opt.value ? opt.activeColor : "#122131" }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{opt.desc}</div>
               </button>
             ))}
@@ -168,11 +173,21 @@ export default function PageInscription({ onRetour }) {
           <div style={rowStyle}>
             <div>
               <label style={labelStyle}>Mot de passe *</label>
-              <input type="password" value={champs.mdp} onChange={set("mdp")} required minLength={8} style={inputStyle} placeholder="8 caractères min." />
+              <div style={{ position: "relative" }}>
+                <input type={showMdp ? "text" : "password"} value={champs.mdp} onChange={set("mdp")} required minLength={8} autoComplete="new-password" style={{ ...inputStyle, paddingRight: 38 }} placeholder="8 caractères min." />
+                <button type="button" onClick={() => setShowMdp(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, padding: 0, lineHeight: 1 }}>
+                  {showMdp ? "🙈" : "👁"}
+                </button>
+              </div>
             </div>
             <div>
               <label style={labelStyle}>Confirmer *</label>
-              <input type="password" value={champs.mdp_confirm} onChange={set("mdp_confirm")} required style={inputStyle} placeholder="••••••••" />
+              <div style={{ position: "relative" }}>
+                <input type={showMdpConfirm ? "text" : "password"} value={champs.mdp_confirm} onChange={set("mdp_confirm")} required autoComplete="new-password" style={{ ...inputStyle, paddingRight: 38 }} placeholder="••••••••" />
+                <button type="button" onClick={() => setShowMdpConfirm(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 16, padding: 0, lineHeight: 1 }}>
+                  {showMdpConfirm ? "🙈" : "👁"}
+                </button>
+              </div>
             </div>
           </div>
 
