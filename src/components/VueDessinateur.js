@@ -21,6 +21,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [filtres, setFiltres] = useState({ statut: "", type: "", periode: "" });
   const [tri, setTri] = useState({ col: "created_at", dir: "desc" });
   const [showTerminees, setShowTerminees] = useState(false);
+  const [showArchivees, setShowArchivees] = useState(false);
   const [msgInput, setMsgInput] = useState("");
   const [showDepotModal, setShowDepotModal] = useState(false);
   const [fichiersDepot, setFichiersDepot] = useState([]);
@@ -130,8 +131,9 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       })
     : commandes;
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const actives = cmdFiltrees.filter(c => c.statut !== "Validé");
+  const actives   = cmdFiltrees.filter(c => c.statut !== "Validé" && c.statut !== "Archivé");
   const terminees = cmdFiltrees.filter(c => c.statut === "Validé");
+  const archivees = cmdFiltrees.filter(c => c.statut === "Archivé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
   const peutDeposer = selected && ["Commencé", "Modification dessinateur"].includes(selected.statut);
 
@@ -256,6 +258,39 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                     {showTerminees && (
                       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
                         {terminees.map(c => {
+                          const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
+                          return (
+                            <div key={c.id} onClick={() => setSelected(c)}
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+                                  {(() => {
+                                    const nomClient = `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim();
+                                    return nomClient ? `${nomClient} — ${c.ref}` : c.ref;
+                                  })()}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                              <Badge statut={c.statut} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {archivees.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <button onClick={() => setShowArchivees(v => !v)} style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
+                      {showArchivees ? "▲ Masquer les missions archivées" : `▼ Voir les ${archivees.length} mission${archivees.length > 1 ? "s" : ""} archivée${archivees.length > 1 ? "s" : ""}`}
+                    </button>
+                    {showArchivees && (
+                      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7 }}>
+                        {archivees.map(c => {
                           const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
                           return (
                             <div key={c.id} onClick={() => setSelected(c)}
