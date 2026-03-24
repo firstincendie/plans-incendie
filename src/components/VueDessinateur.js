@@ -222,16 +222,16 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                 )}
 
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
                     {sousComptes.length > 0 && <span>Dessinateur</span>}
-                    <span>Plan</span><span>Créé le</span><span>Délai</span><span>Statut</span>
+                    <span>Plan</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
                   {actives.map(c => {
                     const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
                     return (
                       <div key={c.id} onClick={() => setSelected(c)}
-                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3EE" : "transparent", transition: "background 0.1s" }}>
+                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3EE" : "transparent", transition: "background 0.1s" }}>
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
@@ -243,6 +243,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                           </div>
                         </div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
                         <Badge statut={c.statut} />
                       </div>
@@ -261,7 +262,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                           const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
                           return (
                             <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
@@ -294,7 +295,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                           const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
                           return (
                             <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 1.4fr" : "2fr 1fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
