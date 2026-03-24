@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { formatDateCourt, formatDateBulle, joursRestants } from "../helpers";
 import Badge from "./Badge";
 import BlocAdresse from "./BlocAdresse";
@@ -167,20 +167,39 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
   );
 }
 
-function DropdownMenu({ onArchiver }) {
+function DropdownMenu({ onArchiver, onDupliquer }) {
   const [ouvert, setOuvert] = useState(false);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef();
   const HEADER_BTN = { height: 36, padding: "0 14px", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#374151", whiteSpace: "nowrap" };
+
+  function handleOpen(e) {
+    e.stopPropagation();
+    if (!ouvert) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOuvert(v => !v);
+  }
+
   return (
     <>
-      <button style={HEADER_BTN} onClick={e => { setOuvert(v => !v); e.stopPropagation(); }}>•••</button>
+      <button ref={btnRef} style={HEADER_BTN} onClick={handleOpen}>•••</button>
       {ouvert && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 999 }} onClick={() => setOuvert(false)} />
-          <div style={{ position: "absolute", right: 0, top: 42, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 1000, minWidth: 190, overflow: "hidden" }}>
-            <div style={{ height: 1, background: "#E5E7EB", margin: "4px 0" }} />
-            <button onClick={() => { onArchiver(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#DC2626", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
-              🗃️ Archiver la commande
-            </button>
+          <div style={{ position: "fixed", inset: 0, zIndex: 1999 }} onClick={() => setOuvert(false)} />
+          <div style={{ position: "fixed", top: pos.top, right: pos.right, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 2000, minWidth: 200, overflow: "hidden" }}>
+            {onDupliquer && (
+              <button onClick={() => { onDupliquer(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                📋 Dupliquer la commande
+              </button>
+            )}
+            {onDupliquer && onArchiver && <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />}
+            {onArchiver && (
+              <button onClick={() => { onArchiver(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#DC2626", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                🗃️ Archiver la commande
+              </button>
+            )}
           </div>
         </>
       )}
@@ -190,7 +209,7 @@ function DropdownMenu({ onArchiver }) {
 
 export default function DetailCommandeModal({
   selected, versionsSelected, onClose,
-  onArchiver, showContacts,
+  onArchiver, onDupliquer, showContacts,
   actionButtons,
   msgInput, setMsgInput, onEnvoyer, auteurNom,
   onMarquerLu,
@@ -237,10 +256,8 @@ export default function DetailCommandeModal({
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Badge statut={selected.statut} />
-            {onArchiver && (
-              <div style={{ position: "relative" }}>
-                <DropdownMenu onArchiver={onArchiver} />
-              </div>
+            {(onArchiver || onDupliquer) && (
+              <DropdownMenu onArchiver={onArchiver} onDupliquer={onDupliquer} />
             )}
             <button style={HEADER_BTN} onClick={onClose}>✕</button>
           </div>

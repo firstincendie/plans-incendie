@@ -192,6 +192,27 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setShowValidModal(false); setValidant(false);
   }
 
+  async function dupliquer(c) {
+    const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
+    const { data, error } = await supabase.from("commandes").insert([{
+      ref,
+      utilisateur_id: c.utilisateur_id,
+      nom_plan: c.nom_plan + " (copie)",
+      client_nom: c.client_nom, client_prenom: c.client_prenom,
+      client_email: c.client_email, client_telephone: c.client_telephone,
+      adresse1: c.adresse1, adresse2: c.adresse2,
+      code_postal: c.code_postal, ville: c.ville,
+      delai: c.delai, plans: c.plans,
+      fichiers_plan: c.fichiers_plan || [], logo_client: c.logo_client || [],
+      instructions: c.instructions,
+      plans_finalises: [], statut: "En attente",
+    }]).select("*, messages(*)").single();
+    if (!error && data) {
+      setCommandes(prev => [{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...prev]);
+      setSelected(null);
+    }
+  }
+
   async function archiver(id) {
     const { error } = await supabase.from("commandes").update({ statut: "Archivé" }).eq("id", id);
     if (!error) {
@@ -441,6 +462,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                     versionsSelected={versionsSelected}
                     onClose={() => setSelected(null)}
                     onArchiver={() => archiver(selected.id)}
+                    onDupliquer={() => dupliquer(selected)}
                     showContacts={true}
                     actionButtons={
                       selected.statut === "Ébauche déposée" ? (
