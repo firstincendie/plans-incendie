@@ -30,6 +30,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [modifMsg, setModifMsg] = useState("");
   const [modifFichiers, setModifFichiers] = useState([]);
   const [envoyantModif, setEnvoyantModif] = useState(false);
+  const [demandantValidation, setDemandantValidation] = useState(false);
   const [sousComptes, setSousComptes] = useState([]);
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
 
@@ -187,9 +188,11 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   }
 
   async function demanderValidation() {
-    if (!selected) return;
+    if (!selected || demandantValidation) return;
+    setDemandantValidation(true);
     await changerStatut(selected.id, "Validation en cours");
     await envoyerMessage(selected.id, auteurNom, "📋 Validation demandée.");
+    setDemandantValidation(false);
   }
 
   async function dupliquer(c) {
@@ -471,8 +474,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                             style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             ✏️ Demander une modification
                           </button>
-                          <button onClick={() => demanderValidation()}
-                            style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                          <button onClick={() => demanderValidation()} disabled={demandantValidation}
+                            style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: demandantValidation ? "not-allowed" : "pointer" }}>
                             📋 Demander la validation
                           </button>
                         </div>
