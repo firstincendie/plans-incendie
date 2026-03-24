@@ -191,7 +191,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "En cours", val: commandes.filter(c => c.statut !== "Validé").length, color: "#FC6C1B", bg: "#FFF3EE" },
+                { label: "En cours", val: commandes.filter(c => c.statut !== "Validé" && c.statut !== "Archivé").length, color: "#FC6C1B", bg: "#FFF3EE" },
                 { label: "Validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
                 { label: "Total", val: commandes.length, color: "#374151", bg: "#F8FAFC" },
               ].map(s => (

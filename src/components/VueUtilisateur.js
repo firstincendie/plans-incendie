@@ -262,7 +262,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "En cours", val: commandes.filter(c => c.statut !== "Validé").length, color: "#122131", bg: "#fff" },
+                { label: "En cours", val: commandes.filter(c => c.statut !== "Validé" && c.statut !== "Archivé").length, color: "#122131", bg: "#fff" },
                 { label: "Validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
                 { label: "Total", val: commandes.length, color: "#374151", bg: "#F8FAFC" },
               ].map(s => (
