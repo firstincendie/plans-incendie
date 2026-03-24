@@ -34,7 +34,7 @@ function PasswordInput({ value, onChange, placeholder, required, minLength }) {
 }
 
 export default function PageInscription({ onRetour }) {
-  const [role, setRole] = useState("client");
+  const [role, setRole] = useState("utilisateur");
   const [champs, setChamps] = useState(CHAMPS_INIT);
   const [etape, setEtape] = useState(1);
   const [erreur, setErreur] = useState("");
@@ -110,7 +110,7 @@ export default function PageInscription({ onRetour }) {
           <SectionHeader>Type de compte</SectionHeader>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {[
-              { value: "client", label: "Utilisateur", desc: "Je commande des plans", activeColor: "#1D4ED8", activeBg: "#EFF6FF", activeBorder: "#93C5FD" },
+              { value: "utilisateur", label: "Utilisateur", desc: "Je commande des plans", activeColor: "#1D4ED8", activeBg: "#EFF6FF", activeBorder: "#93C5FD" },
               { value: "dessinateur", label: "Dessinateur", desc: "Je réalise des plans", activeColor: "#FC6C1B", activeBg: "#FFF7F3", activeBorder: "#FC6C1B" },
             ].map(opt => (
               <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
