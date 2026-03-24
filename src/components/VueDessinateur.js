@@ -103,14 +103,6 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     }
   }
 
-  async function changerStatut(id, statut) {
-    const { error } = await supabase.from("commandes").update({ statut }).eq("id", id);
-    if (!error) {
-      setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
-      if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
-    }
-  }
-
   async function annulerPlansFinal() {
     if (!selected) return;
     await supabase.from("commandes").update({ plans_finalises: [], statut: "Ébauche déposée" }).eq("id", selected.id);
