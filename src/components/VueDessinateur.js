@@ -41,12 +41,16 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       .channel("messages-dessinateur")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         const msg = payload.new;
-        setCommandes(prev => prev.map(c =>
-          c.id === msg.commande_id ? { ...c, messages: [...c.messages, msg] } : c
-        ));
-        setSelected(prev =>
-          prev && prev.id === msg.commande_id ? { ...prev, messages: [...prev.messages, msg] } : prev
-        );
+        setCommandes(prev => prev.map(c => {
+          if (c.id !== msg.commande_id) return c;
+          if (c.messages.some(m => m.id === msg.id)) return c;
+          return { ...c, messages: [...c.messages, msg] };
+        }));
+        setSelected(prev => {
+          if (!prev || prev.id !== msg.commande_id) return prev;
+          if (prev.messages.some(m => m.id === msg.id)) return prev;
+          return { ...prev, messages: [...prev.messages, msg] };
+        });
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, (payload) => {
         const msg = payload.new;
