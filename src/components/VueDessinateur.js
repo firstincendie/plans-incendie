@@ -23,6 +23,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [msgInput, setMsgInput] = useState("");
   const [showDepotModal, setShowDepotModal] = useState(false);
   const [fichiersDepot, setFichiersDepot] = useState([]);
+  const [messageDepot, setMessageDepot] = useState("");
   const [deposant, setDeposant] = useState(false);
   const [showPlansFinalModal, setShowPlansFinalModal] = useState(false);
   const [uploadingPlanIndex, setUploadingPlanIndex] = useState(null);
@@ -45,11 +46,13 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
         const msg = payload.new;
         setCommandes(prev => prev.map(c => {
           if (c.id !== msg.commande_id) return c;
+          if (msg.auteur === auteurNom) return c;
           if (c.messages.some(m => m.id === msg.id)) return c;
           return { ...c, messages: [...c.messages, msg] };
         }));
         setSelected(prev => {
           if (!prev || prev.id !== msg.commande_id) return prev;
+          if (msg.auteur === auteurNom) return prev;
           if (prev.messages.some(m => m.id === msg.id)) return prev;
           return { ...prev, messages: [...prev.messages, msg] };
         });
@@ -108,6 +111,14 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     }
   }
 
+  async function annulerPlansFinal() {
+    if (!selected) return;
+    await supabase.from("commandes").update({ plans_finalises: [], statut: "Ébauche déposée" }).eq("id", selected.id);
+    setCommandes(prev => prev.map(c => c.id === selected.id ? { ...c, plansFinalises: [], statut: "Ébauche déposée" } : c));
+    setSelected(prev => ({ ...prev, plansFinalises: [], statut: "Ébauche déposée" }));
+    await envoyerMessage(selected.id, auteurNom, "↩️ Plans finaux annulés. Retour en ébauche.");
+  }
+
   async function deposerPlanFinal(planIndex, file) {
     setUploadingPlanIndex(planIndex);
     const ext = file.name.split(".").pop();
@@ -137,9 +148,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     setUploadingPlanIndex(null);
 
     if (nouveaux.length === selected.plans.length) {
-      await changerStatut(selected.id, "Validé");
-      await envoyerMessage(selected.id, auteurNom, "✅ Plans finaux déposés. Commande validée.");
-      setShowPlansFinalModal(false);
+      await envoyerMessage(selected.id, auteurNom, "📐 Plans finaux déposés — en attente de validation.");
     }
   }
 
@@ -159,9 +168,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       supabase.functions.invoke("notify-version", {
         body: { commande_id: selected.id, nom_plan: selected.nom_plan, numero_version: numero },
       });
-      await envoyerMessage(selected.id, auteurNom, `📎 Version ${numero} déposée.`);
+      const texteMsg = messageDepot.trim()
+        ? `📎 Version ${numero} déposée.\n${messageDepot.trim()}`
+        : `📎 Version ${numero} déposée.`;
+      await envoyerMessage(selected.id, auteurNom, texteMsg);
     }
-    setFichiersDepot([]); setShowDepotModal(false); setDeposant(false);
+    setFichiersDepot([]); setMessageDepot(""); setShowDepotModal(false); setDeposant(false);
   }
 
   async function envoyerMessage(commandeId, auteur, texte, fichiers = []) {
@@ -430,10 +442,16 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                           </button>
                         )}
                         {selected.statut === "Validation en cours" && (
-                          <button onClick={() => setShowPlansFinalModal(true)}
-                            style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#047857", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
-                            📐 Déposer les plans finaux
-                          </button>
+                          <>
+                            <button onClick={() => setShowPlansFinalModal(true)}
+                              style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: "#047857", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 8 }}>
+                              📐 Déposer les plans finaux
+                            </button>
+                            <button onClick={() => annulerPlansFinal()}
+                              style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
+                              ↩️ Revenir en ébauche
+                            </button>
+                          </>
                         )}
                         {selected.statut === "Validé" && (
                           <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
@@ -463,7 +481,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 560, maxHeight: "80vh", overflowY: "auto" }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📐 Déposer les plans finaux</div>
-            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>1 fichier requis par plan. Le statut passera à "Validé" automatiquement.</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>1 fichier requis par plan. Le client validera la commande une fois tous les plans déposés.</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {selected.plans.map((p, i) => {
                 const fichierExistant = (selected.plansFinalises || []).find(f => f.plan_index === i);
@@ -506,8 +524,12 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>📤 Déposer une ébauche</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Ébauche déposée" automatiquement.</div>
             <ZoneUpload label="Fichiers de l'ébauche *" fichiers={fichiersDepot} onAjouter={f => setFichiersDepot(f)} onSupprimer={i => setFichiersDepot(fichiersDepot.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={20} />
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Message joint (optionnel)</label>
+              <textarea value={messageDepot} onChange={e => setMessageDepot(e.target.value)} rows={3} placeholder="Ajoutez un commentaire sur cette ébauche..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+            </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-              <button onClick={() => { setShowDepotModal(false); setFichiersDepot([]); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button onClick={() => { setShowDepotModal(false); setFichiersDepot([]); setMessageDepot(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
               <button onClick={deposerVersion} disabled={!fichiersDepot.length || deposant}
                 style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: !fichiersDepot.length ? "#F3F4F6" : "#122131", color: !fichiersDepot.length ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: !fichiersDepot.length ? "not-allowed" : "pointer" }}>
                 {deposant ? "Dépôt..." : "Déposer"}

@@ -31,6 +31,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [modifFichiers, setModifFichiers] = useState([]);
   const [envoyantModif, setEnvoyantModif] = useState(false);
   const [demandantValidation, setDemandantValidation] = useState(false);
+  const [showDemandeValidationModal, setShowDemandeValidationModal] = useState(false);
+  const [showValiderCommandeModal, setShowValiderCommandeModal] = useState(false);
+  const [validant, setValidant] = useState(false);
   const [sousComptes, setSousComptes] = useState([]);
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
 
@@ -60,11 +63,13 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
         const msg = payload.new;
         setCommandes(prev => prev.map(c => {
           if (c.id !== msg.commande_id) return c;
+          if (msg.auteur === auteurNom) return c;
           if (c.messages.some(m => m.id === msg.id)) return c;
           return { ...c, messages: [...c.messages, msg] };
         }));
         setSelected(prev => {
           if (!prev || prev.id !== msg.commande_id) return prev;
+          if (msg.auteur === auteurNom) return prev;
           if (prev.messages.some(m => m.id === msg.id)) return prev;
           return { ...prev, messages: [...prev.messages, msg] };
         });
@@ -190,9 +195,19 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   async function demanderValidation() {
     if (!selected || demandantValidation) return;
     setDemandantValidation(true);
+    setShowDemandeValidationModal(false);
     await changerStatut(selected.id, "Validation en cours");
     await envoyerMessage(selected.id, auteurNom, "📋 Validation demandée.");
     setDemandantValidation(false);
+  }
+
+  async function validerCommande() {
+    if (!selected || validant) return;
+    setValidant(true);
+    setShowValiderCommandeModal(false);
+    await changerStatut(selected.id, "Validé");
+    await envoyerMessage(selected.id, auteurNom, "✅ Commande validée.");
+    setValidant(false);
   }
 
   async function dupliquer(c) {
@@ -474,14 +489,22 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                             style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             ✏️ Demander une modification
                           </button>
-                          <button onClick={() => demanderValidation()} disabled={demandantValidation}
+                          <button onClick={() => setShowDemandeValidationModal(true)} disabled={demandantValidation}
                             style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: demandantValidation ? "not-allowed" : "pointer" }}>
                             📋 Demander la validation
                           </button>
                         </div>
                       ) : selected.statut === "Validation en cours" ? (
-                        <div style={{ background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#047857", marginBottom: 20 }}>
-                          📋 Validation en cours — le dessinateur dépose les plans finaux
+                        <div style={{ marginBottom: 20 }}>
+                          <div style={{ background: "#ECFDF5", border: "1px solid #6EE7B7", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#047857", marginBottom: 10 }}>
+                            📋 Validation en cours — {(selected.plansFinalises || []).length}/{(selected.plans || []).length} plan(s) déposé(s)
+                          </div>
+                          {(selected.plansFinalises || []).length === (selected.plans || []).length && (selected.plans || []).length > 0 && (
+                            <button onClick={() => setShowValiderCommandeModal(true)} disabled={validant}
+                              style={{ width: "100%", padding: 10, borderRadius: 8, border: "none", background: validant ? "#D1FAE5" : "#065F46", color: "#fff", fontSize: 13, fontWeight: 700, cursor: validant ? "not-allowed" : "pointer" }}>
+                              {validant ? "Validation..." : "✅ Valider la commande"}
+                            </button>
+                          )}
                         </div>
                       ) : selected.statut === "Validé" ? (
                         <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
@@ -586,6 +609,50 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
               <button onClick={creerCommande} disabled={saving || !form.nom_plan || !form.delai || form.fichiersPlan.length === 0}
                 style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "not-allowed" : "pointer", background: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "#F3F4F6" : "#122131", color: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "#9CA3AF" : "#fff" }}>
                 {saving ? "Enregistrement..." : "Créer la commande"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmation valider la commande */}
+      {showValiderCommandeModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 440 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>✅ Valider la commande</div>
+            <div style={{ fontSize: 13, color: "#374151", marginBottom: 20 }}>
+              Cette action est définitive. La commande passera au statut "Validé" et la messagerie sera fermée. Êtes-vous sûr ?
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowValiderCommandeModal(false)}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={() => validerCommande()} disabled={validant}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#065F46", color: "#fff", fontSize: 13, fontWeight: 600, cursor: validant ? "not-allowed" : "pointer" }}>
+                {validant ? "Validation..." : "Confirmer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmation demande de validation */}
+      {showDemandeValidationModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 440 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>📋 Demander la validation</div>
+            <div style={{ fontSize: 13, color: "#374151", marginBottom: 20 }}>
+              Le dessinateur recevra une notification et devra déposer les plans finaux. Êtes-vous sûr ?
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowDemandeValidationModal(false)}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={() => demanderValidation()} disabled={demandantValidation}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#065F46", color: "#fff", fontSize: 13, fontWeight: 600, cursor: demandantValidation ? "not-allowed" : "pointer" }}>
+                {demandantValidation ? "Envoi..." : "Confirmer"}
               </button>
             </div>
           </div>
