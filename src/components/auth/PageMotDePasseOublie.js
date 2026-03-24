@@ -15,7 +15,7 @@ export default function PageMotDePasseOublie({ onRetour }) {
       redirectTo: window.location.origin,
     });
     if (error) {
-      setErreur("Une erreur est survenue. Vérifiez l'email saisi.");
+      setErreur("Service email temporairement indisponible. Contactez l'administrateur pour réinitialiser votre mot de passe.");
     } else {
       setEnvoye(true);
     }
