@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { supabase } from "../../supabase";
 
 const CHAMPS_INIT = {
@@ -7,63 +7,20 @@ const CHAMPS_INIT = {
   mdp: "", mdp_confirm: ""
 };
 
-function validerSiren(siren) {
-  const s = siren.replace(/\s/g, "");
-  if (!/^\d{9}$/.test(s)) return false;
-  let sum = 0;
-  for (let i = 0; i < 9; i++) {
-    let n = parseInt(s[i]);
-    if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
-    sum += n;
-  }
-  return sum % 10 === 0;
-}
-
 export default function PageInscription({ onRetour }) {
+  const [role, setRole] = useState("client"); // "client" | "dessinateur"
   const [champs, setChamps] = useState(CHAMPS_INIT);
-  const [sirenInfo, setSirenInfo] = useState(null);
-  const [sirenErreur, setSirenErreur] = useState("");
-  const [sirenChargement, setSirenChargement] = useState(false);
   const [etape, setEtape] = useState(1); // 1 = infos, 2 = confirmé
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
 
   const set = (champ) => (e) => setChamps(prev => ({ ...prev, [champ]: e.target.value }));
 
-  const verifierSiren = useCallback(async () => {
-    const siren = champs.siren.replace(/\s/g, "");
-    setSirenInfo(null);
-    setSirenErreur("");
-    if (!siren) return;
-    if (!validerSiren(siren)) {
-      setSirenErreur("Numéro SIREN invalide (9 chiffres requis, clé Luhn incorrecte).");
-      return;
-    }
-    setSirenChargement(true);
-    try {
-      const res = await fetch(`https://recherche-entreprises.api.gouv.fr/search?q=${siren}&page=1&per_page=1`);
-      const data = await res.json();
-      if (data.results && data.results.length > 0) {
-        const e = data.results[0];
-        setSirenInfo({ raison_sociale: e.nom_raison_sociale || e.nom_complet, siren: e.siren, actif: e.etat_administratif === "A" });
-        setChamps(prev => ({ ...prev, entreprise: e.nom_raison_sociale || e.nom_complet || prev.entreprise }));
-      } else {
-        setSirenErreur("Aucune entreprise trouvée pour ce SIREN.");
-      }
-    } catch {
-      setSirenErreur("Impossible de vérifier le SIREN pour l'instant. Vous pouvez continuer.");
-    }
-    setSirenChargement(false);
-  }, [champs.siren]);
-
   const handleSoumettre = async (e) => {
     e.preventDefault();
     setErreur("");
     if (champs.mdp !== champs.mdp_confirm) { setErreur("Les mots de passe ne correspondent pas."); return; }
     if (champs.mdp.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); return; }
-    if (!sirenInfo && validerSiren(champs.siren.replace(/\s/g, ""))) {
-      // SIREN valide formellement mais pas encore vérifié en ligne, on accepte
-    }
     setChargement(true);
     const { error } = await supabase.auth.signUp({
       email: champs.email,
@@ -72,7 +29,7 @@ export default function PageInscription({ onRetour }) {
         data: {
           nom: champs.nom,
           prenom: champs.prenom,
-          role: "client",
+          role,
         }
       }
     });
@@ -93,8 +50,7 @@ export default function PageInscription({ onRetour }) {
         code_postal: champs.code_postal,
         ville: champs.ville,
         siren: champs.siren.replace(/\s/g, ""),
-        siren_valide: !!sirenInfo,
-        raison_sociale: sirenInfo?.raison_sociale || champs.entreprise,
+        raison_sociale: champs.entreprise,
       }).eq("id", user.id);
     }
 
@@ -139,8 +95,22 @@ export default function PageInscription({ onRetour }) {
 
         <form onSubmit={handleSoumettre} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* Identité */}
+          {/* Type de compte */}
           <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Type de compte</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[{ value: "client", label: "Utilisateur", desc: "Je commande des plans" }, { value: "dessinateur", label: "Dessinateur", desc: "Je réalise des plans" }].map(opt => (
+              <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
+                style={{ padding: "12px 14px", borderRadius: 10, border: `2px solid ${role === opt.value ? "#FC6C1B" : "#E2E8F0"}`, background: role === opt.value ? "#FFF7F3" : "#fff", cursor: "pointer", textAlign: "left" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: role === opt.value ? "#FC6C1B" : "#122131" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Identité */}
+          <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginTop: 8, marginBottom: 4 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Identité</div>
           </div>
           <div style={rowStyle}>
@@ -168,40 +138,13 @@ export default function PageInscription({ onRetour }) {
           <div style={{ borderBottom: "1px solid #F1F5F9", paddingBottom: 4, marginTop: 8, marginBottom: 4 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.08em", textTransform: "uppercase" }}>Entreprise</div>
           </div>
-
-          {/* SIREN */}
-          <div>
-            <label style={labelStyle}>Numéro SIREN *</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="text"
-                value={champs.siren}
-                onChange={e => { set("siren")(e); setSirenInfo(null); setSirenErreur(""); }}
-                required
-                maxLength={9}
-                style={{ ...inputStyle, flex: 1 }}
-                placeholder="123456789"
-              />
-              <button
-                type="button"
-                onClick={verifierSiren}
-                disabled={sirenChargement}
-                style={{ padding: "10px 14px", background: "#122131", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                {sirenChargement ? "..." : "Vérifier"}
-              </button>
-            </div>
-            {sirenErreur && <div style={{ color: "#DC2626", fontSize: 12, marginTop: 4 }}>⚠ {sirenErreur}</div>}
-            {sirenInfo && (
-              <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 6, padding: "8px 12px", marginTop: 6, fontSize: 12, color: "#166534" }}>
-                ✅ <strong>{sirenInfo.raison_sociale}</strong> — SIREN {sirenInfo.siren} {!sirenInfo.actif && <span style={{ color: "#DC2626" }}>(entreprise inactive)</span>}
-              </div>
-            )}
-          </div>
-
           <div>
             <label style={labelStyle}>Nom de l'entreprise *</label>
             <input type="text" value={champs.entreprise} onChange={set("entreprise")} required style={inputStyle} placeholder="Mon Entreprise SAS" />
+          </div>
+          <div>
+            <label style={labelStyle}>Numéro SIREN</label>
+            <input type="text" value={champs.siren} onChange={set("siren")} maxLength={9} style={inputStyle} placeholder="123456789" />
           </div>
           <div>
             <label style={labelStyle}>Adresse</label>
