@@ -5,7 +5,7 @@ import { planVide } from "../constants";
 import Badge from "./Badge";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 import Messagerie from "./Messagerie";
-import HistoriqueVersions from "./HistoriqueVersions";
+import DetailCommandeModal from "./DetailCommandeModal";
 import ZoneUpload from "./ZoneUpload";
 import TableauPlans from "./TableauPlans";
 import PageReglages from "./PageReglages";
@@ -26,6 +26,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [filtres, setFiltres] = useState({ statut: "", type: "", periode: "" });
   const [tri, setTri] = useState({ col: "created_at", dir: "desc" });
   const [showTerminees, setShowTerminees] = useState(false);
+  const [showArchivees, setShowArchivees] = useState(false);
   const [msgInput, setMsgInput] = useState("");
   const [showModifModal, setShowModifModal] = useState(false);
   const [modifMsg, setModifMsg] = useState("");
@@ -92,7 +93,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   }
 
   async function creerCommande() {
-    if (!form.nom_plan || !form.delai) return;
+    if (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) return;
     setSaving(true);
     setSaveError("");
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
@@ -180,10 +181,19 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setShowValidModal(false); setValidant(false);
   }
 
+  async function archiver(id) {
+    const { error } = await supabase.from("commandes").update({ statut: "Archivé" }).eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut: "Archivé" } : c));
+      setSelected(null);
+    }
+  }
+
   const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const actives = cmdFiltrees.filter(c => c.statut !== "Validé");
+  const actives   = cmdFiltrees.filter(c => c.statut !== "Validé" && c.statut !== "Archivé");
   const terminees = cmdFiltrees.filter(c => c.statut === "Validé");
+  const archivees = cmdFiltrees.filter(c => c.statut === "Archivé");
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
@@ -296,7 +306,15 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
-                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+                            {(() => {
+                              const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+                              const prenom = owner ? owner.prenom : (c.utilisateur_id === profil.id ? profil.prenom : c.client_prenom);
+                              const nom = owner ? owner.nom : (c.utilisateur_id === profil.id ? profil.nom : c.client_nom);
+                              const nomStr = `${prenom ?? ""} ${nom ?? ""}`.trim();
+                              return nomStr ? `${nomStr} — ${c.ref}` : c.ref;
+                            })()}
+                          </div>
                         </div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
@@ -323,6 +341,44 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+                                  {(() => {
+                                    const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+                                    const prenom = owner ? owner.prenom : (c.utilisateur_id === profil.id ? profil.prenom : c.client_prenom);
+                                    const nom = owner ? owner.nom : (c.utilisateur_id === profil.id ? profil.nom : c.client_nom);
+                                    const nomStr = `${prenom ?? ""} ${nom ?? ""}`.trim();
+                                    return nomStr ? `${nomStr} — ${c.ref}` : c.ref;
+                                  })()}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                              <Badge statut={c.statut} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {archivees.length > 0 && (
+                  <div style={{ marginBottom: selected ? 24 : 0 }}>
+                    <button onClick={() => setShowArchivees(v => !v)}
+                      style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
+                      {showArchivees ? "▲ Masquer les commandes archivées" : `▼ Voir les ${archivees.length} commande${archivees.length > 1 ? "s" : ""} archivée${archivees.length > 1 ? "s" : ""}`}
+                    </button>
+                    {showArchivees && (
+                      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7 }}>
+                        {archivees.map(c => {
+                          const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+                          return (
+                            <div key={c.id} onClick={() => setSelected(c)}
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                               </div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
@@ -338,60 +394,38 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                 )}
 
                 {selected && (
-                  <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24, marginTop: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                      <div>
-                        <div style={{ fontSize: 16, fontWeight: 700 }}>{selected.nom_plan}</div>
-                        <div style={{ fontSize: 12, color: "#9CA3AF" }}>{selected.ref}</div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <Badge statut={selected.statut} />
-                        <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
-                      {[
-                        { label: "Client", val: `${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim() || "—" },
-                        { label: "Email client", val: selected.client_email || "—" },
-                        { label: "Téléphone", val: selected.client_telephone || "—" },
-                        { label: "Créé le", val: formatDateCourt(selected.created_at) },
-                        { label: "Délai", val: selected.delai ? formatDateCourt(selected.delai) : "—" },
-                        { label: "Nb. plans", val: selected.plans?.length ?? 0 },
-                      ].map(f => (
-                        <div key={f.label}>
-                          <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{f.label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 500 }}>{f.val}</div>
+                  <DetailCommandeModal
+                    selected={selected}
+                    versionsSelected={versionsSelected}
+                    onClose={() => setSelected(null)}
+                    onArchiver={() => archiver(selected.id)}
+                    showContacts={true}
+                    actionButtons={
+                      selected.statut === "Ébauche déposée" ? (
+                        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+                          <button onClick={() => setShowModifModal(true)}
+                            style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                            ✏️ Demander une modification
+                          </button>
+                          <button onClick={() => setShowValidModal(true)}
+                            style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                            ✅ Valider la commande
+                          </button>
                         </div>
-                      ))}
-                    </div>
-
-                    <BlocAdresse commande={selected} copiable />
-                    <HistoriqueVersions versions={versionsSelected} />
-
-                    {selected.statut === "Ébauche déposée" && (
-                      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-                        <button onClick={() => setShowModifModal(true)}
-                          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                          ✏️ Demander une modification
-                        </button>
-                        <button onClick={() => setShowValidModal(true)}
-                          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                          ✅ Valider la commande
-                        </button>
-                      </div>
-                    )}
-
-                    {selected.statut === "Validé" ? (
-                      <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
-                        ✅ Commande validée — messagerie fermée
-                      </div>
-                    ) : (
-                      <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
-                        onEnvoyer={async (texte, fichiers) => { if (!texte.trim() && !fichiers?.length) return; await envoyerMessage(selected.id, auteurNom, texte, fichiers); }}
-                        auteurActif={auteurNom} allowFichier />
-                    )}
-                  </div>
+                      ) : selected.statut === "Validé" ? (
+                        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
+                          ✅ Commande validée — messagerie fermée
+                        </div>
+                      ) : null
+                    }
+                    msgInput={msgInput}
+                    setMsgInput={setMsgInput}
+                    onEnvoyer={async (texte, fichiers) => {
+                      if (!texte.trim() && !fichiers?.length) return;
+                      await envoyerMessage(selected.id, auteurNom, texte, fichiers);
+                    }}
+                    auteurNom={auteurNom}
+                  />
                 )}
               </>
             )}
@@ -463,7 +497,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 12 }}>
-                <ZoneUpload label="📄 Fichiers du plan" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
+                <ZoneUpload label="📄 Fichiers du plan *" fichiers={form.fichiersPlan} onAjouter={f => setForm({ ...form, fichiersPlan: f })} onSupprimer={i => setForm({ ...form, fichiersPlan: form.fichiersPlan.filter((_, idx) => idx !== i) })} accept=".png,.jpg,.jpeg,.pdf,.dwg,.dxf" maxFichiers={10} />
                 <ZoneUpload label="🏢 Logo du client" fichiers={form.logoClient} onAjouter={f => setForm({ ...form, logoClient: f })} onSupprimer={() => setForm({ ...form, logoClient: [] })} accept="image/*" unique />
               </div>
 
@@ -477,8 +511,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button onClick={() => { setShowForm(false); setForm(formVide()); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
-              <button onClick={creerCommande} disabled={saving || !form.nom_plan || !form.delai}
-                style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: (!form.nom_plan || !form.delai) ? "not-allowed" : "pointer", background: (!form.nom_plan || !form.delai) ? "#F3F4F6" : "#122131", color: (!form.nom_plan || !form.delai) ? "#9CA3AF" : "#fff" }}>
+              <button onClick={creerCommande} disabled={saving || !form.nom_plan || !form.delai || form.fichiersPlan.length === 0}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "not-allowed" : "pointer", background: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "#F3F4F6" : "#122131", color: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "#9CA3AF" : "#fff" }}>
                 {saving ? "Enregistrement..." : "Créer la commande"}
               </button>
             </div>
