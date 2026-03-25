@@ -60,7 +60,6 @@ export function appliquerFiltresTri(commandes, filtres, tri) {
   if (filtres.dessinateur) r = r.filter(c => c.dessinateur === filtres.dessinateur);
   if (filtres.type)        r = r.filter(c => (c.plans || []).some(p => p.type === filtres.type));
   if (filtres.periode)     r = r.filter(c => getPeriode(c.created_at) === filtres.periode);
-  if (filtres.client)      r = r.filter(c => c.client === filtres.client);
   if (tri.col) r.sort((a, b) => {
     const va = a[tri.col] || ""; const vb = b[tri.col] || "";
     return tri.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);

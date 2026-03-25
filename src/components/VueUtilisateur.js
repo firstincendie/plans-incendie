@@ -39,6 +39,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
   const [note, setNote] = useState("");
   const [noteSaveError, setNoteSaveError] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const formVide = (defaultDessinateurId = "") => ({
     utilisateur_id: profil.id,
@@ -328,11 +329,74 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 };
 
+  const cmdCols = sousComptes.length > 0 ? "1.5fr 2.5fr 1fr 1.3fr" : "3fr 1fr 1.3fr";
+
+  function renderLigneCmd(c, dim = false) {
+    const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+    const ownerLabel = owner
+      ? `${owner.prenom} ${owner.nom}`
+      : (c.utilisateur_id === profil.id ? `${profil.prenom} ${profil.nom}` : `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim());
+    const j = joursRestants(c.delai);
+    const rouge = j !== null && j <= 3;
+    return (
+      <div key={c.id} onClick={() => setSelected(c)}
+        style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", opacity: dim ? 0.75 : 1, transition: "background 0.1s" }}>
+        {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{ownerLabel || "—"}</div>}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+            {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
+          </div>
+          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+        </div>
+        <div>
+          {c.delai ? (
+            <>
+              <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{formatDateCourt(c.delai)}</div>
+              {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j`}</div>}
+            </>
+          ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
+        </div>
+        <Badge statut={c.statut} />
+      </div>
+    );
+  }
+
+  function renderCarteCmd(c, dim = false) {
+    const j = joursRestants(c.delai);
+    const rouge = j !== null && j <= 3;
+    const owner = sousComptes.find(s => s.id === c.utilisateur_id);
+    const ownerLabel = owner ? `${owner.prenom} ${owner.nom}` : null;
+    return (
+      <div key={c.id} onClick={() => setSelected(c)}
+        style={{ background: "#fff", border: "1.5px solid " + (selected?.id === c.id ? "#122131" : "#E5E7EB"), borderRadius: 10, padding: "12px 14px", marginBottom: 8, cursor: "pointer", opacity: dim ? 0.75 : 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nom_plan || "—"}</span>
+              {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{nonLusDe(c)}</span>}
+            </div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{ownerLabel ? `${ownerLabel} · ` : ""}{c.ref}</div>
+          </div>
+          <Badge statut={c.statut} />
+        </div>
+        {c.delai && (
+          <div style={{ marginTop: 6, fontSize: 11, color: rouge ? "#DC2626" : "#9CA3AF", fontWeight: rouge ? 600 : 400 }}>
+            {formatDateCourt(c.delai)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div onClick={() => showMenuProfil && setShowMenuProfil(false)} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+    <div onClick={() => { showMenuProfil && setShowMenuProfil(false); showMobileMenu && setShowMobileMenu(false); }} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+
+      {/* Backdrop mobile */}
+      <div className={`sidebar-backdrop${showMobileMenu ? " sidebar-open" : ""}`} onClick={(e) => { e.stopPropagation(); setShowMobileMenu(false); }} />
 
       {/* Sidebar */}
-      <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: 0, height: "100dvh", overflowY: "auto" }}>
+      <div className={`app-sidebar${showMobileMenu ? " sidebar-open" : ""}`} style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: 0, height: "100dvh", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
           <div style={{ width: 32, height: 32, background: "#122131", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "white", fontSize: 16 }}>🔥</span>
@@ -340,7 +404,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           <span style={{ fontWeight: 700, fontSize: 14 }}>First Incendie</span>
         </div>
         {nav.map(item => (
-          <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
+          <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); setShowMobileMenu(false); }}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left", width: "100%" }}>
             <span>{item.icon}</span><span style={{ flex: 1 }}>{item.label}</span>
             {item.id === "commandes" && totalNonLus > 0 && (
@@ -375,8 +439,21 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
         </div>
       </div>
 
-      {/* Contenu */}
-      <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px", overflowY: "auto" }}>
+      {/* Main wrapper */}
+      <div className="app-main-wrapper" style={{ marginLeft: 220, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Mobile header */}
+        <div className="mobile-header">
+          <button onClick={(e) => { e.stopPropagation(); setShowMobileMenu(v => !v); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#374151", padding: "4px 8px 4px 0", lineHeight: 1 }}>☰</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, background: "#122131", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "white", fontSize: 14 }}>🔥</span>
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>First Incendie</span>
+          </div>
+          {totalNonLus > 0 && <span style={{ marginLeft: "auto", background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>{totalNonLus}</span>}
+        </div>
+        {/* Contenu */}
+        <div className="app-main-content" style={{ flex: 1, padding: "32px 32px", overflowY: "auto" }}>
 
         {vue === "reglages" && <PageReglages profil={profil} onProfilUpdate={onProfilUpdate} />}
 
@@ -386,7 +463,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
         {vue === "commandes" && (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Commandes</h1>
               <button onClick={() => { setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? dessinateursDispos[0]?.id ?? "")); setShowForm(true); }}
                 style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -394,16 +471,15 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
+            <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
               {[
-                { label: "En cours", val: commandes.filter(c => c.statut !== "Validé" && c.statut !== "Archivé").length, color: "#122131", bg: "#fff" },
-                { label: "Validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
-                { label: "Total", val: commandes.length, color: "#374151", bg: "#F8FAFC" },
+                { label: "en cours", val: commandes.filter(c => c.statut !== "Validé" && c.statut !== "Archivé").length, color: "#122131" },
+                { label: "validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669" },
+                { label: "total", val: commandes.length, color: "#9CA3AF" },
               ].map(s => (
-                <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
-                  <div style={{ fontSize: 12, color: "#6B7280", marginTop: 5 }}>{s.label}</div>
-                </div>
+                <span key={s.label} style={{ fontSize: 13, color: "#6B7280" }}>
+                  <span style={{ fontWeight: 700, fontSize: 18, color: s.color }}>{s.val}</span> {s.label}
+                </span>
               ))}
             </div>
 
@@ -426,128 +502,58 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                   </div>
                 )}
 
-                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {sousComptes.length > 0 && <span>User</span>}
-                    <span>Plan</span><span>Dessinateur</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+                {/* Actives — desktop */}
+                <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    {sousComptes.length > 0 && <span>Compte</span>}
+                    <span>Plan</span><span>Délai</span><span>Statut</span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
-                  {actives.map(c => {
-                    const owner = sousComptes.find(s => s.id === c.utilisateur_id);
-                    return (
-                      <div key={c.id} onClick={() => setSelected(c)}
-                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
-                        {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-                            {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
-                          </div>
-                          <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                            {(() => {
-                              const owner = sousComptes.find(s => s.id === c.utilisateur_id);
-                              const prenom = owner ? owner.prenom : (c.utilisateur_id === profil.id ? profil.prenom : c.client_prenom);
-                              const nom = owner ? owner.nom : (c.utilisateur_id === profil.id ? profil.nom : c.client_nom);
-                              const nomStr = `${prenom ?? ""} ${nom ?? ""}`.trim();
-                              return nomStr ? `${nomStr} — ${c.ref}` : c.ref;
-                            })()}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
-                        <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
-                        {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
-                          <div>
-                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
-                          </div>
-                        ); })()}
-                        <Badge statut={c.statut} />
-                      </div>
-                    );
-                  })}
+                  {actives.map(c => renderLigneCmd(c))}
                 </div>
 
+                {/* Actives — mobile */}
+                <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                  {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
+                  {actives.map(c => renderCarteCmd(c))}
+                </div>
+
+                {/* Validées */}
                 {terminees.length > 0 && (
-                  <div style={{ marginBottom: selected ? 24 : 0 }}>
+                  <div style={{ marginBottom: 8 }}>
                     <button onClick={() => setShowTerminees(v => !v)}
                       style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
-                      {showTerminees ? "▲ Masquer les commandes validées" : `▼ Voir les ${terminees.length} commande${terminees.length > 1 ? "s" : ""} validée${terminees.length > 1 ? "s" : ""}`}
+                      {showTerminees ? "▲ Masquer les validées" : `▼ ${terminees.length} commande${terminees.length > 1 ? "s" : ""} validée${terminees.length > 1 ? "s" : ""}`}
                     </button>
                     {showTerminees && (
-                      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
-                        {terminees.map(c => {
-                          const owner = sousComptes.find(s => s.id === c.utilisateur_id);
-                          return (
-                            <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
-                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-                                </div>
-                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                                  {(() => {
-                                    const owner = sousComptes.find(s => s.id === c.utilisateur_id);
-                                    const prenom = owner ? owner.prenom : (c.utilisateur_id === profil.id ? profil.prenom : c.client_prenom);
-                                    const nom = owner ? owner.nom : (c.utilisateur_id === profil.id ? profil.nom : c.client_nom);
-                                    const nomStr = `${prenom ?? ""} ${nom ?? ""}`.trim();
-                                    return nomStr ? `${nomStr} — ${c.ref}` : c.ref;
-                                  })()}
-                                </div>
-                              </div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
-                              {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
-                          <div>
-                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
-                          </div>
-                        ); })()}
-                              <Badge statut={c.statut} />
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <>
+                        <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                          {terminees.map(c => renderLigneCmd(c, true))}
+                        </div>
+                        <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                          {terminees.map(c => renderCarteCmd(c, true))}
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
 
+                {/* Archivées */}
                 {archivees.length > 0 && (
-                  <div style={{ marginBottom: selected ? 24 : 0 }}>
+                  <div style={{ marginBottom: 8 }}>
                     <button onClick={() => setShowArchivees(v => !v)}
                       style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
-                      {showArchivees ? "▲ Masquer les commandes archivées" : `▼ Voir les ${archivees.length} commande${archivees.length > 1 ? "s" : ""} archivée${archivees.length > 1 ? "s" : ""}`}
+                      {showArchivees ? "▲ Masquer les archivées" : `▼ ${archivees.length} commande${archivees.length > 1 ? "s" : ""} archivée${archivees.length > 1 ? "s" : ""}`}
                     </button>
                     {showArchivees && (
-                      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7 }}>
-                        {archivees.map(c => {
-                          const owner = sousComptes.find(s => s.id === c.utilisateur_id);
-                          return (
-                            <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
-                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-                                </div>
-                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
-                              </div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
-                              {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
-                          <div>
-                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
-                          </div>
-                        ); })()}
-                              <Badge statut={c.statut} />
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <>
+                        <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                          {archivees.map(c => renderLigneCmd(c, true))}
+                        </div>
+                        <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                          {archivees.map(c => renderCarteCmd(c, true))}
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -610,6 +616,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
             )}
           </>
         )}
+      </div>
       </div>
 
       {/* Modal nouvelle commande */}

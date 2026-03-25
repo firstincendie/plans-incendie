@@ -31,6 +31,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-dessinateur filtré
   const [note, setNote] = useState("");
   const [noteSaveError, setNoteSaveError] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const nav = [
@@ -246,10 +247,13 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const peutDeposer = selected && ["Commencé", "Modification dessinateur"].includes(selected.statut);
 
   return (
-    <div onClick={() => showMenuProfil && setShowMenuProfil(false)} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+    <div onClick={() => { showMenuProfil && setShowMenuProfil(false); showMobileMenu && setShowMobileMenu(false); }} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+
+      {/* Backdrop mobile */}
+      <div className={`sidebar-backdrop${showMobileMenu ? " sidebar-open" : ""}`} onClick={(e) => { e.stopPropagation(); setShowMobileMenu(false); }} />
 
       {/* Sidebar */}
-      <div style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: 0, height: "100dvh", overflowY: "auto" }}>
+      <div className={`app-sidebar${showMobileMenu ? " sidebar-open" : ""}`} style={{ width: 220, background: "#fff", borderRight: "1px solid #E5E7EB", display: "flex", flexDirection: "column", padding: "24px 12px 0 12px", gap: 4, position: "fixed", top: 0, height: "100dvh", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "0 8px" }}>
           <div style={{ width: 32, height: 32, background: "#FC6C1B", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "white", fontSize: 16 }}>✏️</span>
@@ -257,7 +261,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
           <span style={{ fontWeight: 700, fontSize: 14 }}>First Incendie</span>
         </div>
         {nav.map(item => (
-          <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
+          <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); setShowMobileMenu(false); }}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#FFF3EE" : "transparent", color: vue === item.id ? "#FC6C1B" : "#6B7280", textAlign: "left", width: "100%" }}>
             <span>{item.icon}</span><span style={{ flex: 1 }}>{item.label}</span>
             {item.id === "commandes" && totalNonLus > 0 && (
@@ -290,8 +294,21 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
         </div>
       </div>
 
-      {/* Contenu */}
-      <div style={{ marginLeft: 220, flex: 1, padding: "32px 32px", overflowY: "auto" }}>
+      {/* Main wrapper */}
+      <div className="app-main-wrapper" style={{ marginLeft: 220, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Mobile header */}
+        <div className="mobile-header">
+          <button onClick={(e) => { e.stopPropagation(); setShowMobileMenu(v => !v); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#374151", padding: "4px 8px 4px 0", lineHeight: 1 }}>☰</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, background: "#FC6C1B", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "white", fontSize: 14 }}>✏️</span>
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>First Incendie</span>
+          </div>
+          {totalNonLus > 0 && <span style={{ marginLeft: "auto", background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>{totalNonLus}</span>}
+        </div>
+        {/* Contenu */}
+        <div className="app-main-content" style={{ flex: 1, padding: "32px 32px", overflowY: "auto" }}>
         {vue === "reglages" && <PageReglages profil={profil} onProfilUpdate={onProfilUpdate} />}
         {vue === "mon-compte" && <PageMonCompte profil={profil} session={session} role="dessinateur" commandes={commandes} onProfilUpdate={onProfilUpdate} />}
         {vue === "gestion-compte" && <GestionCompteDessinateur profil={profil} sousComptes={sousComptes} />}
@@ -510,6 +527,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
             )}
           </>
         )}
+      </div>
       </div>
 
       {/* Modal dépôt plans finaux */}

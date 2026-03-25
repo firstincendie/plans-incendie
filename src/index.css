@@ -115,6 +115,63 @@ code {
   .tp-del  { grid-area: del;  justify-self: end; align-self: center; }
 }
 
+/* ===== GestionUtilisateurs ===== */
+.gu-table { display: block; }
+.gu-cards { display: none; }
+
+/* ===== Commandes ===== */
+.cmd-table { display: block; }
+.cmd-cards { display: none; }
+
+@media (max-width: 768px) {
+  .gu-table { display: none; }
+  .gu-cards { display: block; }
+  .cmd-table { display: none; }
+  .cmd-cards { display: block; }
+}
+
+/* ===== Sidebar mobile ===== */
+.mobile-header {
+  display: none;
+}
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 199;
+}
+.sidebar-backdrop.sidebar-open {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    z-index: 200 !important;
+  }
+  .app-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 52px;
+    background: #fff;
+    border-bottom: 1px solid #E5E7EB;
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .app-main-wrapper {
+    margin-left: 0 !important;
+  }
+  .app-main-content {
+    padding: 16px !important;
+  }
+}
+
 @media (max-width: 768px) {
   .detail-modal-overlay.open {
     align-items: stretch;
