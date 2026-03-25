@@ -329,7 +329,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 };
 
-  const cmdCols = sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr";
+  const cmdCols = sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr 28px" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr 28px";
 
   function renderLigneCmd(c, dim = false) {
     const owner = sousComptes.find(s => s.id === c.utilisateur_id);
@@ -361,6 +361,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
         </div>
         <Badge statut={c.statut} />
+        <div style={{ color: "#9CA3AF", fontSize: 16, textAlign: "center", lineHeight: 1 }}>…</div>
       </div>
     );
   }
@@ -509,7 +510,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                 <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <div style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     {sousComptes.length > 0 && <span>Compte</span>}
-                    <span>Plan</span><span>Dessinateur</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+                    <span>Plan</span><span>Dessinateur</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span><span></span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
                   {actives.map(c => renderLigneCmd(c))}
