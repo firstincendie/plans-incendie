@@ -336,7 +336,7 @@ function EditContent({ editForm, setEditForm }) {
   );
 }
 
-function DropdownMenu({ onArchiver, onDupliquer, onModifier }) {
+function DropdownMenu({ onArchiver, onDesarchiver, onSupprimer, onDupliquer, onModifier }) {
   const [ouvert, setOuvert] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef();
@@ -358,22 +358,41 @@ function DropdownMenu({ onArchiver, onDupliquer, onModifier }) {
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 1999 }} onClick={() => setOuvert(false)} />
           <div style={{ position: "fixed", top: pos.top, right: pos.right, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 2000, minWidth: 200, overflow: "hidden" }}>
-            {onModifier && (
-              <button onClick={() => { onModifier(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
-                ✏️ Modifier la commande
-              </button>
-            )}
-            {onModifier && (onDupliquer || onArchiver) && <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />}
-            {onDupliquer && (
-              <button onClick={() => { onDupliquer(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
-                📋 Dupliquer la commande
-              </button>
-            )}
-            {onDupliquer && onArchiver && <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />}
             {onArchiver && (
-              <button onClick={() => { onArchiver(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#DC2626", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
-                🗃️ Archiver la commande
-              </button>
+              <>
+                {onModifier && (
+                  <button onClick={() => { onModifier(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                    ✏️ Modifier la commande
+                  </button>
+                )}
+                {onDupliquer && (
+                  <>
+                    {onModifier && <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />}
+                    <button onClick={() => { onDupliquer(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                      📋 Dupliquer la commande
+                    </button>
+                  </>
+                )}
+                <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />
+                <button onClick={() => { onArchiver(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#DC2626", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                  🗃️ Archiver la commande
+                </button>
+              </>
+            )}
+            {onDesarchiver && (
+              <>
+                <button onClick={() => { onDesarchiver(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                  📤 Désarchiver la commande
+                </button>
+                {onSupprimer && (
+                  <>
+                    <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />
+                    <button onClick={() => { onSupprimer(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#DC2626", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                      🗑️ Supprimer la commande
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </div>
         </>
@@ -384,7 +403,7 @@ function DropdownMenu({ onArchiver, onDupliquer, onModifier }) {
 
 export default function DetailCommandeModal({
   selected, versionsSelected, onClose,
-  onArchiver, onDupliquer, showContacts,
+  onArchiver, onDesarchiver, onSupprimer, onDupliquer, showContacts,
   actionButtons,
   msgInput, setMsgInput, onEnvoyer, auteurNom,
   onMarquerLu,
@@ -488,8 +507,14 @@ export default function DetailCommandeModal({
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Badge statut={selected.statut} />
-            {(onArchiver || onDupliquer || canModifier) && !editMode && (
-              <DropdownMenu onArchiver={onArchiver} onDupliquer={onDupliquer} onModifier={canModifier ? enterEditMode : undefined} />
+            {(onArchiver || onDesarchiver || onDupliquer || canModifier) && !editMode && (
+              <DropdownMenu
+                onArchiver={onArchiver}
+                onDesarchiver={onDesarchiver}
+                onSupprimer={onSupprimer}
+                onDupliquer={onDupliquer}
+                onModifier={canModifier ? enterEditMode : undefined}
+              />
             )}
             <button style={HEADER_BTN} onClick={onClose}>✕</button>
           </div>
