@@ -259,9 +259,25 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   }
 
   async function archiver(id) {
-    const { error } = await supabase.from("commandes").update({ statut: "Archivé" }).eq("id", id);
+    const { error } = await supabase.from("commandes").update({ is_archived: true }).eq("id", id);
     if (!error) {
-      setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut: "Archivé" } : c));
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived: true } : c));
+      setSelected(null);
+    }
+  }
+
+  async function desarchiver(id) {
+    const { error } = await supabase.from("commandes").update({ is_archived: false }).eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived: false } : c));
+      setSelected(null);
+    }
+  }
+
+  async function supprimerCommande(id) {
+    const { error } = await supabase.from("commandes").delete().eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.filter(c => c.id !== id));
       setSelected(null);
     }
   }
