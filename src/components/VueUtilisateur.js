@@ -40,6 +40,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [note, setNote] = useState("");
   const [noteSaveError, setNoteSaveError] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [menuCmdId, setMenuCmdId] = useState(null);
 
   const formVide = (defaultDessinateurId = "") => ({
     utilisateur_id: profil.id,
@@ -361,7 +362,34 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
         </div>
         <Badge statut={c.statut} />
-        <div style={{ color: "#9CA3AF", fontSize: 16, textAlign: "center", lineHeight: 1 }}>…</div>
+        <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
+          <button onClick={() => setMenuCmdId(menuCmdId === c.id ? null : c.id)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
+            ···
+          </button>
+          {menuCmdId === c.id && (
+            <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200, overflow: "hidden" }}>
+              <button onClick={() => { setMenuCmdId(null); setSelected(c); setShowModifModal(true); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                ✏️ Modifier la commande
+              </button>
+              <button onClick={() => { setMenuCmdId(null); dupliquer(c); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                📋 Dupliquer la commande
+              </button>
+              <button onClick={() => { setMenuCmdId(null); archiver(c.id); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                🗃️ Archiver la commande
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -394,7 +422,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   }
 
   return (
-    <div onClick={() => { showMenuProfil && setShowMenuProfil(false); showMobileMenu && setShowMobileMenu(false); }} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+    <div onClick={() => { showMenuProfil && setShowMenuProfil(false); showMobileMenu && setShowMobileMenu(false); menuCmdId && setMenuCmdId(null); }} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
 
       {/* Backdrop mobile */}
       <div className={`sidebar-backdrop${showMobileMenu ? " sidebar-open" : ""}`} onClick={(e) => { e.stopPropagation(); setShowMobileMenu(false); }} />
