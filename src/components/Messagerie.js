@@ -67,7 +67,7 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
               <div style={{ background: moi ? "#fff" : "#EFF6FF", border: `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`, borderRadius: 8, padding: "10px 12px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: moi ? "#374151" : "#1E40AF" }}>{m.auteur}</div>
-                <div style={{ fontSize: 12, color: "#374151", marginTop: 4 }}>{m.texte}</div>
+                <div style={{ fontSize: 12, color: "#374151", marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
                 {m.fichiers && m.fichiers.length > 0 && (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {m.fichiers.map((f, j) => (

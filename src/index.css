@@ -74,6 +74,42 @@ code {
 }
 .detail-chat-pane.active { display: flex; }
 
+/* Plans: tableau d'affichage (InfosContent) */
+.plans-affichage-table  { display: block; }
+.plans-affichage-cartes { display: none;  }
+
+/* Plans: tableau éditable (TableauPlans) */
+.tableau-plans-entete { display: grid; grid-template-columns: 32px 1fr 1fr 1fr 1fr 28px; gap: 6px; margin-bottom: 6px; }
+.tableau-plans-ligne  { display: grid; grid-template-columns: 32px 1fr 1fr 1fr 1fr 28px; gap: 6px; margin-bottom: 6px; align-items: center; }
+
+@media (max-width: 768px) {
+  /* Tableau d'affichage → cartes */
+  .plans-affichage-table  { display: none;  }
+  .plans-affichage-cartes { display: block; }
+
+  /* TableauPlans éditable → empilé */
+  .tableau-plans-entete { display: none; }
+  .tableau-plans-ligne {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "num  del"
+      "type type"
+      "empl empl"
+      "ori  fmt";
+    row-gap: 6px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .tp-num  { grid-area: num;  font-size: 12px; color: #9CA3AF; font-weight: 600; align-self: center; }
+  .tp-type { grid-area: type; }
+  .tp-empl { grid-area: empl; }
+  .tp-ori  { grid-area: ori;  }
+  .tp-fmt  { grid-area: fmt;  }
+  .tp-del  { grid-area: del;  justify-self: end; align-self: center; }
+}
+
 @media (max-width: 768px) {
   .detail-modal-overlay.open {
     align-items: stretch;

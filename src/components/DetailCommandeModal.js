@@ -124,37 +124,64 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
       {selected.plans?.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <SectionTitle>Plans à réaliser</SectionTitle>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: "#E5E7EB" }}>
-                {["N°", "Type de plan", "Orientation", "Format", "Fichier final"].map((h, i) => (
-                  <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 4 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {selected.plans.map((p, i) => {
-                const fichierFinal = (selected.plansFinalises || []).find(f => f.plan_index === i);
-                return (
-                  <tr key={i} style={{ background: i % 2 === 1 ? "#F9FAFB" : "#fff", borderBottom: i < selected.plans.length - 1 ? "1px solid #E5E7EB" : "none" }}>
-                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", textAlign: "center", color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</td>
-                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.type || "—"}</td>
-                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.orientation || "—"}</td>
-                    <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.format || "—"}</td>
-                    <td style={{ padding: "9px 12px", color: "#111827" }}>
-                      {fichierFinal
-                        ? <a href={fichierFinal.url} target="_blank" rel="noreferrer"
-                            style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>
-                            📐 {fichierFinal.nom}
-                          </a>
-                        : <span style={{ color: "#9CA3AF", fontSize: 11 }}>—</span>
-                      }
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+
+          {/* Desktop : tableau */}
+          <div className="plans-affichage-table">
+            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#E5E7EB" }}>
+                  {["N°", "Type de plan", "Emplacement", "Orientation", "Format", "Fichier final"].map((h, i) => (
+                    <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 5 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {selected.plans.map((p, i) => {
+                  const fichierFinal = (selected.plansFinalises || []).find(f => f.plan_index === i);
+                  return (
+                    <tr key={i} style={{ background: i % 2 === 1 ? "#F9FAFB" : "#fff", borderBottom: i < selected.plans.length - 1 ? "1px solid #E5E7EB" : "none" }}>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", textAlign: "center", color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</td>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.type || "—"}</td>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.emplacement || "—"}</td>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.orientation || "—"}</td>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.format || "—"}</td>
+                      <td style={{ padding: "9px 12px", color: "#111827" }}>
+                        {fichierFinal
+                          ? <a href={fichierFinal.url} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>
+                              📐 {fichierFinal.nom}
+                            </a>
+                          : <span style={{ color: "#9CA3AF", fontSize: 11 }}>—</span>
+                        }
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile : cartes */}
+          <div className="plans-affichage-cartes">
+            {selected.plans.map((p, i) => {
+              const fichierFinal = (selected.plansFinalises || []).find(f => f.plan_index === i);
+              return (
+                <div key={i} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: i % 2 === 1 ? "#F9FAFB" : "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Plan {i + 1} — {p.type || "—"}</span>
+                    <span style={{ fontSize: 11, color: "#6B7280" }}>{p.orientation || "—"} · {p.format || "—"}</span>
+                  </div>
+                  {p.emplacement && (
+                    <div style={{ fontSize: 12, color: "#374151", marginBottom: 4 }}>{p.emplacement}</div>
+                  )}
+                  {fichierFinal
+                    ? <a href={fichierFinal.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>📐 {fichierFinal.nom}</a>
+                    : null
+                  }
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -308,7 +335,7 @@ function EditContent({ editForm, setEditForm }) {
   );
 }
 
-function DropdownMenu({ onArchiver, onDupliquer }) {
+function DropdownMenu({ onArchiver, onDupliquer, onModifier }) {
   const [ouvert, setOuvert] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef();
@@ -330,6 +357,12 @@ function DropdownMenu({ onArchiver, onDupliquer }) {
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 1999 }} onClick={() => setOuvert(false)} />
           <div style={{ position: "fixed", top: pos.top, right: pos.right, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 2000, minWidth: 200, overflow: "hidden" }}>
+            {onModifier && (
+              <button onClick={() => { onModifier(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                ✏️ Modifier la commande
+              </button>
+            )}
+            {onModifier && (onDupliquer || onArchiver) && <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />}
             {onDupliquer && (
               <button onClick={() => { onDupliquer(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
                 📋 Dupliquer la commande
@@ -448,12 +481,9 @@ export default function DetailCommandeModal({
             <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, fontWeight: 500 }}>{sousTitre}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {canModifier && !editMode && (
-              <button style={HEADER_BTN} onClick={enterEditMode}>✏️ Modifier</button>
-            )}
             <Badge statut={selected.statut} />
-            {(onArchiver || onDupliquer) && !editMode && (
-              <DropdownMenu onArchiver={onArchiver} onDupliquer={onDupliquer} />
+            {(onArchiver || onDupliquer || canModifier) && !editMode && (
+              <DropdownMenu onArchiver={onArchiver} onDupliquer={onDupliquer} onModifier={canModifier ? enterEditMode : undefined} />
             )}
             <button style={HEADER_BTN} onClick={onClose}>✕</button>
           </div>

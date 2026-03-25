@@ -236,7 +236,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const nonLusDe = c => c.messages.filter(
     m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
   ).length;
-  const totalNonLus = commandes.reduce((acc, c) => acc + nonLusDe(c), 0);
+  const totalNonLus = commandes.filter(c => !["Validé", "Archivé"].includes(c.statut)).reduce((acc, c) => acc + nonLusDe(c), 0);
 
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
   const actives   = cmdFiltrees.filter(c => c.statut !== "Validé" && c.statut !== "Archivé");
@@ -388,7 +388,6 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                               <div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                   <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-                                  {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
                                 </div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>
                                   {(() => {
@@ -429,7 +428,6 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                               <div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                   <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-                                  {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
                                 </div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>
                                   {(() => {
