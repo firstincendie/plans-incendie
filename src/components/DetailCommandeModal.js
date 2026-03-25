@@ -403,9 +403,14 @@ export default function DetailCommandeModal({
       instructions: editForm.instructions,
     };
     const changesText = buildChangesText(selected, editForm);
-    await onModifierCommande(selected.id, updates, changesText);
-    setEditMode(false);
-    setSavingEdit(false);
+    try {
+      await onModifierCommande(selected.id, updates, changesText);
+      setEditMode(false);
+    } catch {
+      // save failed — stay in edit mode so user can retry
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   if (!selected) return null;

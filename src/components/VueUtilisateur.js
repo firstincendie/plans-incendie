@@ -281,9 +281,13 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
   async function modifierCommande(id, updates, changesText) {
     const { error } = await supabase.from("commandes").update(updates).eq("id", id);
-    if (error) return;
-    setCommandes(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-    setSelected(prev => ({ ...prev, ...updates }));
+    if (error) throw error;
+    const localUpdates = { ...updates };
+    if (localUpdates.delai && localUpdates.delai.length === 10) {
+      localUpdates.delai = localUpdates.delai + "T12:00:00";
+    }
+    setCommandes(prev => prev.map(c => c.id === id ? { ...c, ...localUpdates } : c));
+    setSelected(prev => ({ ...prev, ...localUpdates }));
     if (changesText) await envoyerMessage(id, auteurNom, changesText);
   }
 
