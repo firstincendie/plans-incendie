@@ -6,7 +6,6 @@ export const STATUT_STYLE = {
   "Modification dessinateur": { bg: "#FFE4E6", color: "#9F1239" },
   "Validation en cours":      { bg: "#ECFDF5", color: "#047857" },
   "Validé":                   { bg: "#D1FAE5", color: "#065F46" },
-  "Archivé":                  { bg: "#F3F4F6", color: "#6B7280", border: "1px solid #D1D5DB" },
 };
 export const TYPES_PLAN   = ["Évacuation", "Intervention", "SSI", "Plan de masse"];
 export const FORMATS      = ["A4", "A3", "A2", "A1", "A0"];
