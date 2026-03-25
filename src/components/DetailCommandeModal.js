@@ -3,6 +3,7 @@ import { formatDateCourt, formatDateBulle, joursRestants } from "../helpers";
 import Badge from "./Badge";
 import BlocAdresse from "./BlocAdresse";
 import Messagerie from "./Messagerie";
+import TableauPlans from "./TableauPlans";
 
 function SectionTitle({ children }) {
   return (
@@ -208,6 +209,105 @@ function NotesSection({ note, setNote, onSaveNote, noteSaveError }) {
   );
 }
 
+function buildChangesText(original, editForm) {
+  const lines = [];
+
+  if ((editForm.nom_plan || "") !== (original.nom_plan || ""))
+    lines.push(`- Nom du plan : "${original.nom_plan || ""}" → "${editForm.nom_plan || ""}"`);
+
+  const delaiBefore = original.delai ? original.delai.substring(0, 10) : "";
+  if (editForm.delai !== delaiBefore) {
+    const fmtOld = original.delai ? formatDateCourt(original.delai) : "—";
+    const fmtNew = editForm.delai ? formatDateCourt(editForm.delai + "T12:00:00") : "—";
+    lines.push(`- Délai : ${fmtOld} → ${fmtNew}`);
+  }
+
+  const contactFields = ["client_nom", "client_prenom", "client_email", "client_telephone"];
+  if (contactFields.some(f => (editForm[f] || "") !== (original[f] || "")))
+    lines.push("- Contacts mis à jour");
+
+  const adresseFields = ["adresse1", "adresse2", "code_postal", "ville"];
+  if (adresseFields.some(f => (editForm[f] || "") !== (original[f] || "")))
+    lines.push("- Adresse mise à jour");
+
+  if ((editForm.instructions || "") !== (original.instructions || ""))
+    lines.push("- Instructions mises à jour");
+
+  if (JSON.stringify(editForm.plans) !== JSON.stringify(original.plans || []))
+    lines.push("- Plans à réaliser mis à jour");
+
+  return lines.length > 0 ? `✏️ Commande modifiée :\n${lines.join("\n")}` : null;
+}
+
+function EditContent({ editForm, setEditForm }) {
+  const inputStyle = {
+    width: "100%", padding: "7px 10px", borderRadius: 7,
+    border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box",
+    fontFamily: "inherit",
+  };
+  const labelStyle = {
+    fontSize: 11, color: "#6B7280", fontWeight: 600,
+    textTransform: "uppercase", display: "block", marginBottom: 3,
+  };
+  function set(key, val) { setEditForm(f => ({ ...f, [key]: val })); }
+
+  return (
+    <div>
+      {/* Nom du plan */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionTitle>Nom du plan</SectionTitle>
+        <input style={inputStyle} value={editForm.nom_plan || ""} onChange={e => set("nom_plan", e.target.value)} />
+      </div>
+
+      {/* Délai */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionTitle>Délai</SectionTitle>
+        <input type="date" style={inputStyle} value={editForm.delai || ""} onChange={e => set("delai", e.target.value)} />
+      </div>
+
+      {/* Contacts */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionTitle>Contacts</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div><label style={labelStyle}>Prénom</label><input style={inputStyle} value={editForm.client_prenom || ""} onChange={e => set("client_prenom", e.target.value)} /></div>
+          <div><label style={labelStyle}>Nom</label><input style={inputStyle} value={editForm.client_nom || ""} onChange={e => set("client_nom", e.target.value)} /></div>
+          <div><label style={labelStyle}>Email</label><input type="email" style={inputStyle} value={editForm.client_email || ""} onChange={e => set("client_email", e.target.value)} /></div>
+          <div><label style={labelStyle}>Téléphone</label><input style={inputStyle} value={editForm.client_telephone || ""} onChange={e => set("client_telephone", e.target.value)} /></div>
+        </div>
+      </div>
+
+      {/* Adresse */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionTitle>Adresse</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <input style={inputStyle} placeholder="Adresse ligne 1" value={editForm.adresse1 || ""} onChange={e => set("adresse1", e.target.value)} />
+          <input style={inputStyle} placeholder="Adresse ligne 2" value={editForm.adresse2 || ""} onChange={e => set("adresse2", e.target.value)} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 6 }}>
+            <input style={inputStyle} placeholder="Code postal" value={editForm.code_postal || ""} onChange={e => set("code_postal", e.target.value)} />
+            <input style={inputStyle} placeholder="Ville" value={editForm.ville || ""} onChange={e => set("ville", e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Plans à réaliser */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionTitle>Plans à réaliser</SectionTitle>
+        <TableauPlans plans={editForm.plans || []} onChange={plans => set("plans", plans)} />
+      </div>
+
+      {/* Instructions */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionTitle>Instructions</SectionTitle>
+        <textarea
+          style={{ ...inputStyle, minHeight: 72, resize: "vertical", fontSize: 13 }}
+          value={editForm.instructions || ""}
+          onChange={e => set("instructions", e.target.value)}
+        />
+      </div>
+    </div>
+  );
+}
+
 function DropdownMenu({ onArchiver, onDupliquer }) {
   const [ouvert, setOuvert] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
@@ -258,10 +358,55 @@ export default function DetailCommandeModal({
   onModifierCommande, canModifier,
 }) {
   const [mobTab, setMobTab] = useState("infos");
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
+    setEditMode(false);
     onMarquerLu?.();
   }, [selected?.id]); // eslint-disable-line
+
+  function enterEditMode() {
+    if (!selected) return;
+    setEditForm({
+      nom_plan: selected.nom_plan || "",
+      client_nom: selected.client_nom || "",
+      client_prenom: selected.client_prenom || "",
+      client_email: selected.client_email || "",
+      client_telephone: selected.client_telephone || "",
+      adresse1: selected.adresse1 || "",
+      adresse2: selected.adresse2 || "",
+      code_postal: selected.code_postal || "",
+      ville: selected.ville || "",
+      delai: selected.delai ? selected.delai.substring(0, 10) : "",
+      plans: JSON.parse(JSON.stringify(selected.plans || [])),
+      instructions: selected.instructions || "",
+    });
+    setEditMode(true);
+  }
+
+  async function saveEdit() {
+    setSavingEdit(true);
+    const updates = {
+      nom_plan: editForm.nom_plan,
+      client_nom: editForm.client_nom,
+      client_prenom: editForm.client_prenom,
+      client_email: editForm.client_email,
+      client_telephone: editForm.client_telephone,
+      adresse1: editForm.adresse1,
+      adresse2: editForm.adresse2,
+      code_postal: editForm.code_postal,
+      ville: editForm.ville,
+      delai: editForm.delai || null,
+      plans: editForm.plans,
+      instructions: editForm.instructions,
+    };
+    const changesText = buildChangesText(selected, editForm);
+    await onModifierCommande(selected.id, updates, changesText);
+    setEditMode(false);
+    setSavingEdit(false);
+  }
 
   if (!selected) return null;
 
@@ -298,8 +443,11 @@ export default function DetailCommandeModal({
             <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, fontWeight: 500 }}>{sousTitre}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {canModifier && !editMode && (
+              <button style={HEADER_BTN} onClick={enterEditMode}>✏️ Modifier</button>
+            )}
             <Badge statut={selected.statut} />
-            {(onArchiver || onDupliquer) && (
+            {(onArchiver || onDupliquer) && !editMode && (
               <DropdownMenu onArchiver={onArchiver} onDupliquer={onDupliquer} />
             )}
             <button style={HEADER_BTN} onClick={onClose}>✕</button>
@@ -317,9 +465,27 @@ export default function DetailCommandeModal({
         {/* Desktop : 2 colonnes */}
         <div className="detail-desktop-body">
           <div className="detail-desktop-left">
-            <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
-            <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
-            {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
+            {editMode ? (
+              <>
+                <EditContent editForm={editForm} setEditForm={setEditForm} />
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <button onClick={saveEdit} disabled={savingEdit}
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingEdit ? "not-allowed" : "pointer" }}>
+                    {savingEdit ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+                  <button onClick={() => setEditMode(false)}
+                    style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    Annuler
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+                <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
+                {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
+              </>
+            )}
           </div>
           <div className="detail-desktop-chat">
             <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: ".8px", padding: 14, borderBottom: "1px solid #E5E7EB", background: "#fff", flexShrink: 0 }}>Messagerie</div>
@@ -330,9 +496,27 @@ export default function DetailCommandeModal({
         {/* Mobile */}
         <div className="detail-mobile-body">
           <div className={`detail-tab-pane${mobTab === "infos" ? " active" : ""}`}>
-            <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
-            <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
-            {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
+            {editMode ? (
+              <>
+                <EditContent editForm={editForm} setEditForm={setEditForm} />
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <button onClick={saveEdit} disabled={savingEdit}
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingEdit ? "not-allowed" : "pointer" }}>
+                    {savingEdit ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+                  <button onClick={() => setEditMode(false)}
+                    style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    Annuler
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+                <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
+                {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
+              </>
+            )}
           </div>
           <div className={`detail-chat-pane${mobTab === "chat" ? " active" : ""}`}>
             {chatContent}

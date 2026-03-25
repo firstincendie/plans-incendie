@@ -279,6 +279,14 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setSelected(prev => prev && prev.id === commandeId ? { ...prev, messages: prev.messages.map(marquer) } : prev);
   }
 
+  async function modifierCommande(id, updates, changesText) {
+    const { error } = await supabase.from("commandes").update(updates).eq("id", id);
+    if (error) return;
+    setCommandes(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    setSelected(prev => ({ ...prev, ...updates }));
+    if (changesText) await envoyerMessage(id, auteurNom, changesText);
+  }
+
   useEffect(() => {
     if (!selected) { setNote(""); setNoteSaveError(false); return; }
     supabase.from("commande_notes")
@@ -304,6 +312,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
   ).length;
   const totalNonLus = commandes.reduce((acc, c) => acc + nonLusDe(c), 0);
+  const canModifier = selected && !["Validé", "Archivé"].includes(selected.statut);
 
   const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
@@ -591,6 +600,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                     setNote={setNote}
                     onSaveNote={sauvegarderNote}
                     noteSaveError={noteSaveError}
+                    onModifierCommande={modifierCommande}
+                    canModifier={canModifier}
                   />
                 )}
               </>
