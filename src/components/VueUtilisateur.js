@@ -554,7 +554,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 680, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
-              <button onClick={() => { setShowForm(false); setForm(formVide()); setSaveError(""); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+              <button onClick={() => { setShowForm(false); setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? "")); setSaveError(""); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
             </div>
 
             <div style={{ marginBottom: 20 }}>
