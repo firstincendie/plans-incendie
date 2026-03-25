@@ -16,8 +16,6 @@ export default function GestionUtilisateurs() {
   const [createError, setCreateError] = useState("");
   const [assignationsEdit, setAssignationsEdit] = useState([]); // [{ dessinateur_id, is_default }]
   const [loadingAssignations, setLoadingAssignations] = useState(false);
-  const [assignationsMap, setAssignationsMap] = useState({}); // { utilisateur_id: [{ dessinateur_id, is_default }] }
-
   useEffect(() => { chargerComptes(); }, []);
 
   async function chargerComptes() {
@@ -29,18 +27,6 @@ export default function GestionUtilisateurs() {
     if (data) {
       setComptes(data);
       setDessinateurs(data.filter(p => p.role === "dessinateur" && p.statut === "actif"));
-    }
-    // Load all assignments in parallel
-    const { data: assignations } = await supabase
-      .from("utilisateur_dessinateurs")
-      .select("utilisateur_id, dessinateur_id, is_default");
-    if (assignations) {
-      const map = {};
-      assignations.forEach(a => {
-        if (!map[a.utilisateur_id]) map[a.utilisateur_id] = [];
-        map[a.utilisateur_id].push({ dessinateur_id: a.dessinateur_id, is_default: a.is_default });
-      });
-      setAssignationsMap(map);
     }
     setLoading(false);
   }
@@ -82,7 +68,6 @@ export default function GestionUtilisateurs() {
         p_dessinateurs: assignationsEdit,
       });
       if (rpcError) { setSaveError(rpcError.message); setSaving(false); return; }
-      setAssignationsMap(prev => ({ ...prev, [selected.id]: assignationsEdit }));
     }
 
     setComptes(prev => prev.map(c => c.id === selected.id ? { ...c, ...editForm } : c));
