@@ -329,7 +329,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
   const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 };
 
-  const cmdCols = sousComptes.length > 0 ? "1.5fr 2.5fr 1fr 1.3fr" : "3fr 1fr 1.3fr";
+  const cmdCols = sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr";
 
   function renderLigneCmd(c, dim = false) {
     const owner = sousComptes.find(s => s.id === c.utilisateur_id);
@@ -340,20 +340,23 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     const rouge = j !== null && j <= 3;
     return (
       <div key={c.id} onClick={() => setSelected(c)}
-        style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", opacity: dim ? 0.75 : 1, transition: "background 0.1s" }}>
+        style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", opacity: dim ? 0.75 : 1, transition: "background 0.1s" }}>
         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{ownerLabel || "—"}</div>}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
             {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
           </div>
-          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
+          <div style={{ fontSize: 11, color: "#9CA3AF" }}>{ownerLabel ? `${ownerLabel} — ${c.ref}` : c.ref}</div>
         </div>
+        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
+        <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
         <div>
           {c.delai ? (
             <>
               <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{formatDateCourt(c.delai)}</div>
-              {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j`}</div>}
+              {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
             </>
           ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
         </div>
@@ -506,7 +509,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                 <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
                   <div style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     {sousComptes.length > 0 && <span>Compte</span>}
-                    <span>Plan</span><span>Délai</span><span>Statut</span>
+                    <span>Plan</span><span>Dessinateur</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
                   {actives.map(c => renderLigneCmd(c))}
