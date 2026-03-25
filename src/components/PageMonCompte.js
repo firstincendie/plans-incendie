@@ -393,13 +393,15 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
                         disabled={updatingDefaut}
                         onClick={async () => {
                           setUpdatingDefaut(true);
-                          await supabase.from("utilisateur_dessinateurs")
+                          const { error: err1 } = await supabase.from("utilisateur_dessinateurs")
                             .update({ is_default: false })
                             .eq("utilisateur_id", profil.id);
-                          await supabase.from("utilisateur_dessinateurs")
+                          if (err1) { setUpdatingDefaut(false); return; }
+                          const { error: err2 } = await supabase.from("utilisateur_dessinateurs")
                             .update({ is_default: true })
                             .eq("utilisateur_id", profil.id)
                             .eq("dessinateur_id", d.id);
+                          if (err2) { setUpdatingDefaut(false); return; }
                           setMesDessinateurs(prev => prev.map(x => ({ ...x, is_default: x.id === d.id })));
                           setUpdatingDefaut(false);
                         }}
