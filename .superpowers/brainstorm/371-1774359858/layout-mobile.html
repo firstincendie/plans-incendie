@@ -1,0 +1,203 @@
+<h2>Vue mobile — Détail commande</h2>
+<p class="subtitle">Popup plein écran sur mobile, scroll vertical : infos → chat</p>
+
+<style>
+  .accordion-btn { width:100%; display:flex; justify-content:space-between; align-items:center; border:1px solid #D1D5DB; border-radius:8px; padding:10px 14px; cursor:pointer; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; }
+  .accordion-body { display:none; flex-direction:column; gap:6px; padding:10px; border:1px solid #D1D5DB; border-top:none; border-radius:0 0 8px 8px; }
+  .header-btn { height: 36px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #D1D5DB; background: #F9FAFB; color: #374151; white-space: nowrap; }
+  .header-btn.badge-attente { background: #FEF3C7; color: #78350F; border-color: #FDE68A; pointer-events:none; }
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-menu { display: none; position: absolute; right: 0; top: 42px; background: #fff; border: 1px solid #D1D5DB; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.15); z-index: 1000; min-width: 190px; overflow: hidden; }
+  .dropdown-menu.open { display: block; }
+  .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; color: #374151; cursor: pointer; border: none; background: none; width: 100%; text-align: left; font-weight: 500; }
+  .dropdown-item:hover { background: #F3F4F6; }
+  .dropdown-item.danger { color: #DC2626; }
+  .dropdown-item.danger:hover { background: #FEF2F2; }
+  .dropdown-divider { height: 1px; background: #E5E7EB; margin: 4px 0; }
+</style>
+
+<div class="split">
+
+  <!-- Desktop -->
+  <div class="mockup">
+    <div class="mockup-header">Desktop (90% × 90vh)</div>
+    <div class="mockup-body" style="padding:0; font-family:system-ui,sans-serif; font-size:13px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:2px solid #E5E7EB;">
+        <div>
+          <div style="font-size:14px; font-weight:700; color:#122131;">RESIDENCE LES PINS</div>
+          <div style="font-size:11px; color:#6B7280;">Simon REZE — CMD-001</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <span class="header-btn badge-attente" style="font-size:11px; height:30px; padding:0 10px;">En attente</span>
+          <button class="header-btn" style="font-size:11px; height:30px; padding:0 10px;">•••</button>
+          <button class="header-btn" style="font-size:11px; height:30px; padding:0 10px;">✕</button>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:70% 30%; height:220px;">
+        <div style="padding:14px; border-right:2px solid #E5E7EB; overflow:hidden;">
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
+            <div style="background:#F3F4F6; border-radius:6px; padding:8px;"><div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase;">Créé le</div><div style="font-size:12px; font-weight:600;">23/03</div></div>
+            <div style="background:#FEF3C7; border-radius:6px; padding:8px; border:1px solid #FDE68A;"><div style="font-size:9px; color:#78350F; font-weight:600; text-transform:uppercase;">Délai</div><div style="font-size:12px; font-weight:700; color:#78350F;">28/03</div><div style="font-size:10px; color:#92400E;">5 jours</div></div>
+            <div style="background:#F3F4F6; border-radius:6px; padding:8px;"><div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase;">Plans</div><div style="font-size:12px; font-weight:600;">3</div></div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+            <div style="background:#F9FAFB; border:1px solid #D1D5DB; border-radius:6px; padding:8px; font-size:11px; color:#374151; line-height:1.6;">12 Rue des Acacias<br/>69001 Lyon</div>
+            <div style="background:#F9FAFB; border:1px solid #D1D5DB; border-radius:6px; padding:8px; font-size:11px;">
+              <div style="color:#6B7280; font-size:9px; font-weight:600; margin-bottom:2px;">TÉLÉPHONE</div>
+              <a style="color:#2563EB; font-size:11px;">06 12 34 56 78</a>
+            </div>
+          </div>
+          <div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase; margin-bottom:4px;">Plans + Fichiers (accordéons)</div>
+          <div style="background:#F3F4F6; border-radius:6px; padding:6px 10px; font-size:11px; color:#374151;">📄 Fichiers du plan (2) ▶</div>
+        </div>
+        <div style="display:flex; flex-direction:column; background:#F9FAFB;">
+          <div style="font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; padding:10px; border-bottom:1px solid #E5E7EB; background:#fff;">Messagerie</div>
+          <div style="flex:1; padding:8px; display:flex; flex-direction:column; gap:6px; overflow:hidden;">
+            <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:6px; padding:7px 9px;"><div style="font-size:10px; font-weight:700; color:#1E40AF;">First Incendie</div><div style="font-size:11px; color:#374151; margin-top:2px;">Commande reçue.</div></div>
+            <div style="background:#fff; border:1px solid #E5E7EB; border-radius:6px; padding:7px 9px;"><div style="font-size:10px; font-weight:700; color:#374151;">Simon REZE</div><div style="font-size:11px; color:#374151; margin-top:2px;">Merci !</div></div>
+          </div>
+          <div style="padding:8px; border-top:1px solid #E5E7EB; background:#fff;">
+            <div style="display:flex; gap:4px;"><input placeholder="Message..." style="flex:1; font-size:11px; padding:6px 8px; border:1px solid #D1D5DB; border-radius:5px;"/><button style="background:#122131; color:#fff; border:none; border-radius:5px; padding:6px 10px; font-size:11px;">↑</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile -->
+  <div class="mockup">
+    <div class="mockup-header">Mobile (plein écran, scroll vertical)</div>
+    <div class="mockup-body" style="padding:0; font-family:system-ui,sans-serif; max-width:375px; margin:0 auto;">
+
+      <!-- Header mobile -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:2px solid #E5E7EB; position:sticky; top:0; background:#fff; z-index:10;">
+        <div>
+          <div style="font-size:14px; font-weight:700; color:#122131;">RESIDENCE LES PINS</div>
+          <div style="font-size:11px; color:#6B7280;">Simon REZE — CMD-001</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <span class="header-btn badge-attente" style="font-size:11px; height:32px; padding:0 10px;">En attente</span>
+          <div class="dropdown">
+            <button class="header-btn" style="font-size:13px; height:32px; width:32px; padding:0;" onclick="document.getElementById('ddMobile').classList.toggle('open'); event.stopPropagation();">•••</button>
+            <div class="dropdown-menu" id="ddMobile">
+              <button class="dropdown-item">📋 Dupliquer</button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item danger">🗃️ Archiver</button>
+            </div>
+          </div>
+          <button class="header-btn" style="font-size:13px; height:32px; width:32px; padding:0;">✕</button>
+        </div>
+      </div>
+
+      <!-- Scroll content -->
+      <div style="overflow-y:auto; max-height:480px; padding:16px;">
+
+        <!-- Infos -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
+          <div style="background:#F3F4F6; border-radius:8px; padding:10px;">
+            <div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase; margin-bottom:3px;">Créé le</div>
+            <div style="font-size:12px; font-weight:600; color:#111827;">23/03/2026</div>
+          </div>
+          <div style="background:#FEF3C7; border-radius:8px; padding:10px; border:1px solid #FDE68A;">
+            <div style="font-size:9px; color:#78350F; font-weight:600; text-transform:uppercase; margin-bottom:3px;">Délai</div>
+            <div style="font-size:12px; font-weight:700; color:#78350F;">28/03/2026</div>
+            <div style="font-size:10px; color:#92400E; font-weight:600;">5 jours</div>
+          </div>
+          <div style="background:#F3F4F6; border-radius:8px; padding:10px;">
+            <div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase; margin-bottom:3px;">Plans</div>
+            <div style="font-size:12px; font-weight:600; color:#111827;">3</div>
+          </div>
+        </div>
+
+        <!-- Adresse + Contacts : 1 colonne sur mobile -->
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+          <div>
+            <div style="font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #E5E7EB;">Adresse</div>
+            <div style="background:#F9FAFB; border:1px solid #D1D5DB; border-radius:8px; padding:10px 14px; font-size:13px; color:#111827; line-height:1.7;">12 Rue des Acacias<br/>Bât B — Entrée 2<br/>69001 Lyon</div>
+          </div>
+          <div>
+            <div style="font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #E5E7EB;">Contacts</div>
+            <div style="background:#F9FAFB; border:1px solid #D1D5DB; border-radius:8px; padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
+              <div><div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase; margin-bottom:2px;">Nom</div><div style="font-size:13px; font-weight:600;">Simon REZE</div></div>
+              <div><div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase; margin-bottom:2px;">Email</div><a href="mailto:" style="font-size:13px; color:#2563EB;">simon@email.com</a></div>
+              <div><div style="font-size:9px; color:#6B7280; font-weight:600; text-transform:uppercase; margin-bottom:2px;">Téléphone</div><a href="tel:" style="font-size:13px; color:#2563EB;">06 12 34 56 78</a></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tableau plans -->
+        <div style="font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #E5E7EB;">Plans à réaliser</div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:16px; font-size:12px; border:1px solid #D1D5DB; border-radius:8px; overflow:hidden;">
+          <thead><tr style="background:#E5E7EB;">
+            <th style="padding:8px 10px; text-align:left; font-size:10px; color:#374151; font-weight:700; border-bottom:2px solid #D1D5DB; border-right:1px solid #D1D5DB; width:28px;">N°</th>
+            <th style="padding:8px 10px; text-align:left; font-size:10px; color:#374151; font-weight:700; border-bottom:2px solid #D1D5DB; border-right:1px solid #D1D5DB;">Type</th>
+            <th style="padding:8px 10px; text-align:left; font-size:10px; color:#374151; font-weight:700; border-bottom:2px solid #D1D5DB; border-right:1px solid #D1D5DB;">Orient.</th>
+            <th style="padding:8px 10px; text-align:left; font-size:10px; color:#374151; font-weight:700; border-bottom:2px solid #D1D5DB;">Format</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #D1D5DB;"><td style="padding:7px 10px; border-right:1px solid #E5E7EB; color:#9CA3AF; font-weight:600; text-align:center;">1</td><td style="padding:7px 10px; border-right:1px solid #E5E7EB;">Plan évacuation</td><td style="padding:7px 10px; border-right:1px solid #E5E7EB;">Paysage</td><td style="padding:7px 10px;">A3</td></tr>
+            <tr style="background:#F9FAFB;"><td style="padding:7px 10px; border-right:1px solid #E5E7EB; color:#9CA3AF; font-weight:600; text-align:center;">2</td><td style="padding:7px 10px; border-right:1px solid #E5E7EB;">Plan sécurité</td><td style="padding:7px 10px; border-right:1px solid #E5E7EB;">Portrait</td><td style="padding:7px 10px;">A4</td></tr>
+          </tbody>
+        </table>
+
+        <!-- Fichiers accordéons -->
+        <div style="margin-bottom:10px;">
+          <button class="accordion-btn" style="background:#F3F4F6; color:#374151; font-size:11px;" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='flex'?'none':'flex';this.querySelector('span:last-child').textContent=b.style.display==='flex'?'▼':'▶';">
+            <span>📄 Fichiers du plan (2)</span><span>▶</span>
+          </button>
+          <div class="accordion-body" style="background:#fff;">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #E5E7EB;border-radius:6px;"><span>📄</span><div style="flex:1;"><div style="font-size:12px;font-weight:600;">plan-rdc.pdf</div><div style="font-size:10px;color:#9CA3AF;">245 Ko</div></div><a style="font-size:11px;color:#2563EB;">Ouvrir</a></div>
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <button class="accordion-btn" style="background:#EFF6FF; color:#1E40AF; border-color:#BFDBFE; font-size:11px;" onclick="var b=this.nextElementSibling;b.style.display=b.style.display==='flex'?'none':'flex';this.querySelector('span:last-child').textContent=b.style.display==='flex'?'▼':'▶';">
+            <span>📐 Plans dessinateur (1)</span><span>▶</span>
+          </button>
+          <div class="accordion-body" style="background:#F0F9FF; border-color:#BFDBFE;">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #BFDBFE;border-radius:6px;background:#fff;"><span>📐</span><div style="flex:1;"><div style="font-size:12px;font-weight:600;">ebauche-v1.pdf</div><div style="font-size:10px;color:#9CA3AF;">Version 1</div></div><a style="font-size:11px;color:#2563EB;">Ouvrir</a></div>
+          </div>
+        </div>
+
+        <!-- Séparateur -->
+        <div style="border-top:2px solid #E5E7EB; margin-bottom:16px;"></div>
+
+        <!-- Chat en bas -->
+        <div style="font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px;">Messagerie</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+          <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:10px 12px;">
+            <div style="font-size:11px; font-weight:700; color:#1E40AF;">First Incendie</div>
+            <div style="font-size:12px; color:#374151; margin-top:4px;">Commande reçue, on revient vers vous rapidement.</div>
+            <div style="font-size:10px; color:#9CA3AF; margin-top:4px;">Hier 14:32</div>
+          </div>
+          <div style="background:#fff; border:1px solid #E5E7EB; border-radius:8px; padding:10px 12px;">
+            <div style="font-size:11px; font-weight:700; color:#374151;">Simon REZE</div>
+            <div style="font-size:12px; color:#374151; margin-top:4px;">Merci, j'attends votre retour.</div>
+            <div style="font-size:10px; color:#9CA3AF; margin-top:4px;">Hier 15:10</div>
+          </div>
+          <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:10px 12px;">
+            <div style="font-size:11px; font-weight:700; color:#1E40AF;">First Incendie</div>
+            <div style="font-size:12px; color:#374151; margin-top:4px;">On commence demain.</div>
+            <div style="font-size:10px; color:#9CA3AF; margin-top:4px;">Aujourd'hui 09:15</div>
+          </div>
+        </div>
+
+        <!-- Input message (sticky en bas) -->
+        <div style="position:sticky; bottom:0; background:#fff; border-top:2px solid #E5E7EB; padding:10px 0 4px;">
+          <div style="display:flex; gap:8px;">
+            <input placeholder="Votre message..." style="flex:1; font-size:13px; padding:10px 12px; border:1px solid #D1D5DB; border-radius:8px; outline:none;" />
+            <button style="background:#122131; color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:13px; cursor:pointer; font-weight:600;">↑</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.addEventListener('click', function() {
+    var dd = document.getElementById('ddMobile');
+    if (dd) dd.classList.remove('open');
+  });
+</script>
