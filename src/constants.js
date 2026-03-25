@@ -10,8 +10,8 @@ export const STATUT_STYLE = {
 };
 export const TYPES_PLAN   = ["Évacuation", "Intervention", "SSI", "Plan de masse"];
 export const FORMATS      = ["A4", "A3", "A2", "A1", "A0"];
-export const ORIENTATIONS = ["Horizontale", "Verticale"];
-export const planVide = () => ({ type: "Évacuation", emplacement: "", orientation: "Horizontale", format: "A3" });
+export const ORIENTATIONS = ["", "Horizontale", "Verticale"];
+export const planVide = () => ({ numero: "", type: "Évacuation", emplacement: "", orientation: "", format: "A3" });
 
 export const PATTERNS_CONTACTS = [
   // Email complet

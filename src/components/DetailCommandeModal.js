@@ -140,7 +140,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
                   const fichierFinal = (selected.plansFinalises || []).find(f => f.plan_index === i);
                   return (
                     <tr key={i} style={{ background: i % 2 === 1 ? "#F9FAFB" : "#fff", borderBottom: i < selected.plans.length - 1 ? "1px solid #E5E7EB" : "none" }}>
-                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", textAlign: "center", color: "#9CA3AF", fontWeight: 600 }}>{i + 1}</td>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", textAlign: "center", color: "#9CA3AF", fontWeight: 600 }}>{p.numero || (i + 1)}</td>
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.type || "—"}</td>
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.emplacement || "—"}</td>
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.orientation || "—"}</td>
@@ -168,7 +168,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
               return (
                 <div key={i} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: i % 2 === 1 ? "#F9FAFB" : "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Plan {i + 1} — {p.type || "—"}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Plan {p.numero || (i + 1)} — {p.type || "—"}</span>
                     <span style={{ fontSize: 11, color: "#6B7280" }}>{p.orientation || "—"} · {p.format || "—"}</span>
                   </div>
                   {p.emplacement && (
