@@ -122,14 +122,14 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
         is_default: d.is_default,
       }));
       setDessinateursDispos(liste);
-      const defaultId = liste.find(d => d.is_default)?.id ?? "";
+      const defaultId = liste.find(d => d.is_default)?.id ?? liste[0]?.id ?? "";
       setForm(f => ({ ...f, dessinateur_id: defaultId }));
     }
     setLoading(false);
   }
 
   async function creerCommande() {
-    if (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) return;
+    if (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) return;
     setSaving(true);
     setSaveError("");
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
@@ -174,7 +174,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     });
     setSaving(false);
     setShowForm(false);
-    setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? ""));
+    setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? dessinateursDispos[0]?.id ?? ""));
   }
 
   async function changerStatut(id, statut) {
@@ -554,7 +554,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 680, maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
-              <button onClick={() => { setShowForm(false); setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? "")); setSaveError(""); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+              <button onClick={() => { setShowForm(false); setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? dessinateursDispos[0]?.id ?? "")); setSaveError(""); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
             </div>
 
             <div style={{ marginBottom: 20 }}>
@@ -645,7 +645,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
             {saveError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {saveError}</div>}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={() => { setShowForm(false); setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? "")); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button onClick={() => { setShowForm(false); setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? dessinateursDispos[0]?.id ?? "")); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
               <button onClick={creerCommande} disabled={saving || !form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id}
                 style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) ? "not-allowed" : "pointer", background: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) ? "#F3F4F6" : "#122131", color: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) ? "#9CA3AF" : "#fff" }}>
                 {saving ? "Enregistrement..." : "Créer la commande"}
