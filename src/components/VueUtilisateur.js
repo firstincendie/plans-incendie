@@ -41,6 +41,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [noteSaveError, setNoteSaveError] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [menuCmdId, setMenuCmdId] = useState(null);
+  const [menuRect, setMenuRect] = useState(null);
   const [openDetailInEditMode, setOpenDetailInEditMode] = useState(false);
 
   const formVide = (defaultDessinateurId = "") => ({
@@ -363,33 +364,11 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
         </div>
         <Badge statut={c.statut} />
-        <div style={{ position: "relative" }} onClick={e => e.stopPropagation()}>
-          <button onClick={() => setMenuCmdId(menuCmdId === c.id ? null : c.id)}
+        <div onClick={e => e.stopPropagation()}>
+          <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuCmdId(menuCmdId === c.id ? null : c.id); setMenuRect(r); }}
             style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
             ···
           </button>
-          {menuCmdId === c.id && (
-            <div style={{ position: "absolute", right: 0, bottom: "calc(100% + 4px)", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200, overflow: "hidden" }}>
-              <button onClick={() => { setMenuCmdId(null); setSelected(c); setOpenDetailInEditMode(true); }}
-                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
-                onMouseLeave={e => e.currentTarget.style.background = "none"}>
-                ✏️ Modifier la commande
-              </button>
-              <button onClick={() => { setMenuCmdId(null); dupliquer(c); }}
-                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
-                onMouseLeave={e => e.currentTarget.style.background = "none"}>
-                📋 Dupliquer la commande
-              </button>
-              <button onClick={() => { setMenuCmdId(null); archiver(c.id); }}
-                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
-                onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
-                onMouseLeave={e => e.currentTarget.style.background = "none"}>
-                🗃️ Archiver la commande
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -411,7 +390,15 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
             </div>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{ownerLabel ? `${ownerLabel} · ` : ""}{c.ref}</div>
           </div>
-          <Badge statut={c.statut} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Badge statut={c.statut} />
+            <div onClick={e => e.stopPropagation()}>
+              <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuCmdId(menuCmdId === c.id ? null : c.id); setMenuRect(r); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
+                ···
+              </button>
+            </div>
+          </div>
         </div>
         {c.delai && (
           <div style={{ marginTop: 6, fontSize: 11, color: rouge ? "#DC2626" : "#9CA3AF", fontWeight: rouge ? 600 : 400 }}>
@@ -652,6 +639,37 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
         )}
       </div>
       </div>
+
+      {/* Dropdown ··· commande (position fixed, échappe overflow:hidden) */}
+      {menuCmdId && menuRect && (() => {
+        const c = commandes.find(x => x.id === menuCmdId);
+        if (!c) return null;
+        const spaceBelow = window.innerHeight - menuRect.bottom;
+        const top = spaceBelow >= 180 ? menuRect.bottom + 4 : menuRect.top - 4;
+        const transform = spaceBelow >= 180 ? "none" : "translateY(-100%)";
+        return (
+          <div onClick={e => e.stopPropagation()} style={{ position: "fixed", top, right: window.innerWidth - menuRect.right, transform, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zIndex: 1000, minWidth: 210, overflow: "hidden" }}>
+            <button onClick={() => { setMenuCmdId(null); setSelected(c); setOpenDetailInEditMode(true); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              ✏️ Modifier la commande
+            </button>
+            <button onClick={() => { setMenuCmdId(null); dupliquer(c); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              📋 Dupliquer la commande
+            </button>
+            <button onClick={() => { setMenuCmdId(null); archiver(c.id); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              🗃️ Archiver la commande
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Modal nouvelle commande */}
       {showForm && (
