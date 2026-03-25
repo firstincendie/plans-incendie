@@ -35,14 +35,16 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [showValiderCommandeModal, setShowValiderCommandeModal] = useState(false);
   const [validant, setValidant] = useState(false);
   const [sousComptes, setSousComptes] = useState([]);
+  const [dessinateursDispos, setDessinateursDispos] = useState([]); // [{ id, prenom, nom, is_default }]
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
 
-  const formVide = () => ({
+  const formVide = (defaultDessinateurId = "") => ({
     utilisateur_id: profil.id,
     nom_plan: "",
     client_nom: "", client_prenom: "", client_email: "", client_telephone: "",
     adresse1: "", adresse2: "", code_postal: "", ville: "",
     delai: "", plans: [planVide()], fichiersPlan: [], logoClient: [], instructions: "",
+    dessinateur_id: defaultDessinateurId,
   });
   const [form, setForm] = useState(formVide());
 
@@ -93,10 +95,14 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
   async function chargerTout() {
     setLoading(true);
-    const [{ data: cmd }, { data: ver }, { data: sub }] = await Promise.all([
+    const [{ data: cmd }, { data: ver }, { data: sub }, { data: dessinateurs }] = await Promise.all([
       supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false }),
       supabase.from("versions").select("*").order("numero", { ascending: true }),
       supabase.from("profiles").select("id, prenom, nom").eq("master_id", profil.id),
+      supabase
+        .from("utilisateur_dessinateurs")
+        .select("dessinateur_id, is_default, profiles:dessinateur_id(prenom, nom)")
+        .eq("utilisateur_id", profil.id),
     ]);
     if (cmd) setCommandes(cmd.map(c => ({
       ...c,
@@ -108,6 +114,17 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     })));
     if (ver) setVersions(ver);
     if (sub) setSousComptes(sub);
+    if (dessinateurs) {
+      const liste = dessinateurs.map(d => ({
+        id: d.dessinateur_id,
+        prenom: d.profiles?.prenom || "",
+        nom: d.profiles?.nom || "",
+        is_default: d.is_default,
+      }));
+      setDessinateursDispos(liste);
+      const defaultId = liste.find(d => d.is_default)?.id ?? "";
+      setForm(f => ({ ...f, dessinateur_id: defaultId }));
+    }
     setLoading(false);
   }
 
@@ -116,6 +133,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setSaving(true);
     setSaveError("");
     const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
+    const dessinateurChoisi = dessinateursDispos.find(d => d.id === form.dessinateur_id);
     const { data, error } = await supabase.from("commandes").insert([{
       ref,
       utilisateur_id: form.utilisateur_id,
@@ -128,6 +146,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
       fichiers_plan: form.fichiersPlan, logo_client: form.logoClient,
       instructions: form.instructions,
       plans_finalises: [], statut: "En attente",
+      dessinateur_id: form.dessinateur_id || null,
+      dessinateur: dessinateurChoisi ? `${dessinateurChoisi.prenom} ${dessinateurChoisi.nom}` : null,
     }]).select("*, messages(*)").single();
     if (error) { setSaveError(error.message); setSaving(false); return; }
     if (data) {
@@ -150,11 +170,11 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     }
     // Notifier le dessinateur de la nouvelle commande
     supabase.functions.invoke("notify-commande", {
-      body: { utilisateur_id: form.utilisateur_id, nom_plan: form.nom_plan, ref },
+      body: { utilisateur_id: form.utilisateur_id, nom_plan: form.nom_plan, ref, dessinateur_id: form.dessinateur_id },
     });
     setSaving(false);
     setShowForm(false);
-    setForm(formVide());
+    setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? ""));
   }
 
   async function changerStatut(id, statut) {
@@ -580,6 +600,26 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
               <div style={{ fontSize: 13, fontWeight: 700, color: "#122131", marginBottom: 12, paddingBottom: 8, borderBottom: "2px solid #E5E7EB" }}>Détail du plan</div>
 
               <div style={{ marginBottom: 12 }}>
+                <label style={labelStyle}>Dessinateur *</label>
+                {dessinateursDispos.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#94A3B8", padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#F9FAFB" }}>
+                    Aucun dessinateur disponible, contactez votre administrateur.
+                  </div>
+                ) : (
+                  <select
+                    value={form.dessinateur_id}
+                    onChange={e => setForm({ ...form, dessinateur_id: e.target.value })}
+                    style={inputStyle}
+                  >
+                    <option value="">— Sélectionner un dessinateur —</option>
+                    {dessinateursDispos.map(d => (
+                      <option key={d.id} value={d.id}>{d.prenom} {d.nom}{d.is_default ? " (défaut)" : ""}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
                 <label style={labelStyle}>Délai souhaité *</label>
                 <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
               </div>
@@ -605,9 +645,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
             {saveError && <div style={{ fontSize: 12, color: "#DC2626", marginBottom: 12, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>Erreur : {saveError}</div>}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={() => { setShowForm(false); setForm(formVide()); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
-              <button onClick={creerCommande} disabled={saving || !form.nom_plan || !form.delai || form.fichiersPlan.length === 0}
-                style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "not-allowed" : "pointer", background: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "#F3F4F6" : "#122131", color: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0) ? "#9CA3AF" : "#fff" }}>
+              <button onClick={() => { setShowForm(false); setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? "")); setSaveError(""); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button onClick={creerCommande} disabled={saving || !form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) ? "not-allowed" : "pointer", background: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) ? "#F3F4F6" : "#122131", color: (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) ? "#9CA3AF" : "#fff" }}>
                 {saving ? "Enregistrement..." : "Créer la commande"}
               </button>
             </div>
