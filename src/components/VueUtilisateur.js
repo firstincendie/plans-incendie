@@ -244,6 +244,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
       fichiers_plan: c.fichiers_plan || [], logo_client: c.logo_client || [],
       instructions: c.instructions,
       plans_finalises: [], statut: "En attente",
+      dessinateur_id: c.dessinateur_id || null,
+      dessinateur: c.dessinateur || null,
     }]).select("*, messages(*)").single();
     if (!error && data) {
       setCommandes(prev => [{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...prev]);
@@ -340,7 +342,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Commandes</h1>
-              <button onClick={() => { setForm(formVide()); setShowForm(true); }}
+              <button onClick={() => { setForm(formVide(dessinateursDispos.find(d => d.is_default)?.id ?? dessinateursDispos[0]?.id ?? "")); setShowForm(true); }}
                 style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Nouvelle commande
               </button>
