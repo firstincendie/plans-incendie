@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 import VueUtilisateur from "./components/VueUtilisateur";
 import VueDessinateur from "./components/VueDessinateur";
@@ -7,11 +7,14 @@ import PageInscription from "./components/auth/PageInscription";
 import PageMotDePasseOublie from "./components/auth/PageMotDePasseOublie";
 import PageResetMotDePasse from "./components/auth/PageResetMotDePasse";
 
+const INACTIVITE_MS = 30 * 60 * 1000; // 30 minutes
+
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [profil, setProfil] = useState(null);
   const [pageAuth, setPageAuth] = useState("connexion");
   const [resetMode, setResetMode] = useState(false);
+  const timerInactivite = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,6 +29,26 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []); // eslint-disable-line
+
+  useEffect(() => {
+    if (!session) return;
+
+    function resetTimer() {
+      clearTimeout(timerInactivite.current);
+      timerInactivite.current = setTimeout(() => {
+        supabase.auth.signOut();
+      }, INACTIVITE_MS);
+    }
+
+    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timerInactivite.current);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [session]); // eslint-disable-line
 
   async function chargerProfil(uid) {
     const { data } = await supabase
