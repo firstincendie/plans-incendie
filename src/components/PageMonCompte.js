@@ -25,6 +25,8 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
   const [quittant, setQuittant]       = useState(false);
   const [msgInvit, setMsgInvit]       = useState("");
   const [nomMaitre, setNomMaitre]     = useState(null);
+  const [mesDessinateurs, setMesDessinateurs] = useState([]);
+  const [updatingDefaut, setUpdatingDefaut] = useState(false);
 
   useEffect(() => {
     if (!profil?.master_id) { setNomMaitre(null); return; }
@@ -37,6 +39,22 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
         if (data) setNomMaitre(`${data.prenom} ${data.nom}`);
       });
   }, [profil?.master_id]); // eslint-disable-line
+
+  useEffect(() => {
+    if (role !== "utilisateur") return;
+    supabase
+      .from("utilisateur_dessinateurs")
+      .select("dessinateur_id, is_default, profiles:dessinateur_id(prenom, nom)")
+      .eq("utilisateur_id", profil.id)
+      .then(({ data }) => {
+        if (data) setMesDessinateurs(data.map(d => ({
+          id: d.dessinateur_id,
+          prenom: d.profiles?.prenom || "",
+          nom: d.profiles?.nom || "",
+          is_default: d.is_default,
+        })));
+      });
+  }, [profil.id, role]); // eslint-disable-line
 
   const rejoindreGroupe = async () => {
     if (!codeInvit.trim()) return;
@@ -352,17 +370,47 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         </div>
 
-        {/* Dessinateur assigné — clients uniquement */}
-        {role === "client" && (
+        {/* Mes dessinateurs — utilisateurs uniquement */}
+        {role === "utilisateur" && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
-            <div style={sectionTitle}>Dessinateur assigné</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FFF3ED", border: "1.5px solid #FED7AA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✏️</div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#122131" }}>{dessinateurAssigne ?? "—"}</div>
-                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>Dessinateur en charge de vos plans</div>
+            <div style={sectionTitle}>Mes dessinateurs</div>
+            {mesDessinateurs.length === 0 ? (
+              <div style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", padding: "20px 0" }}>
+                Aucun dessinateur assigné, contactez votre administrateur.
               </div>
-            </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {mesDessinateurs.map(d => (
+                  <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: d.is_default ? "#FFF3EE" : "#F8FAFC", borderRadius: 8, border: `1px solid ${d.is_default ? "#FED7AA" : "#E5E7EB"}` }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#FFF3ED", border: "1.5px solid #FED7AA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>✏️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#122131" }}>{d.prenom} {d.nom}</div>
+                      {d.is_default && <div style={{ fontSize: 11, color: "#FC6C1B", fontWeight: 700 }}>Défaut</div>}
+                    </div>
+                    {!d.is_default && mesDessinateurs.length > 1 && (
+                      <button
+                        type="button"
+                        disabled={updatingDefaut}
+                        onClick={async () => {
+                          setUpdatingDefaut(true);
+                          await supabase.from("utilisateur_dessinateurs")
+                            .update({ is_default: false })
+                            .eq("utilisateur_id", profil.id);
+                          await supabase.from("utilisateur_dessinateurs")
+                            .update({ is_default: true })
+                            .eq("utilisateur_id", profil.id)
+                            .eq("dessinateur_id", d.id);
+                          setMesDessinateurs(prev => prev.map(x => ({ ...x, is_default: x.id === d.id })));
+                          setUpdatingDefaut(false);
+                        }}
+                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #E5E7EB", background: "#fff", color: "#6B7280", cursor: updatingDefaut ? "not-allowed" : "pointer" }}>
+                        Définir par défaut
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
