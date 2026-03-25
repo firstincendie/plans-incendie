@@ -14,6 +14,9 @@ export default function GestionUtilisateurs() {
   const [createForm, setCreateForm] = useState({ email: "", prenom: "", nom: "", role: "utilisateur" });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [assignationsEdit, setAssignationsEdit] = useState([]); // [{ dessinateur_id, is_default }]
+  const [loadingAssignations, setLoadingAssignations] = useState(false);
+  const [assignationsMap, setAssignationsMap] = useState({}); // { utilisateur_id: [{ dessinateur_id, is_default }] }
 
   useEffect(() => { chargerComptes(); }, []);
 
@@ -26,6 +29,18 @@ export default function GestionUtilisateurs() {
     if (data) {
       setComptes(data);
       setDessinateurs(data.filter(p => p.role === "dessinateur" && p.statut === "actif"));
+    }
+    // Load all assignments in parallel
+    const { data: assignations } = await supabase
+      .from("utilisateur_dessinateurs")
+      .select("utilisateur_id, dessinateur_id, is_default");
+    if (assignations) {
+      const map = {};
+      assignations.forEach(a => {
+        if (!map[a.utilisateur_id]) map[a.utilisateur_id] = [];
+        map[a.utilisateur_id].push({ dessinateur_id: a.dessinateur_id, is_default: a.is_default });
+      });
+      setAssignationsMap(map);
     }
     setLoading(false);
   }
@@ -50,15 +65,26 @@ export default function GestionUtilisateurs() {
     if (!editForm || !selected) return;
     setSaving(true);
     setSaveError("");
+    // Update profile (without dessinateur_id — managed via utilisateur_dessinateurs)
     const { error } = await supabase.from("profiles").update({
       prenom: editForm.prenom,
       nom: editForm.nom,
       role: editForm.role,
       statut: editForm.statut,
       is_owner: editForm.is_owner,
-      dessinateur_id: editForm.dessinateur_id || null,
     }).eq("id", selected.id);
     if (error) { setSaveError(error.message); setSaving(false); return; }
+
+    // Atomic save of dessinateur assignments via RPC
+    if (editForm.role === "utilisateur") {
+      const { error: rpcError } = await supabase.rpc("set_dessinateurs_utilisateur", {
+        p_utilisateur_id: selected.id,
+        p_dessinateurs: assignationsEdit,
+      });
+      if (rpcError) { setSaveError(rpcError.message); setSaving(false); return; }
+      setAssignationsMap(prev => ({ ...prev, [selected.id]: assignationsEdit }));
+    }
+
     setComptes(prev => prev.map(c => c.id === selected.id ? { ...c, ...editForm } : c));
     setSelected(prev => ({ ...prev, ...editForm }));
     setEditForm(null);
@@ -146,10 +172,23 @@ export default function GestionUtilisateurs() {
           </div>
           {comptesFiltres.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucun compte.</div>}
           {comptesFiltres.map(c => {
-            const dessinateurAssigne = dessinateurs.find(d => d.id === c.dessinateur_id);
+            const assignationsDuCompte = assignationsMap[c.id] || [];
+            const defaultAssignation = assignationsDuCompte.find(a => a.is_default) || assignationsDuCompte[0];
+            const dessinateurDefaut = defaultAssignation ? dessinateurs.find(d => d.id === defaultAssignation.dessinateur_id) : null;
+            const nbAutres = assignationsDuCompte.length - 1;
             return (
               <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1.5fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", background: selected?.id === c.id ? "#F8FAFC" : "transparent" }}>
-                <div style={{ cursor: "pointer" }} onClick={() => { setSelected(c); setEditForm({ prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false, dessinateur_id: c.dessinateur_id || "" }); }}>
+                <div style={{ cursor: "pointer" }} onClick={async () => {
+                  setSelected(c);
+                  setEditForm({ prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false });
+                  setLoadingAssignations(true);
+                  const { data } = await supabase
+                    .from("utilisateur_dessinateurs")
+                    .select("dessinateur_id, is_default")
+                    .eq("utilisateur_id", c.id);
+                  setAssignationsEdit(data || []);
+                  setLoadingAssignations(false);
+                }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{c.prenom} {c.nom}</div>
                   {c.is_owner && <div style={{ fontSize: 10, color: "#FC6C1B", fontWeight: 700 }}>OWNER</div>}
                   {c.master_id && (() => {
@@ -160,7 +199,11 @@ export default function GestionUtilisateurs() {
                 <div style={{ fontSize: 12, color: "#6B7280" }}>{c.email}</div>
                 <div style={{ fontSize: 12, color: "#374151" }}>{c.role === "dessinateur" ? "Dessinateur" : "Utilisateur"}</div>
                 <div>{statutBadge(c.statut)}</div>
-                <div style={{ fontSize: 12, color: "#6B7280" }}>{dessinateurAssigne ? `${dessinateurAssigne.prenom} ${dessinateurAssigne.nom}` : "—"}</div>
+                <div style={{ fontSize: 12, color: "#6B7280" }}>
+                  {dessinateurDefaut
+                    ? `${dessinateurDefaut.prenom} ${dessinateurDefaut.nom}${nbAutres > 0 ? ` + ${nbAutres} autre${nbAutres > 1 ? "s" : ""}` : ""}`
+                    : "—"}
+                </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {c.statut === "en_attente" && (
                     <>
@@ -215,13 +258,48 @@ export default function GestionUtilisateurs() {
 
           {editForm.role === "utilisateur" && (
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Dessinateur assigné</label>
-              <select value={editForm.dessinateur_id} onChange={e => setEditForm({ ...editForm, dessinateur_id: e.target.value })} style={inputStyle}>
-                <option value="">— Non assigné —</option>
-                {dessinateurs.map(d => (
-                  <option key={d.id} value={d.id}>{d.prenom} {d.nom}</option>
-                ))}
-              </select>
+              <label style={labelStyle}>Dessinateurs assignés</label>
+              {loadingAssignations ? (
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>Chargement...</div>
+              ) : dessinateurs.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>Aucun dessinateur actif disponible.</div>
+              ) : (
+                <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden" }}>
+                  {dessinateurs.map(d => {
+                    const assignation = assignationsEdit.find(a => a.dessinateur_id === d.id);
+                    const estCoche = !!assignation;
+                    const estDefaut = assignation?.is_default || false;
+                    return (
+                      <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderBottom: "1px solid #F3F4F6", background: estCoche ? "#F8FAFC" : "transparent" }}>
+                        <input
+                          type="checkbox"
+                          checked={estCoche}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              const nouvellesAssignations = [...assignationsEdit, { dessinateur_id: d.id, is_default: assignationsEdit.length === 0 }];
+                              setAssignationsEdit(nouvellesAssignations);
+                            } else {
+                              const restantes = assignationsEdit.filter(a => a.dessinateur_id !== d.id);
+                              if (estDefaut && restantes.length > 0) {
+                                restantes[0] = { ...restantes[0], is_default: true };
+                              }
+                              setAssignationsEdit(restantes);
+                            }
+                          }}
+                        />
+                        <span style={{ fontSize: 13, flex: 1 }}>{d.prenom} {d.nom}</span>
+                        {estCoche && (
+                          <button
+                            onClick={() => setAssignationsEdit(assignationsEdit.map(a => ({ ...a, is_default: a.dessinateur_id === d.id })))}
+                            style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, border: "1px solid #E5E7EB", background: estDefaut ? "#FFF3EE" : "#fff", color: estDefaut ? "#FC6C1B" : "#9CA3AF", cursor: "pointer", fontWeight: estDefaut ? 700 : 400 }}>
+                            {estDefaut ? "★ Défaut" : "☆ Défaut"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
