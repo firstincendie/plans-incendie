@@ -62,10 +62,14 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
     <div>
       {/* Informations */}
       <SectionTitle>Informations</SectionTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
         <div style={{ background: "#F3F4F6", borderRadius: 8, padding: "10px 12px" }}>
           <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Créé le</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{formatDateCourt(selected.created_at)}</div>
+        </div>
+        <div style={{ background: "#F3F4F6", borderRadius: 8, padding: "10px 12px" }}>
+          <div style={{ fontSize: 10, color: "#6B7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Dessinateur</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{selected.dessinateur || "—"}</div>
         </div>
         <div style={{ background: bgDelai, borderRadius: 8, padding: "10px 12px", border: `1px solid ${borderDelai}` }}>
           <div style={{ fontSize: 10, color: couleurDelai, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Délai</div>
