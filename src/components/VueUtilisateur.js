@@ -21,7 +21,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [showMenuProfil, setShowMenuProfil] = useState(false);
-  const [filtres, setFiltres] = useState({ statut: "", type: "", periode: "" });
+  const [filtres, setFiltres] = useState({ statut: "", dessinateur: "", type: "", periode: "" });
   const [tri, setTri] = useState({ col: "created_at", dir: "desc" });
   const [showTerminees, setShowTerminees] = useState(false);
   const [showArchivees, setShowArchivees] = useState(false);
@@ -365,7 +365,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
               <div style={{ textAlign: "center", color: "#94A3B8", padding: 40 }}>Chargement...</div>
             ) : (
               <>
-                <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} dessinateurs={[]} showDessinateur={false} couleurAccent="#122131" />
+                <BarreFiltres commandes={commandes} filtres={filtres} setFiltres={setFiltres} tri={tri} setTri={setTri} showDessinateur={true} couleurAccent="#122131" />
 
                 {sousComptes.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
@@ -381,16 +381,16 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                 )}
 
                 <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     {sousComptes.length > 0 && <span>User</span>}
-                    <span>Plan</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+                    <span>Plan</span><span>Dessinateur</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
                   {actives.map(c => {
                     const owner = sousComptes.find(s => s.id === c.utilisateur_id);
                     return (
                       <div key={c.id} onClick={() => setSelected(c)}
-                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
+                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
@@ -404,6 +404,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                             })()}
                           </div>
                         </div>
+                        <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
                         {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
@@ -430,7 +431,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                           const owner = sousComptes.find(s => s.id === c.utilisateur_id);
                           return (
                             <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
@@ -444,6 +445,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                                   })()}
                                 </div>
                               </div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                               <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
                               {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
@@ -473,12 +475,13 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                           const owner = sousComptes.find(s => s.id === c.utilisateur_id);
                           return (
                             <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                               </div>
+                              <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
                               <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
                               {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
