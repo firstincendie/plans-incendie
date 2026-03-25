@@ -18,7 +18,6 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
   const [filtres, setFiltres] = useState({ statut: "", type: "", periode: "" });
   const [tri, setTri] = useState({ col: "created_at", dir: "desc" });
-  const [showTerminees, setShowTerminees] = useState(false);
   const [showArchivees, setShowArchivees] = useState(false);
   const [msgInput, setMsgInput] = useState("");
   const [showDepotModal, setShowDepotModal] = useState(false);
@@ -237,12 +236,11 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const nonLusDe = c => c.messages.filter(
     m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
   ).length;
-  const totalNonLus = commandes.filter(c => !["Validé", "Archivé"].includes(c.statut)).reduce((acc, c) => acc + nonLusDe(c), 0);
+  const totalNonLus = commandes.filter(c => !c.is_archived).reduce((acc, c) => acc + nonLusDe(c), 0);
 
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const actives   = cmdFiltrees.filter(c => c.statut !== "Validé" && c.statut !== "Archivé");
-  const terminees = cmdFiltrees.filter(c => c.statut === "Validé");
-  const archivees = cmdFiltrees.filter(c => c.statut === "Archivé");
+  const actives   = cmdFiltrees.filter(c => !c.is_archived);
+  const archivees = cmdFiltrees.filter(c => c.is_archived);
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
   const peutDeposer = selected && ["Commencé", "Modification dessinateur"].includes(selected.statut);
 
@@ -321,7 +319,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "En cours", val: commandes.filter(c => c.statut !== "Validé" && c.statut !== "Archivé").length, color: "#FC6C1B", bg: "#FFF3EE" },
+                { label: "En cours", val: commandes.filter(c => !c.is_archived).length, color: "#FC6C1B", bg: "#FFF3EE" },
                 { label: "Validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
                 { label: "Total", val: commandes.length, color: "#374151", bg: "#F8FAFC" },
               ].map(s => (
@@ -388,46 +386,6 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                     );
                   })}
                 </div>
-
-                {terminees.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <button onClick={() => setShowTerminees(v => !v)} style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
-                      {showTerminees ? "▲ Masquer les validées" : `▼ Voir les ${terminees.length} mission${terminees.length > 1 ? "s" : ""} validée${terminees.length > 1 ? "s" : ""}`}
-                    </button>
-                    {showTerminees && (
-                      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.8 }}>
-                        {terminees.map(c => {
-                          const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
-                          return (
-                            <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
-                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-                                </div>
-                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                                  {(() => {
-                                    const nomClient = `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim();
-                                    return nomClient ? `${nomClient} — ${c.ref}` : c.ref;
-                                  })()}
-                                </div>
-                              </div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                              {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
-                          <div>
-                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
-                          </div>
-                        ); })()}
-                              <Badge statut={c.statut} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {archivees.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
