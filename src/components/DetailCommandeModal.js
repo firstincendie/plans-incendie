@@ -421,7 +421,7 @@ export default function DetailCommandeModal({
 
   // Nom du demandeur (sous-titre header)
   const nomDemandeur = `${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim() ||
-    selected.utilisateur_prenom ? `${selected.utilisateur_prenom ?? ""} ${selected.utilisateur_nom ?? ""}`.trim() : "";
+    (selected.utilisateur_prenom ? `${selected.utilisateur_prenom ?? ""} ${selected.utilisateur_nom ?? ""}`.trim() : "");
   const sousTitre = nomDemandeur ? `${nomDemandeur} — ${selected.ref}` : selected.ref;
 
   const HEADER_BTN = {
