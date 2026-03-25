@@ -300,6 +300,11 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setNoteSaveError(!!error);
   }
 
+  const nonLusDe = c => c.messages.filter(
+    m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+  ).length;
+  const totalNonLus = commandes.reduce((acc, c) => acc + nonLusDe(c), 0);
+
   const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
   const actives   = cmdFiltrees.filter(c => c.statut !== "Validé" && c.statut !== "Archivé");
@@ -324,7 +329,12 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
         {nav.map(item => (
           <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); }}
             style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: vue === item.id ? 600 : 400, background: vue === item.id ? "#E8EDF2" : "transparent", color: vue === item.id ? "#122131" : "#6B7280", textAlign: "left", width: "100%" }}>
-            <span>{item.icon}</span><span>{item.label}</span>
+            <span>{item.icon}</span><span style={{ flex: 1 }}>{item.label}</span>
+            {item.id === "commandes" && totalNonLus > 0 && (
+              <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>
+                {totalNonLus}
+              </span>
+            )}
           </button>
         ))}
         <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
@@ -416,7 +426,10 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                         style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#EEF3F8" : "transparent", transition: "background 0.1s" }}>
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+                            {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
+                          </div>
                           <div style={{ fontSize: 11, color: "#9CA3AF" }}>
                             {(() => {
                               const owner = sousComptes.find(s => s.id === c.utilisateur_id);
@@ -457,7 +470,10 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                               style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                               <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+                                  {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
+                                </div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>
                                   {(() => {
                                     const owner = sousComptes.find(s => s.id === c.utilisateur_id);
@@ -501,7 +517,10 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                               style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
                               {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{owner ? `${owner.prenom} ${owner.nom}` : "Moi"}</div>}
                               <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+                                  {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
+                                </div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                               </div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{c.dessinateur || "—"}</div>
