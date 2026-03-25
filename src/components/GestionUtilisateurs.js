@@ -175,12 +175,13 @@ export default function GestionUtilisateurs() {
             const assignationsDuCompte = assignationsMap[c.id] || [];
             const defaultAssignation = assignationsDuCompte.find(a => a.is_default) || assignationsDuCompte[0];
             const dessinateurDefaut = defaultAssignation ? dessinateurs.find(d => d.id === defaultAssignation.dessinateur_id) : null;
-            const nbAutres = assignationsDuCompte.length - 1;
+            const nbAutres = Math.max(0, assignationsDuCompte.length - 1);
             return (
               <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 1.5fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", background: selected?.id === c.id ? "#F8FAFC" : "transparent" }}>
                 <div style={{ cursor: "pointer" }} onClick={async () => {
                   setSelected(c);
                   setEditForm({ prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false });
+                  setAssignationsEdit([]); // reset immediately — prevents stale data flash
                   setLoadingAssignations(true);
                   const { data } = await supabase
                     .from("utilisateur_dessinateurs")
@@ -290,7 +291,7 @@ export default function GestionUtilisateurs() {
                         <span style={{ fontSize: 13, flex: 1 }}>{d.prenom} {d.nom}</span>
                         {estCoche && (
                           <button
-                            onClick={() => setAssignationsEdit(assignationsEdit.map(a => ({ ...a, is_default: a.dessinateur_id === d.id })))}
+                            onClick={() => setAssignationsEdit(prev => prev.map(a => ({ ...a, is_default: a.dessinateur_id === d.id })))}
                             style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, border: "1px solid #E5E7EB", background: estDefaut ? "#FFF3EE" : "#fff", color: estDefaut ? "#FC6C1B" : "#9CA3AF", cursor: "pointer", fontWeight: estDefaut ? 700 : 400 }}>
                             {estDefaut ? "★ Défaut" : "☆ Défaut"}
                           </button>
