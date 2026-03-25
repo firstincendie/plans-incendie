@@ -579,7 +579,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                     versionsSelected={versionsSelected}
                     onClose={() => { setSelected(null); setOpenDetailInEditMode(false); }}
                     startInEditMode={openDetailInEditMode}
-                    onArchiver={() => archiver(selected.id)}
+                    onArchiver={!selected?.is_archived ? () => archiver(selected.id) : undefined}
+                    onDesarchiver={selected?.is_archived ? () => desarchiver(selected.id) : undefined}
+                    onSupprimer={selected?.is_archived ? () => setShowConfirmSupprimer(selected.id) : undefined}
                     onDupliquer={() => dupliquer(selected)}
                     showContacts={true}
                     actionButtons={
