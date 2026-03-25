@@ -130,8 +130,8 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
             <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB", borderRadius: 8, overflow: "hidden", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#E5E7EB" }}>
-                  {["N°", "Type de plan", "Emplacement", "Orientation", "Format", "Fichier final"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 5 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
+                  {["N°", "Type de plan", "Emplacement", "Orientation", "Format", "Matière", "Fichier final"].map((h, i) => (
+                    <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#374151", borderBottom: "2px solid #D1D5DB", borderRight: i < 6 ? "1px solid #D1D5DB" : "none" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -145,6 +145,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.emplacement || "—"}</td>
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.orientation || "—"}</td>
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.format || "—"}</td>
+                      <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.matiere || "—"}</td>
                       <td style={{ padding: "9px 12px", color: "#111827" }}>
                         {fichierFinal
                           ? <a href={fichierFinal.url} target="_blank" rel="noreferrer"
@@ -169,7 +170,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
                 <div key={i} style={{ border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: i % 2 === 1 ? "#F9FAFB" : "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Plan {p.numero || (i + 1)} — {p.type || "—"}</span>
-                    <span style={{ fontSize: 11, color: "#6B7280" }}>{p.orientation || "—"} · {p.format || "—"}</span>
+                    <span style={{ fontSize: 11, color: "#6B7280" }}>{p.orientation || "—"} · {p.format || "—"}{p.matiere ? ` · ${p.matiere}` : ""}</span>
                   </div>
                   {p.emplacement && (
                     <div style={{ fontSize: 12, color: "#374151", marginBottom: 4 }}>{p.emplacement}</div>

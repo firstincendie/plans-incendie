@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TYPES_PLAN, ORIENTATIONS, FORMATS } from "../constants";
+import { TYPES_PLAN, ORIENTATIONS, FORMATS, MATIERES } from "../constants";
 
 export default function TableauPlans({ plans, onChange }) {
   const [dragOver, setDragOver] = useState(null);
@@ -22,7 +22,7 @@ export default function TableauPlans({ plans, onChange }) {
   return (
     <div>
       <div className="tableau-plans-entete">
-        {["", "N°", "Type de plan", "Emplacement", "Orientation", "Format", ""].map((h, i) => (
+        {["", "N°", "Type de plan", "Emplacement", "Orientation", "Format", "Matière", ""].map((h, i) => (
           <div key={i} style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>{h}</div>
         ))}
       </div>
@@ -48,6 +48,10 @@ export default function TableauPlans({ plans, onChange }) {
             {ORIENTATIONS.filter(o => o).map(o => <option key={o}>{o}</option>)}
           </select>
           <select className="tp-fmt"  value={p.format}            onChange={e => updatePlan(i, "format",      e.target.value)} style={sel}>{FORMATS.map(f => <option key={f}>{f}</option>)}</select>
+          <select className="tp-mat"  value={p.matiere ?? ""}     onChange={e => updatePlan(i, "matiere",     e.target.value)} style={sel}>
+            <option value="">—</option>
+            {MATIERES.map(m => <option key={m}>{m}</option>)}
+          </select>
           <button className="tp-del"  onClick={() => supprimerLigne(i)} disabled={plans.length === 1}
             style={{ border: "none", background: "none", cursor: plans.length === 1 ? "not-allowed" : "pointer", color: plans.length === 1 ? "transparent" : "#D1D5DB", fontSize: 15, padding: 0 }}>✕</button>
         </div>
