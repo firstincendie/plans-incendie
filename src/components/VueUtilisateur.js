@@ -41,6 +41,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
+  const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null); // id de la commande à supprimer
   const [openDetailInEditMode, setOpenDetailInEditMode] = useState(false);
 
   const formVide = (defaultDessinateurId = "") => ({
@@ -643,27 +644,68 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
         const transform = spaceBelow >= 180 ? "none" : "translateY(-100%)";
         return (
           <div onClick={e => e.stopPropagation()} style={{ position: "fixed", top, right: window.innerWidth - menuRect.right, transform, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zIndex: 1000, minWidth: 210, overflow: "hidden" }}>
-            <button onClick={() => { setMenuCmdId(null); setSelected(c); setOpenDetailInEditMode(true); }}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
-              onMouseLeave={e => e.currentTarget.style.background = "none"}>
-              ✏️ Modifier la commande
-            </button>
-            <button onClick={() => { setMenuCmdId(null); dupliquer(c); }}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
-              onMouseLeave={e => e.currentTarget.style.background = "none"}>
-              📋 Dupliquer la commande
-            </button>
-            <button onClick={() => { setMenuCmdId(null); archiver(c.id); }}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
-              onMouseLeave={e => e.currentTarget.style.background = "none"}>
-              🗃️ Archiver la commande
-            </button>
+            {!c.is_archived ? (
+              <>
+                <button onClick={() => { setMenuCmdId(null); setSelected(c); setOpenDetailInEditMode(true); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  ✏️ Modifier la commande
+                </button>
+                <button onClick={() => { setMenuCmdId(null); dupliquer(c); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  📋 Dupliquer la commande
+                </button>
+                <button onClick={() => { setMenuCmdId(null); archiver(c.id); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  🗃️ Archiver la commande
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setMenuCmdId(null); desarchiver(c.id); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  📤 Désarchiver la commande
+                </button>
+                <button onClick={() => { setMenuCmdId(null); setShowConfirmSupprimer(c.id); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                  🗑️ Supprimer la commande
+                </button>
+              </>
+            )}
           </div>
         );
       })()}
+
+      {/* Modal confirmation suppression */}
+      {showConfirmSupprimer && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 400, boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#122131", marginBottom: 12 }}>Supprimer la commande ?</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 24, lineHeight: 1.6 }}>
+              Cette action est irréversible. La commande et toutes ses données associées (messages, versions, fichiers) seront définitivement supprimées.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowConfirmSupprimer(null)}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={() => { supprimerCommande(showConfirmSupprimer); setShowConfirmSupprimer(null); }}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                Supprimer définitivement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal nouvelle commande */}
       {showForm && (
