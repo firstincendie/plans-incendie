@@ -21,26 +21,33 @@ Ce design corrige deux problèmes :
 
 ## Base de données
 
-### Migration
+### Migration (dans une transaction)
 
 ```sql
--- Ajout de la colonne
+BEGIN;
 ALTER TABLE commandes ADD COLUMN is_archived BOOLEAN DEFAULT false NOT NULL;
-
--- Migration des données existantes : statut "Archivé" → is_archived = true + statut = "Validé"
 UPDATE commandes SET is_archived = true, statut = 'Validé' WHERE statut = 'Archivé';
+COMMIT;
 ```
 
 ### Résultat
 
 - `is_archived = false` (défaut) : commande visible dans la liste principale
 - `is_archived = true` : commande masquée, visible dans la section collapsible "Archivées"
-- Le statut (`En attente`, `Commencé`, `Validé`, etc.) reste inchangé lors d'un archivage
+- Le statut reste inchangé lors d'un archivage (on peut archiver une commande "Commencé", "En attente", etc.)
+
+### Sécurité / RLS
+
+La sécurité est gérée au niveau UI/query (pas de RLS strict sur cette table). Les requêtes client filtrent déjà par `utilisateur_id = profil.id`. La vérification d'appartenance pour archiver/supprimer se fait dans le code JS avant d'exécuter la requête.
 
 ## Constantes (`constants.js`)
 
-- Retirer `"Archivé"` de `STATUT_STYLE` (ou le laisser en fallback neutre pour les données legacy)
-- `"Archivé"` n'apparaît plus dans `STATUTS_ADMIN`
+- Retirer `"Archivé"` de `STATUTS_ADMIN`
+- Retirer `"Archivé"` de `STATUT_STYLE` (ou conserver en fallback neutre pour l'affichage de données legacy)
+
+## Requête Supabase
+
+Les fetches actuels font un `select("*, messages(*)")` sans filtre sur `statut` — pas de changement nécessaire côté requête. Le filtrage `actives`/`archivees` reste en JS.
 
 ## Affichage des listes
 
@@ -65,29 +72,33 @@ const archivees = cmdFiltrees.filter(c => c.is_archived);
 
 ### Compteurs de stats
 
-- Remplacer `commandes.filter(c => c.statut === "Validé").length` par rien (ou fusionner avec "en cours")
-- "En cours" = `!is_archived`
+- Supprimer le compteur "validées" (`commandes.filter(c => c.statut === "Validé").length`)
+- "En cours" = `commandes.filter(c => !c.is_archived).length`
 
 ## Actions
 
 ### Archiver
 
 - `UPDATE commandes SET is_archived = true WHERE id = ?`
-- Accessible depuis le dropdown `···` sur toutes les commandes **non-archivées**
-- Disponible pour : admin, client (ses propres commandes)
+- Accessible sur toutes les commandes **non-archivées**, quel que soit le statut
+- Disponible pour : admin (toutes commandes), client (ses commandes : `utilisateur_id = profil.id`)
 
 ### Désarchiver
 
 - `UPDATE commandes SET is_archived = false WHERE id = ?`
-- Accessible depuis le dropdown `···` sur les commandes **archivées**
-- Disponible pour : admin, client (ses propres commandes)
+- Accessible sur les commandes **archivées**
+- Disponible pour : admin (toutes commandes), client (ses commandes)
 
 ### Supprimer
 
 - `DELETE FROM commandes WHERE id = ?`
-- Accessible depuis le dropdown `···` sur les commandes **archivées uniquement** (on archive d'abord, puis on supprime — protection contre suppression accidentelle)
+- Accessible sur les commandes **archivées uniquement** (on archive d'abord, puis on supprime — protection contre suppression accidentelle)
 - Modal de confirmation : "Cette action est irréversible. La commande et toutes ses données associées (messages, versions, fichiers) seront définitivement supprimées."
-- Disponible pour : admin, client (ses propres commandes)
+- Disponible pour : admin (toutes commandes), client (ses commandes)
+
+### Dupliquer (comportement inchangé, précision ajoutée)
+
+- La duplication crée toujours une commande avec `is_archived = false`, quel que soit l'état de la commande source.
 
 ## Dropdown `···` selon l'état
 
@@ -100,6 +111,6 @@ const archivees = cmdFiltrees.filter(c => c.is_archived);
 
 1. **Supabase** — migration SQL (`is_archived` + update des existants)
 2. `src/constants.js` — retirer "Archivé" de STATUTS_ADMIN et STATUT_STYLE
-3. `src/components/VueUtilisateur.js` — filtres, supprimer section terminees, nouvelles actions, dropdown
-4. `src/components/VueDessinateur.js` — filtres, nouvelles actions, dropdown
-5. `src/components/DetailCommandeModal.js` — adapter DropdownMenu (désarchiver + supprimer)
+3. `src/components/VueUtilisateur.js` — filtres, supprimer section terminees, nouvelles actions archiver/désarchiver/supprimer, adapter dropdown
+4. `src/components/VueDessinateur.js` — filtres, nouvelles actions, adapter dropdown
+5. `src/components/DetailCommandeModal.js` — adapter `DropdownMenu` : ajouter props `onDesarchiver` et `onSupprimer`, afficher selon l'état `is_archived` de la commande sélectionnée
