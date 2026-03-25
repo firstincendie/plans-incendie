@@ -183,6 +183,31 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
   );
 }
 
+function NotesSection({ note, setNote, onSaveNote, noteSaveError }) {
+  return (
+    <div style={{ marginTop: 24 }}>
+      <SectionTitle>Mes notes</SectionTitle>
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        onBlur={onSaveNote}
+        placeholder="Ajouter une note personnelle..."
+        style={{
+          width: "100%", minHeight: 80, padding: "8px 12px",
+          borderRadius: 8, border: "1px solid #E5E7EB",
+          fontSize: 16, fontFamily: "inherit", resize: "vertical",
+          boxSizing: "border-box", outline: "none", lineHeight: 1.5,
+        }}
+      />
+      {noteSaveError && (
+        <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4 }}>
+          Erreur lors de la sauvegarde
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DropdownMenu({ onArchiver, onDupliquer }) {
   const [ouvert, setOuvert] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
@@ -229,6 +254,8 @@ export default function DetailCommandeModal({
   actionButtons,
   msgInput, setMsgInput, onEnvoyer, auteurNom,
   onMarquerLu,
+  note, setNote, onSaveNote, noteSaveError,
+  onModifierCommande, canModifier,
 }) {
   const [mobTab, setMobTab] = useState("infos");
 
@@ -291,6 +318,7 @@ export default function DetailCommandeModal({
         <div className="detail-desktop-body">
           <div className="detail-desktop-left">
             <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+            <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
             {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
           </div>
           <div className="detail-desktop-chat">
@@ -303,6 +331,7 @@ export default function DetailCommandeModal({
         <div className="detail-mobile-body">
           <div className={`detail-tab-pane${mobTab === "infos" ? " active" : ""}`}>
             <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+            <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
             {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
           </div>
           <div className={`detail-chat-pane${mobTab === "chat" ? " active" : ""}`}>

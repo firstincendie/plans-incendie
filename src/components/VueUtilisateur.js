@@ -37,6 +37,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [sousComptes, setSousComptes] = useState([]);
   const [dessinateursDispos, setDessinateursDispos] = useState([]); // [{ id, prenom, nom, is_default }]
   const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
+  const [note, setNote] = useState("");
+  const [noteSaveError, setNoteSaveError] = useState(false);
 
   const formVide = (defaultDessinateurId = "") => ({
     utilisateur_id: profil.id,
@@ -275,6 +277,27 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     const marquer = m => nonLus.some(n => n.id === m.id) ? { ...m, lu_par: [...(m.lu_par || []), auteurNom] } : m;
     setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: c.messages.map(marquer) } : c));
     setSelected(prev => prev && prev.id === commandeId ? { ...prev, messages: prev.messages.map(marquer) } : prev);
+  }
+
+  useEffect(() => {
+    if (!selected) { setNote(""); setNoteSaveError(false); return; }
+    supabase.from("commande_notes")
+      .select("note")
+      .eq("commande_id", selected.id)
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(({ data }) => setNote(data?.note ?? ""));
+  }, [selected?.id]); // eslint-disable-line
+
+  async function sauvegarderNote() {
+    if (!selected) return;
+    const { error } = await supabase.from("commande_notes").upsert({
+      commande_id: selected.id,
+      user_id: session.user.id,
+      note,
+      updated_at: new Date().toISOString(),
+    });
+    setNoteSaveError(!!error);
   }
 
   const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
@@ -545,6 +568,10 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                     }}
                     auteurNom={auteurNom}
                     onMarquerLu={() => marquerMessagesLus(selected?.id)}
+                    note={note}
+                    setNote={setNote}
+                    onSaveNote={sauvegarderNote}
+                    noteSaveError={noteSaveError}
                   />
                 )}
               </>
