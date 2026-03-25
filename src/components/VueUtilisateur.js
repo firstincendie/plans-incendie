@@ -280,6 +280,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     if (!error) {
       setCommandes(prev => prev.filter(c => c.id !== id));
       setSelected(null);
+    } else {
+      console.error("Erreur suppression commande:", error);
     }
   }
 
@@ -582,7 +584,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                     onArchiver={!selected?.is_archived ? () => archiver(selected.id) : undefined}
                     onDesarchiver={selected?.is_archived ? () => desarchiver(selected.id) : undefined}
                     onSupprimer={selected?.is_archived ? () => setShowConfirmSupprimer(selected.id) : undefined}
-                    onDupliquer={() => dupliquer(selected)}
+                    onDupliquer={!selected?.is_archived ? () => dupliquer(selected) : undefined}
                     showContacts={true}
                     actionButtons={
                       selected.statut === "Ébauche déposée" ? (
