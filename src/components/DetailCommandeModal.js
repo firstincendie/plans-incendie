@@ -390,6 +390,7 @@ export default function DetailCommandeModal({
   onMarquerLu,
   note, setNote, onSaveNote, noteSaveError,
   onModifierCommande, canModifier,
+  startInEditMode,
 }) {
   const [mobTab, setMobTab] = useState("infos");
   const [editMode, setEditMode] = useState(false);
@@ -397,8 +398,12 @@ export default function DetailCommandeModal({
   const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
-    setEditMode(false);
     onMarquerLu?.();
+    if (startInEditMode && selected) {
+      enterEditMode();
+    } else {
+      setEditMode(false);
+    }
   }, [selected?.id]); // eslint-disable-line
 
   function enterEditMode() {

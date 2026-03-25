@@ -41,6 +41,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [noteSaveError, setNoteSaveError] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [menuCmdId, setMenuCmdId] = useState(null);
+  const [openDetailInEditMode, setOpenDetailInEditMode] = useState(false);
 
   const formVide = (defaultDessinateurId = "") => ({
     utilisateur_id: profil.id,
@@ -368,8 +369,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
             ···
           </button>
           {menuCmdId === c.id && (
-            <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200, overflow: "hidden" }}>
-              <button onClick={() => { setMenuCmdId(null); setSelected(c); setShowModifModal(true); }}
+            <div style={{ position: "absolute", right: 0, bottom: "calc(100% + 4px)", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200, overflow: "hidden" }}>
+              <button onClick={() => { setMenuCmdId(null); setSelected(c); setOpenDetailInEditMode(true); }}
                 style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
                 onMouseLeave={e => e.currentTarget.style.background = "none"}>
@@ -594,7 +595,8 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                   <DetailCommandeModal
                     selected={selected}
                     versionsSelected={versionsSelected}
-                    onClose={() => setSelected(null)}
+                    onClose={() => { setSelected(null); setOpenDetailInEditMode(false); }}
+                    startInEditMode={openDetailInEditMode}
                     onArchiver={() => archiver(selected.id)}
                     onDupliquer={() => dupliquer(selected)}
                     showContacts={true}
