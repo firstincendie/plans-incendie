@@ -23,7 +23,6 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
   const [filtres, setFiltres] = useState({ statut: "", dessinateur: "", type: "", periode: "" });
   const [tri, setTri] = useState({ col: "created_at", dir: "desc" });
-  const [showTerminees, setShowTerminees] = useState(false);
   const [showArchivees, setShowArchivees] = useState(false);
   const [msgInput, setMsgInput] = useState("");
   const [showModifModal, setShowModifModal] = useState(false);
@@ -319,14 +318,14 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
   const nonLusDe = c => c.messages.filter(
     m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
   ).length;
-  const totalNonLus = commandes.filter(c => !["Validé", "Archivé"].includes(c.statut)).reduce((acc, c) => acc + nonLusDe(c), 0);
-  const canModifier = selected && !["Validé", "Archivé"].includes(selected.statut);
+  const totalNonLus = commandes.filter(c => !c.is_archived).reduce((acc, c) => acc + nonLusDe(c), 0);
+  // canModifier : pas archivée ET pas validée (messagerie fermée sur les validées)
+  const canModifier = selected && !selected.is_archived && selected.statut !== "Validé";
 
   const commandesVisibles = userFilter ? commandes.filter(c => c.utilisateur_id === userFilter) : commandes;
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const actives   = cmdFiltrees.filter(c => c.statut !== "Validé" && c.statut !== "Archivé");
-  const terminees = cmdFiltrees.filter(c => c.statut === "Validé");
-  const archivees = cmdFiltrees.filter(c => c.statut === "Archivé");
+  const actives   = cmdFiltrees.filter(c => !c.is_archived);
+  const archivees = cmdFiltrees.filter(c => c.is_archived);
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
 
   const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
@@ -493,8 +492,7 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
 
             <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
               {[
-                { label: "en cours", val: commandes.filter(c => c.statut !== "Validé" && c.statut !== "Archivé").length, color: "#122131" },
-                { label: "validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669" },
+                { label: "en cours", val: commandes.filter(c => !c.is_archived).length, color: "#122131" },
                 { label: "total", val: commandes.length, color: "#9CA3AF" },
               ].map(s => (
                 <span key={s.label} style={{ fontSize: 13, color: "#6B7280" }}>
@@ -537,26 +535,6 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
                   {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
                   {actives.map(c => renderCarteCmd(c))}
                 </div>
-
-                {/* Validées */}
-                {terminees.length > 0 && (
-                  <div style={{ marginBottom: 8 }}>
-                    <button onClick={() => setShowTerminees(v => !v)}
-                      style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
-                      {showTerminees ? "▲ Masquer les validées" : `▼ ${terminees.length} commande${terminees.length > 1 ? "s" : ""} validée${terminees.length > 1 ? "s" : ""}`}
-                    </button>
-                    {showTerminees && (
-                      <>
-                        <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                          {terminees.map(c => renderLigneCmd(c, true))}
-                        </div>
-                        <div className="cmd-cards" style={{ marginBottom: 16 }}>
-                          {terminees.map(c => renderCarteCmd(c, true))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
 
                 {/* Archivées */}
                 {archivees.length > 0 && (
