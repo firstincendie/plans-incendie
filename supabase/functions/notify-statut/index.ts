@@ -14,11 +14,16 @@ const corsHeaders = {
 const APP_URL = "https://incendieplan.fr";
 
 async function sendEmail(authHeader: string, to: string, subject: string, html: string) {
-  return fetch(SEND_EMAIL_URL, {
+  const res = await fetch(SEND_EMAIL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": authHeader },
     body: JSON.stringify({ to, subject, html }),
   });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`send-email failed for ${to}:`, err);
+  }
+  return res;
 }
 
 serve(async (req) => {
@@ -27,7 +32,16 @@ serve(async (req) => {
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
-  const { commande_id, event } = await req.json();
+  let commande_id: string, event: string;
+  try {
+    const body = await req.json();
+    commande_id = body.commande_id;
+    event = body.event;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   if (!commande_id || !event) {
     return new Response(JSON.stringify({ error: "Missing commande_id or event" }), {
@@ -37,11 +51,12 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-  const { data: commande } = await supabase
+  const { data: commande, error: commandeError } = await supabase
     .from("commandes")
     .select("utilisateur_id, dessinateur_id, nom_plan, ref")
     .eq("id", commande_id)
     .single();
+  if (commandeError) console.error("Failed to fetch commande:", commandeError.message);
 
   if (!commande) {
     return new Response(JSON.stringify({ error: "commande not found" }), {
@@ -52,20 +67,22 @@ serve(async (req) => {
   const { utilisateur_id, dessinateur_id, nom_plan, ref } = commande;
 
   // Fetch utilisateur profile
-  const { data: utilisateur } = await supabase
+  const { data: utilisateur, error: utilisateurError } = await supabase
     .from("profiles")
     .select("email, prenom, notif_commande_acceptee, notif_commande_validee, notif_plans_finaux")
     .eq("id", utilisateur_id)
     .single();
+  if (utilisateurError) console.error("Failed to fetch utilisateur profile:", utilisateurError.message);
 
   // Fetch dessinateur profile (if exists)
-  const { data: dessinateur } = dessinateur_id
+  const { data: dessinateur, error: dessinateurError } = dessinateur_id
     ? await supabase
         .from("profiles")
         .select("email, prenom, notif_demande_modification, notif_validation_en_cours, notif_commande_terminee")
         .eq("id", dessinateur_id)
         .single()
-    : { data: null };
+    : { data: null, error: null };
+  if (dessinateurError) console.error("Failed to fetch dessinateur profile:", dessinateurError.message);
 
   const lienCommande = `<p><a href="${APP_URL}">Voir la commande — ${nom_plan} (${ref})</a></p>`;
   const results: string[] = [];
