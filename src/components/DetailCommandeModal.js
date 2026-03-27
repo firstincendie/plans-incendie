@@ -403,7 +403,7 @@ function DropdownMenu({ onArchiver, onDesarchiver, onSupprimer, onDupliquer, onM
 
 export default function DetailCommandeModal({
   selected, versionsSelected, onClose,
-  onArchiver, onDesarchiver, onSupprimer, onDupliquer, showContacts,
+  onArchiver, onDesarchiver, onSupprimer, onDupliquer, showContacts, hideClientName,
   actionButtons,
   msgInput, setMsgInput, onEnvoyer, auteurNom,
   onMarquerLu,
@@ -478,8 +478,9 @@ export default function DetailCommandeModal({
   );
 
   // Nom du demandeur (sous-titre header)
-  const nomDemandeur = `${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim() ||
-    (selected.utilisateur_prenom ? `${selected.utilisateur_prenom ?? ""} ${selected.utilisateur_nom ?? ""}`.trim() : "");
+  const nomDemandeur = hideClientName ? "" :
+    (`${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim() ||
+    (selected.utilisateur_prenom ? `${selected.utilisateur_prenom ?? ""} ${selected.utilisateur_nom ?? ""}`.trim() : ""));
   const sousTitre = nomDemandeur ? `${nomDemandeur} — ${selected.ref}` : selected.ref;
 
   const HEADER_BTN = {

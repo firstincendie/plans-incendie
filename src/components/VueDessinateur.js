@@ -367,10 +367,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                             {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
                           </div>
                           <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                            {(() => {
-                              const nomClient = `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim();
-                              return nomClient ? `${nomClient} — ${c.ref}` : c.ref;
-                            })()}
+                            {c.ref}
                           </div>
                         </div>
                         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
@@ -405,10 +402,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                                   <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
                                 </div>
                                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                                  {(() => {
-                                    const nomClient = `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim();
-                                    return nomClient ? `${nomClient} — ${c.ref}` : c.ref;
-                                  })()}
+                                  {c.ref}
                                 </div>
                               </div>
                               <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
@@ -434,6 +428,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                     onClose={() => setSelected(null)}
                     onArchiver={null}
                     showContacts={false}
+                    hideClientName={true}
                     actionButtons={
                       <>
                         {selected.statut === "En attente" && (
