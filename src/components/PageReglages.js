@@ -41,8 +41,10 @@ export default function PageReglages({ profil, onProfilUpdate }) {
               </div>
               <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, cursor: "pointer" }}>
                 <input type="checkbox" checked={profil[key] !== false} onChange={async (e) => {
-                  const { error } = await supabase.from("profiles").update({ [key]: e.target.checked }).eq("id", profil.id);
-                  if (!error) onProfilUpdate({ [key]: e.target.checked });
+                  const newValue = e.target.checked;
+                  onProfilUpdate({ [key]: newValue });
+                  const { error } = await supabase.from("profiles").update({ [key]: newValue }).eq("id", profil.id);
+                  if (error) onProfilUpdate({ [key]: !newValue });
                 }} style={{ opacity: 0, width: 0, height: 0 }} />
                 <span style={{ position: "absolute", inset: 0, background: profil[key] !== false ? "#122131" : "#E5E7EB", borderRadius: 12, transition: "0.2s" }}>
                   <span style={{ position: "absolute", top: 2, left: profil[key] !== false ? 22 : 2, width: 20, height: 20, background: "#fff", borderRadius: "50%", transition: "0.2s" }} />
