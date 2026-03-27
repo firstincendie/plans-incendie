@@ -215,6 +215,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setEnvoyantModif(true);
     await envoyerMessage(selected.id, auteurNom, modifMsg, modifFichiers);
     await changerStatut(selected.id, "Modification dessinateur");
+    supabase.functions.invoke("notify-statut", {
+      body: { commande_id: selected.id, event: "modification" },
+    });
     setModifMsg(""); setModifFichiers([]); setShowModifModal(false); setEnvoyantModif(false);
   }
 
@@ -224,6 +227,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setShowDemandeValidationModal(false);
     await changerStatut(selected.id, "Validation en cours");
     await envoyerMessage(selected.id, auteurNom, "📋 Validation demandée.");
+    supabase.functions.invoke("notify-statut", {
+      body: { commande_id: selected.id, event: "validation_en_cours" },
+    });
     setDemandantValidation(false);
   }
 
@@ -233,6 +239,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     setShowValiderCommandeModal(false);
     await changerStatut(selected.id, "Validé");
     await envoyerMessage(selected.id, auteurNom, "✅ Commande validée.");
+    supabase.functions.invoke("notify-statut", {
+      body: { commande_id: selected.id, event: "termine" },
+    });
     setValidant(false);
   }
 
