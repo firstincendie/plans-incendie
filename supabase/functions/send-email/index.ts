@@ -38,8 +38,8 @@ serve(async (req) => {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error("Resend error:", data);
-    return new Response(JSON.stringify({ error: data }), {
+    console.error("Resend error:", res.status, JSON.stringify(data));
+    return new Response(JSON.stringify({ resend_status: res.status, error: data }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
