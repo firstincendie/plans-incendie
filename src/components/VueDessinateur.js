@@ -102,6 +102,9 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, statut: "Commencé" } : c));
       if (selected?.id === id) setSelected(prev => ({ ...prev, statut: "Commencé" }));
       await envoyerMessage(id, auteurNom, "🚀 Mission commencée.");
+      supabase.functions.invoke("notify-statut", {
+        body: { commande_id: id, event: "commencé" },
+      });
     }
   }
 
@@ -143,6 +146,9 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
     if (nouveaux.length === selected.plans.length) {
       await envoyerMessage(selected.id, auteurNom, "📐 Plans finaux déposés — en attente de validation.");
+      supabase.functions.invoke("notify-statut", {
+        body: { commande_id: selected.id, event: "plans_finaux" },
+      });
     }
   }
 
