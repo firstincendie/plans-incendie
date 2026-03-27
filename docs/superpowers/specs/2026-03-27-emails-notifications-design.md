@@ -52,6 +52,8 @@ En attente → Commencé → Ébauche déposée ⇄ Modification dessinateur
 | Ébauche validée — en attente de dépôt final | Dessinateur | Statut → Validation en cours | `notif_validation_en_cours` |
 | Commande terminée | Dessinateur | Statut → Validé | `notif_commande_terminee` |
 
+> **Note :** Le statut "Validé" est déclenché par l'utilisateur lui-même (validation des plans finaux). Aucun email de confirmation à l'utilisateur n'est nécessaire à cette étape — l'action est volontaire. L'email "Commande terminée" va uniquement au dessinateur.
+
 ---
 
 ## Fix — Lien "Confirm your signup"
@@ -79,6 +81,8 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notif_commande_terminee     boolea
 
 Colonnes existantes conservées : `notif_nouvelle_commande`, `notif_nouveau_message`, `notif_nouvelle_version`.
 
+> **Note :** La sélection `profiles` dans App.js utilise `select("*")` — les nouvelles colonnes seront automatiquement disponibles dans `profil` sans modifier le fetch.
+
 ---
 
 ## Edge Functions
@@ -98,16 +102,17 @@ Colonnes existantes conservées : `notif_nouvelle_commande`, `notif_nouveau_mess
 | `termine` | Dessinateur | `notif_commande_terminee` |
 
 **Logique :**
-1. Récupérer la commande (`utilisateur_id`, `dessinateur_id`, `nom_plan`, `ref`)
+1. Récupérer la commande (`utilisateur_id`, `dessinateur_id`, `nom_plan`, `ref`) depuis `commandes`
 2. Selon l'event, récupérer le(s) profil(s) destinataire(s) avec leur email, prénom, et colonne de préférence
 3. Si préférence !== false → appeler `send-email`
-4. Si `dessinateur_id` est null pour un event dessinateur → skip silencieux
+4. Si `dessinateur_id` est null pour un event ciblant le dessinateur → skip silencieux pour la partie dessinateur uniquement. Pour l'event `validation_en_cours` (double destinataire), la notification utilisateur s'envoie quand même si `dessinateur_id` est null.
+5. **Toujours transmettre le header `Authorization` reçu lors de l'appel interne à `send-email`**, comme dans toutes les autres fonctions existantes.
 
 ### `notify-commande` (modification mineure)
 
 Après l'envoi existant au dessinateur, ajouter l'envoi d'une confirmation à l'utilisateur créateur si `notif_commande_creee !== false`.
 
-La commande contient `utilisateur_id` — récupérer l'email et le prénom depuis `profiles`.
+**Important :** `utilisateur_id` est déjà présent dans le payload reçu par la fonction (il est passé depuis le frontend). Utiliser directement cet `utilisateur_id` pour lookup dans `profiles` — aucune jointure sur `commandes` n'est nécessaire.
 
 ---
 
@@ -115,19 +120,21 @@ La commande contient `utilisateur_id` — récupérer l'email et le prénom depu
 
 ### `VueUtilisateur.js`
 
-| Action utilisateur | Appel à ajouter |
+Les appels à `notify-statut` doivent être placés dans les **fonctions d'action nommées**, pas dans la fonction utilitaire générique `changerStatut`. Ce pattern est cohérent avec l'existant (ex: `notify-message` est appelé dans `envoyerMessage`, pas dans un setter générique).
+
+| Fonction d'action | Appel à ajouter |
 |---|---|
-| Création commande (après insert) | `notify-commande` reçoit déjà `utilisateur_id` — modifier la function |
-| Demande de modification (changerStatut → "Modification dessinateur") | `notify-statut` event=`modification` |
-| Valider l'ébauche (changerStatut → "Validation en cours") | `notify-statut` event=`validation_en_cours` |
-| Valider les plans finaux (changerStatut → "Validé") | `notify-statut` event=`termine` |
+| `creerCommande` (après insert réussi) | `notify-commande` — déjà invoqué, mais la function doit être étendue pour notifier aussi l'utilisateur |
+| `envoyerDemandeModification` (statut → "Modification dessinateur") | `notify-statut` event=`modification`, `commande_id: selected.id` |
+| `demanderValidation` (statut → "Validation en cours") | `notify-statut` event=`validation_en_cours`, `commande_id: selected.id` |
+| `validerCommande` (statut → "Validé") | `notify-statut` event=`termine`, `commande_id: selected.id` |
 
 ### `VueDessinateur.js`
 
-| Action dessinateur | Appel à ajouter |
+| Fonction d'action | Appel à ajouter |
 |---|---|
-| Accepter la commande (statut → "Commencé") | `notify-statut` event=`commencé` |
-| Dépôt dernier plan final (tous déposés) | `notify-statut` event=`plans_finaux` |
+| `commencer(id)` (statut → "Commencé") | `notify-statut` event=`commencé`, `commande_id: id` — utiliser le paramètre `id` de la fonction, pas `selected.id` |
+| Dépôt dernier plan final | `notify-statut` event=`plans_finaux`, `commande_id: selected.id` — appel à placer **dans le bloc `if (nouveaux.length === selected.plans.length)` existant** dans `deposerPlanFinal` |
 
 ---
 
@@ -157,10 +164,10 @@ Pas de section notifications.
 
 ## Ordre d'implémentation
 
-1. Migration DB (colonnes `profiles`)
-2. Edge Function `notify-statut`
+1. Migration DB (colonnes `profiles`) via Supabase MCP
+2. Edge Function `notify-statut` (nouvelle)
 3. Modification `notify-commande` (ajout confirmation utilisateur)
 4. Déclencheurs dans `VueUtilisateur.js`
 5. Déclencheurs dans `VueDessinateur.js`
 6. Mise à jour `PageReglages.js`
-7. Fix Supabase Dashboard (Redirect URLs)
+7. Fix Supabase Dashboard (Redirect URLs) — manuel
