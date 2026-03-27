@@ -5,7 +5,16 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SEND_EMAIL_URL = `${SUPABASE_URL}/functions/v1/send-email`;
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const { commande_id, nom_plan, numero_version } = await req.json();
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -27,7 +36,7 @@ serve(async (req) => {
 
   if (!utilisateur || utilisateur.notif_nouvelle_version === false) {
     return new Response(JSON.stringify({ skipped: "notifications disabled" }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -48,5 +57,5 @@ serve(async (req) => {
   });
 
   const data = await res.json();
-  return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

@@ -119,7 +119,7 @@ export default function App() {
     );
   }
 
-  if (profil.statut === "bloque") {
+  if (profil.statut === "banni") {
     return (
       <div style={{ minHeight: "100vh", background: "#F5FAFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ background: "#fff", borderRadius: 16, padding: "48px 40px", width: 420, boxShadow: "0 4px 24px rgba(18,33,49,0.10)", textAlign: "center" }}>

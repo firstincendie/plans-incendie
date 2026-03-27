@@ -36,7 +36,7 @@ export default function GestionUtilisateurs() {
     if (!error) {
       setComptes(prev => prev.map(c => c.id === id ? { ...c, statut } : c));
       if (selected?.id === id) setSelected(prev => ({ ...prev, statut }));
-      if (["actif", "refuse", "bloque"].includes(statut)) {
+      if (["actif", "refuse", "banni"].includes(statut)) {
         const compte = comptes.find(c => c.id === id);
         if (compte) {
           await supabase.functions.invoke("notify-activation", {
@@ -131,7 +131,7 @@ export default function GestionUtilisateurs() {
       en_attente: { bg: "#FEF3C7", color: "#92400E", label: "En attente" },
       actif: { bg: "#D1FAE5", color: "#065F46", label: "Actif" },
       refuse: { bg: "#FEE2E2", color: "#991B1B", label: "Refusé" },
-      bloque: { bg: "#F3F4F6", color: "#374151", label: "Bloqué" },
+      banni: { bg: "#F3F4F6", color: "#374151", label: "Banni" },
     };
     const s = styles[statut] || styles.en_attente;
     return <span style={{ background: s.bg, color: s.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{s.label}</span>;
@@ -145,7 +145,7 @@ export default function GestionUtilisateurs() {
     { key: "en_attente", label: "En attente" },
     { key: "actif", label: "Actifs" },
     { key: "refuse", label: "Refusés" },
-    { key: "bloque", label: "Bloqués" },
+    { key: "banni", label: "Bannis" },
   ];
 
   return (
@@ -276,7 +276,7 @@ export default function GestionUtilisateurs() {
                 <option value="en_attente">En attente</option>
                 <option value="actif">Actif</option>
                 <option value="refuse">Refusé</option>
-                <option value="bloque">Bloqué</option>
+                <option value="banni">Banni</option>
               </select>
             </div>
           </div>

@@ -3,6 +3,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SEND_EMAIL_URL = `${SUPABASE_URL}/functions/v1/send-email`;
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 const templates: Record<string, { subject: string; html: (prenom: string) => string }> = {
   actif: {
     subject: "Votre compte First Incendie est activé",
@@ -20,7 +25,7 @@ const templates: Record<string, { subject: string; html: (prenom: string) => str
       <p>Contactez-nous à <a href="mailto:contact@firstincendie.com">contact@firstincendie.com</a> pour plus d'informations.</p>
     `,
   },
-  bloque: {
+  banni: {
     subject: "Votre compte First Incendie a été suspendu",
     html: (prenom) => `
       <h2>Bonjour ${prenom},</h2>
@@ -31,9 +36,13 @@ const templates: Record<string, { subject: string; html: (prenom: string) => str
 };
 
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const { to, prenom, statut } = await req.json();
   const template = templates[statut];
-  if (!template) return new Response(JSON.stringify({ error: "Unknown statut" }), { status: 400 });
+  if (!template) return new Response(JSON.stringify({ error: "Unknown statut" }), { status: 400, headers: corsHeaders });
 
   const res = await fetch(SEND_EMAIL_URL, {
     method: "POST",
@@ -42,5 +51,5 @@ serve(async (req) => {
   });
 
   const data = await res.json();
-  return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

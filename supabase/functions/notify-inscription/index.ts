@@ -4,7 +4,16 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SEND_EMAIL_URL = `${SUPABASE_URL}/functions/v1/send-email`;
 const OWNER_EMAIL = "contact@firstincendie.com";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const { prenom, nom, email } = await req.json();
 
   const res = await fetch(SEND_EMAIL_URL, {
@@ -26,5 +35,5 @@ serve(async (req) => {
   });
 
   const data = await res.json();
-  return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
