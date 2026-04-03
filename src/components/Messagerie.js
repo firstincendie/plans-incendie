@@ -83,7 +83,7 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
           return (
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
               {estNotePrivee && (
-                <div style={{ fontSize: 10, color: "#92400E", textAlign: "right", marginBottom: 2, paddingInline: 2 }}>
+                <div style={{ fontSize: 10, color: "#92400E", textAlign: moi ? "right" : "left", marginBottom: 2, paddingInline: 2 }}>
                   🔒 Note privée
                 </div>
               )}
