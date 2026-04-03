@@ -186,7 +186,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
       setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c));
       if (selected?.id === commandeId) setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
       // Pas de notification pour les notes privées
-      if (!options.visible_par) {
+      if (!options.visible_par?.length) {
         supabase.functions.invoke("notify-message", {
           body: {
             commande_id: commandeId,
