@@ -56,9 +56,10 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
     setFichierMsg([]);
   }
 
-  const messagesAfficher = instructions
+  const messagesAfficher = (instructions
     ? selected.messages.filter((m, i) => i !== 0 || m.texte !== instructions)
-    : selected.messages;
+    : selected.messages
+  ).filter(m => !m.visible_par || m.visible_par.includes(auteurActif));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -78,9 +79,20 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
         {messagesAfficher.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>{instructions ? "Aucun autre message." : "Aucun message."}</div>}
         {messagesAfficher.map((m, i) => {
           const moi = m.auteur === auteurActif;
+          const estNotePrivee = !!(m.visible_par && m.visible_par.includes(auteurActif));
           return (
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
-              <div style={{ background: moi ? "#fff" : "#EFF6FF", border: `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`, borderRadius: 8, padding: "10px 12px" }}>
+              {estNotePrivee && (
+                <div style={{ fontSize: 10, color: "#92400E", textAlign: "right", marginBottom: 2, paddingInline: 2 }}>
+                  🔒 Note privée
+                </div>
+              )}
+              <div style={{
+                background: estNotePrivee ? "#FFFBEB" : moi ? "#fff" : "#EFF6FF",
+                border: estNotePrivee ? "1.5px dashed #FCD34D" : `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`,
+                borderRadius: 8,
+                padding: "10px 12px",
+              }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: moi ? "#374151" : "#1E40AF" }}>{m.auteur}</div>
                 <div style={{ fontSize: 12, color: "#374151", marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
                 {m.fichiers && m.fichiers.length > 0 && (
@@ -94,8 +106,14 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: 10, color: (m.lu_par || []).length > 0 && moi ? "#2563EB" : "#9CA3AF", textAlign: moi ? "right" : "left", marginTop: 3, paddingInline: 2 }}>
-                {formatDateBulle(m.created_at)}{moi ? ` ${(m.lu_par || []).length > 0 ? "✓✓ Lu" : "✓✓"}` : ""}
+              <div style={{
+                fontSize: 10,
+                color: (!estNotePrivee && (m.lu_par || []).length > 0 && moi) ? "#2563EB" : "#9CA3AF",
+                textAlign: moi ? "right" : "left",
+                marginTop: 3,
+                paddingInline: 2,
+              }}>
+                {formatDateBulle(m.created_at)}{!estNotePrivee && moi ? ` ${(m.lu_par || []).length > 0 ? "✓✓ Lu" : "✓✓"}` : ""}
               </div>
             </div>
           );
