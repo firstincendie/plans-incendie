@@ -303,7 +303,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     const commande = commandes.find(c => c.id === commandeId);
     if (!commande) return;
     const nonLus = commande.messages.filter(m =>
-      m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+      m.auteur !== auteurNom &&
+      !m.visible_par &&
+      !(m.lu_par || []).includes(auteurNom)
     );
     if (nonLus.length === 0) return;
     await Promise.all(nonLus.map(m =>
