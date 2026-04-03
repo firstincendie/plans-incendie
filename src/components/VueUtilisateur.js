@@ -118,7 +118,9 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
       fichiersPlan: c.fichiers_plan || [],
       logoClient: c.logo_client || [],
       plansFinalises: c.plans_finalises || [],
-      messages: (c.messages || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      messages: (c.messages || [])
+        .filter(m => !m.visible_par || m.visible_par.includes(auteurNom))
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
     })));
     if (ver) setVersions(ver);
     if (sub) setSousComptes(sub);
