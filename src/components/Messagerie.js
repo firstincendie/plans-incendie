@@ -36,7 +36,16 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
     }
 
     setAlerte(null);
-    await onEnvoyer(msgInput, fichierMsg);
+
+    // Détection commande /note
+    if (msgInput.trimStart().startsWith("/note ") && auteurActif) {
+      const texteReel = msgInput.trimStart().slice("/note ".length).trim();
+      if (!texteReel && fichierMsg.length === 0) return;
+      await onEnvoyer(texteReel, fichierMsg, { visible_par: [auteurActif] });
+    } else {
+      await onEnvoyer(msgInput, fichierMsg, {});
+    }
+
     setMsgInput("");
     setFichierMsg([]);
   }
