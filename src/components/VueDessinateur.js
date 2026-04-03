@@ -176,22 +176,26 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     setFichiersDepot([]); setMessageDepot(""); setShowDepotModal(false); setDeposant(false);
   }
 
-  async function envoyerMessage(commandeId, auteur, texte, fichiers = []) {
+  async function envoyerMessage(commandeId, auteur, texte, fichiers = [], options = {}) {
     const { data, error } = await supabase.from("messages").insert([{
-      commande_id: commandeId, auteur, texte: texte || "", fichiers, date: formatDateMsg(),
+      commande_id: commandeId, auteur, texte: texte || "", fichiers,
+      date: formatDateMsg(),
+      visible_par: options.visible_par ?? null,
     }]).select().single();
     if (!error && data) {
       setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c));
       if (selected?.id === commandeId) setSelected(prev => ({ ...prev, messages: [...prev.messages, data] }));
-      // Notifier l'autre partie du nouveau message
-      supabase.functions.invoke("notify-message", {
-        body: {
-          commande_id: commandeId,
-          auteur_id: session.user.id,
-          auteur_nom: auteurNom,
-          nom_plan: commandes.find(c => c.id === commandeId)?.nom_plan ?? "",
-        },
-      });
+      // Pas de notification pour les notes privées
+      if (!options.visible_par) {
+        supabase.functions.invoke("notify-message", {
+          body: {
+            commande_id: commandeId,
+            auteur_id: session.user.id,
+            auteur_nom: auteurNom,
+            nom_plan: commandes.find(c => c.id === commandeId)?.nom_plan ?? "",
+          },
+        });
+      }
     }
   }
 
@@ -470,9 +474,9 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                     }
                     msgInput={msgInput}
                     setMsgInput={setMsgInput}
-                    onEnvoyer={async (texte, fichiers) => {
+                    onEnvoyer={async (texte, fichiers, options = {}) => {
                       if (!texte.trim() && !fichiers?.length) return;
-                      await envoyerMessage(selected.id, auteurNom, texte, fichiers);
+                      await envoyerMessage(selected.id, auteurNom, texte, fichiers, options);
                     }}
                     auteurNom={auteurNom}
                     onMarquerLu={() => marquerMessagesLus(selected?.id)}
