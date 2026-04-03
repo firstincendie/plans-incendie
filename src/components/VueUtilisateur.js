@@ -67,8 +67,10 @@ export default function VueUtilisateur({ session, profil, onProfilUpdate }) {
     chargerTout();
     const canal = supabase
       .channel("messages-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "visible_par=is.null" }, (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         const msg = payload.new;
+        // Ne pas stocker les notes privées d'autrui dans le state local
+        if (msg.visible_par?.length && !msg.visible_par.includes(auteurNom)) return;
         setCommandes(prev => prev.map(c => {
           if (c.id !== msg.commande_id) return c;
           if (msg.auteur === auteurNom) return c;
