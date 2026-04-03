@@ -44,7 +44,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     chargerTout();
     const canal = supabase
       .channel("messages-dessinateur")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "visible_par=is.null" }, (payload) => {
         const msg = payload.new;
         setCommandes(prev => prev.map(c => {
           if (c.id !== msg.commande_id) return c;
