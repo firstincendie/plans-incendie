@@ -38,8 +38,14 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
     setAlerte(null);
 
     // Détection commande /note
-    if (msgInput.trimStart().startsWith("/note ") && auteurActif) {
-      const texteReel = msgInput.trimStart().slice("/note ".length).trim();
+    const trimmed = msgInput.trimStart();
+    if (trimmed.toLowerCase().startsWith("/note") && auteurActif) {
+      const afterCmd = trimmed.slice(5);
+      if (!afterCmd.startsWith(" ")) {
+        setAlerte("Syntaxe : /note [votre texte]");
+        return;
+      }
+      const texteReel = afterCmd.slice(1).trim();
       if (!texteReel && fichierMsg.length === 0) return;
       await onEnvoyer(texteReel, fichierMsg, { visible_par: [auteurActif] });
     } else {
