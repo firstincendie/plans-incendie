@@ -82,13 +82,15 @@ L'objectif est de pouvoir faire appel à Claude Code depuis n'importe quel appar
   "name": "plans-incendie",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
   "postCreateCommand": "npm install",
-  "forwardPorts": [3000],
-  "remoteEnv": {
-    "REACT_APP_SUPABASE_URL": "${localEnv:REACT_APP_SUPABASE_URL}",
-    "REACT_APP_SUPABASE_ANON_KEY": "${localEnv:REACT_APP_SUPABASE_ANON_KEY}"
-  }
+  "forwardPorts": [3000]
 }
 ```
+
+**Variables d'environnement dans Codespaces :** ne pas utiliser `remoteEnv` avec `localEnv` — cela ne fonctionne pas en Codespaces basé navigateur (aucune machine locale). À la place, configurer les secrets directement dans GitHub :
+- `github.com` → Settings → Codespaces → "New secret"
+- Ajouter `REACT_APP_SUPABASE_URL` et `REACT_APP_SUPABASE_ANON_KEY`
+- Sélectionner le repo `plans-incendie` dans la liste d'accès
+- Ces secrets sont automatiquement injectés comme variables d'environnement dans chaque Codespace ouvert
 
 - Claude Code CLI s'installe manuellement via le terminal à la première ouverture (`npm install -g @anthropic-ai/claude-code`)
 - Accès : depuis `github.com/[repo]` → bouton "Code" → "Codespaces" → "Create codespace on staging"
