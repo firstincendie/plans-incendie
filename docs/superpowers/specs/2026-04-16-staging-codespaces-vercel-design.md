@@ -62,14 +62,34 @@ L'objectif est de pouvoir faire appel à Claude Code depuis n'importe quel appar
   - `REACT_APP_SUPABASE_URL`
   - `REACT_APP_SUPABASE_ANON_KEY`
 - URL résultante : `plans-incendie.vercel.app` (ou similaire, assigné par Vercel)
+- Build command : `npm run build` / Output directory : `build` (Vercel détecte CRA automatiquement, à confirmer)
+- **Règle SPA à configurer** : ajouter un fichier `vercel.json` à la racine pour que React Router fonctionne correctement (les routes directes ne renvoient pas 404) :
+
+```json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
 
 **Note Supabase :** staging et production partagent le même projet Supabase. Une migration de schéma sur staging impacte aussi la production — à garder en tête.
 
 ### 3. GitHub Codespaces
 
 - Fichier `.devcontainer/devcontainer.json` ajouté au repo pour pré-configurer l'environnement :
-  - Image Node.js 20
-  - `npm install` automatique au démarrage du Codespace
+
+```json
+{
+  "name": "plans-incendie",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "npm install",
+  "forwardPorts": [3000],
+  "remoteEnv": {
+    "REACT_APP_SUPABASE_URL": "${localEnv:REACT_APP_SUPABASE_URL}",
+    "REACT_APP_SUPABASE_ANON_KEY": "${localEnv:REACT_APP_SUPABASE_ANON_KEY}"
+  }
+}
+```
+
 - Claude Code CLI s'installe manuellement via le terminal à la première ouverture (`npm install -g @anthropic-ai/claude-code`)
 - Accès : depuis `github.com/[repo]` → bouton "Code" → "Codespaces" → "Create codespace on staging"
 
@@ -93,5 +113,5 @@ L'objectif est de pouvoir faire appel à Claude Code depuis n'importe quel appar
 2. Ajouter `.devcontainer/devcontainer.json`
 3. Créer un compte/projet Vercel, connecter le repo GitHub
 4. Configurer Vercel : branche `staging` uniquement, variables d'environnement
-5. Vérifier que le workflow GitHub Actions ne se déclenche pas sur `staging`
+5. Confirmer que le workflow GitHub Actions cible uniquement `main` (aucun changement nécessaire — déjà correct)
 6. Tester le flux complet : push sur staging → URL Vercel → merge → incendieplan.fr
