@@ -23,7 +23,7 @@ export default function PageConnexion({ onMotDePasseOublie, onInscription }) {
       <div style={{ background: "#fff", borderRadius: 16, padding: "48px 40px", width: 400, boxShadow: "0 4px 24px rgba(18,33,49,0.10)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔥</div>
-          <div style={{ fontWeight: 800, fontSize: 22, color: "#122131" }}>First Incendie</div>
+          <div style={{ fontWeight: 800, fontSize: 22, color: "#122131" }}>First Incendie (test staging)</div>
           <div style={{ color: "#64748B", fontSize: 14, marginTop: 4 }}>Connexion à votre espace</div>
         </div>
 
