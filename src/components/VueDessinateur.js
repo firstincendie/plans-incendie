@@ -272,7 +272,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
           <div style={{ width: 32, height: 32, background: "#FC6C1B", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "white", fontSize: 16 }}>✏️</span>
           </div>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>First Incendie</span>
+          <span style={{ fontWeight: 700, fontSize: 14 }}>Incendie Plan</span>
         </div>
         {nav.map(item => (
           <button key={item.id} onClick={() => { setVue(item.id); setSelected(null); setShowMobileMenu(false); }}
@@ -317,7 +317,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
             <div style={{ width: 28, height: 28, background: "#FC6C1B", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ color: "white", fontSize: 14 }}>✏️</span>
             </div>
-            <span style={{ fontWeight: 700, fontSize: 13 }}>First Incendie</span>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>Incendie Plan</span>
           </div>
           {totalNonLus > 0 && <span style={{ marginLeft: "auto", background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>{totalNonLus}</span>}
         </div>

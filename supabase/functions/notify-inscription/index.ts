@@ -26,7 +26,7 @@ serve(async (req) => {
       to: OWNER_EMAIL,
       subject: `Nouvelle inscription — ${prenom} ${nom}`,
       html: `
-        <h2>Nouvelle inscription sur First Incendie</h2>
+        <h2>Nouvelle inscription sur Incendie Plan</h2>
         <p><strong>Nom :</strong> ${prenom} ${nom}</p>
         <p><strong>Email :</strong> ${email}</p>
         <p>Connectez-vous à l'application pour activer ou refuser ce compte.</p>

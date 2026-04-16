@@ -10,7 +10,7 @@ const corsHeaders = {
 
 const templates: Record<string, { subject: string; html: (prenom: string) => string }> = {
   actif: {
-    subject: "Votre compte First Incendie est activé",
+    subject: "Votre compte Incendie Plan est activé",
     html: (prenom) => `
       <h2>Bienvenue, ${prenom} !</h2>
       <p>Votre compte a été activé. Vous pouvez maintenant vous connecter à l'application.</p>
@@ -18,7 +18,7 @@ const templates: Record<string, { subject: string; html: (prenom: string) => str
     `,
   },
   refuse: {
-    subject: "Votre demande d'accès First Incendie",
+    subject: "Votre demande d'accès Incendie Plan",
     html: (prenom) => `
       <h2>Bonjour ${prenom},</h2>
       <p>Votre demande d'accès n'a pas pu être acceptée.</p>
@@ -26,7 +26,7 @@ const templates: Record<string, { subject: string; html: (prenom: string) => str
     `,
   },
   banni: {
-    subject: "Votre compte First Incendie a été suspendu",
+    subject: "Votre compte Incendie Plan a été suspendu",
     html: (prenom) => `
       <h2>Bonjour ${prenom},</h2>
       <p>Votre compte a été temporairement suspendu.</p>
