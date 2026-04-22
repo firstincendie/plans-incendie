@@ -482,6 +482,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                                   <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                                 </div>
                                 <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
                                 {(() => { const j2 = joursRestants(c.delai); const rouge2 = j2 !== null && j2 <= 3; return (
                                   <div>
                                     <div style={{ fontSize: 12, color: rouge2 ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
