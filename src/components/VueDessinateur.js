@@ -31,6 +31,8 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const [note, setNote] = useState("");
   const [noteSaveError, setNoteSaveError] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [menuCmdId, setMenuCmdId] = useState(null);
+  const [menuRect, setMenuRect] = useState(null);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const nav = [
@@ -242,6 +244,22 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
     setNoteSaveError(!!error);
   }
 
+  async function archiverDessinateur(id) {
+    const { error } = await supabase.from("commandes").update({ is_archived_dessinateur: true }).eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived_dessinateur: true } : c));
+      setSelected(null);
+    }
+  }
+
+  async function desarchiverDessinateur(id) {
+    const { error } = await supabase.from("commandes").update({ is_archived_dessinateur: false }).eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived_dessinateur: false } : c));
+      setSelected(null);
+    }
+  }
+
   const commandesVisibles = userFilter
     ? commandes.filter(c => {
         const sousDessinateur = sousComptes.find(s => s.id === userFilter);
@@ -252,16 +270,16 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
   const nonLusDe = c => c.messages.filter(
     m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
   ).length;
-  const totalNonLus = commandes.filter(c => !c.is_archived).reduce((acc, c) => acc + nonLusDe(c), 0);
+  const totalNonLus = commandes.filter(c => !c.is_archived_dessinateur).reduce((acc, c) => acc + nonLusDe(c), 0);
 
   const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const actives   = cmdFiltrees.filter(c => !c.is_archived);
-  const archivees = cmdFiltrees.filter(c => c.is_archived);
+  const actives   = cmdFiltrees.filter(c => !c.is_archived_dessinateur);
+  const archivees = cmdFiltrees.filter(c => c.is_archived_dessinateur);
   const versionsSelected = selected ? versions.filter(v => v.commande_id === selected.id) : [];
   const peutDeposer = selected && ["Commencé", "Modification dessinateur"].includes(selected.statut);
 
   return (
-    <div onClick={() => { showMenuProfil && setShowMenuProfil(false); showMobileMenu && setShowMobileMenu(false); }} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
+    <div onClick={() => { showMenuProfil && setShowMenuProfil(false); showMobileMenu && setShowMobileMenu(false); menuCmdId && setMenuCmdId(null); }} style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}>
 
       {/* Backdrop mobile */}
       <div className={`sidebar-backdrop${showMobileMenu ? " sidebar-open" : ""}`} onClick={(e) => { e.stopPropagation(); setShowMobileMenu(false); }} />
@@ -335,7 +353,7 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
               {[
-                { label: "En cours", val: commandes.filter(c => !c.is_archived).length, color: "#FC6C1B", bg: "#FFF3EE" },
+                { label: "En cours", val: commandes.filter(c => !c.is_archived_dessinateur).length, color: "#FC6C1B", bg: "#FFF3EE" },
                 { label: "Validées", val: commandes.filter(c => c.statut === "Validé").length, color: "#059669", bg: "#F0FDF4" },
                 { label: "Total", val: commandes.length, color: "#374151", bg: "#F8FAFC" },
               ].map(s => (
@@ -365,17 +383,17 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                   </div>
                 )}
 
-                <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
+                <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr 40px" : "2fr 1fr 0.6fr 1fr 1.4fr 40px", padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
                     {sousComptes.length > 0 && <span>Dessinateur</span>}
-                    <span>Plan</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span>
+                    <span>Plan</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span><span></span>
                   </div>
                   {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
                   {actives.map(c => {
                     const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
                     return (
                       <div key={c.id} onClick={() => setSelected(c)}
-                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3EE" : "transparent", transition: "background 0.1s" }}>
+                        style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr 40px" : "2fr 1fr 0.6fr 1fr 1.4fr 40px", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#FFF3EE" : "transparent", transition: "background 0.1s" }}>
                         {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -395,6 +413,49 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                           </div>
                         ); })()}
                         <Badge statut={c.statut} />
+                        <div onClick={e => e.stopPropagation()}>
+                          <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuCmdId(menuCmdId === c.id ? null : c.id); setMenuRect(r); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
+                            ···
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Actives — mobile */}
+                <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                  {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
+                  {actives.map(c => {
+                    const j = joursRestants(c.delai);
+                    const rouge = j !== null && j <= 3;
+                    return (
+                      <div key={c.id} onClick={() => setSelected(c)}
+                        style={{ background: "#fff", border: "1.5px solid " + (selected?.id === c.id ? "#FC6C1B" : "#E5E7EB"), borderRadius: 10, padding: "12px 14px", marginBottom: 8, cursor: "pointer" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nom_plan || "—"}</span>
+                              {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{nonLusDe(c)}</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{c.ref}</div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Badge statut={c.statut} />
+                            <div onClick={e => e.stopPropagation()}>
+                              <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuCmdId(menuCmdId === c.id ? null : c.id); setMenuRect(r); }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
+                                ···
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {c.delai && (
+                          <div style={{ marginTop: 6, fontSize: 11, color: rouge ? "#DC2626" : "#9CA3AF", fontWeight: rouge ? 600 : 400 }}>
+                            {formatDateCourt(c.delai)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -406,33 +467,70 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                       {showArchivees ? "▲ Masquer les missions archivées" : `▼ Voir les ${archivees.length} mission${archivees.length > 1 ? "s" : ""} archivée${archivees.length > 1 ? "s" : ""}`}
                     </button>
                     {showArchivees && (
-                      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7 }}>
-                        {archivees.map(c => {
-                          const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
-                          return (
-                            <div key={c.id} onClick={() => setSelected(c)}
-                              style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr" : "2fr 1fr 0.6fr 1fr 1.4fr", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
-                              {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+                      <>
+                        <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7, marginBottom: 16 }}>
+                          {archivees.map(c => {
+                            const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
+                            return (
+                              <div key={c.id} onClick={() => setSelected(c)}
+                                style={{ display: "grid", gridTemplateColumns: sousComptes.length > 0 ? "1fr 2fr 1fr 0.6fr 1fr 1.4fr 40px" : "2fr 1fr 0.6fr 1fr 1.4fr 40px", padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer" }}>
+                                {sousComptes.length > 0 && <div style={{ fontSize: 12, color: "#6B7280" }}>{sousD ? `${sousD.prenom} ${sousD.nom}` : "Moi"}</div>}
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
                                 </div>
-                                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                                  {c.ref}
+                                <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
+                                {(() => { const j2 = joursRestants(c.delai); const rouge2 = j2 !== null && j2 <= 3; return (
+                                  <div>
+                                    <div style={{ fontSize: 12, color: rouge2 ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+                                    {j2 !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge2 ? "#DC2626" : "#9CA3AF" }}>{j2 === 0 ? "Aujourd'hui" : j2 < 0 ? `${Math.abs(j2)}j dépassé` : `${j2}j restant${j2 > 1 ? "s" : ""}`}</div>}
+                                  </div>
+                                ); })()}
+                                <Badge statut={c.statut} />
+                                <div onClick={e => e.stopPropagation()}>
+                                  <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuCmdId(menuCmdId === c.id ? null : c.id); setMenuRect(r); }}
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
+                                    ···
+                                  </button>
                                 </div>
                               </div>
-                              <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
-                              {(() => { const j = joursRestants(c.delai); const rouge = j !== null && j <= 3; return (
-                          <div>
-                            <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-                            {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
-                          </div>
-                        ); })()}
-                              <Badge statut={c.statut} />
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                        <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                          {archivees.map(c => {
+                            const j2 = joursRestants(c.delai);
+                            const rouge2 = j2 !== null && j2 <= 3;
+                            return (
+                              <div key={c.id} onClick={() => setSelected(c)}
+                                style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "12px 14px", marginBottom: 8, cursor: "pointer", opacity: 0.75 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                  <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
+                                    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{c.ref}</div>
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <Badge statut={c.statut} />
+                                    <div onClick={e => e.stopPropagation()}>
+                                      <button onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenuCmdId(menuCmdId === c.id ? null : c.id); setMenuRect(r); }}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 18, padding: "2px 4px", lineHeight: 1, borderRadius: 4 }}>
+                                        ···
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                                {c.delai && (
+                                  <div style={{ marginTop: 6, fontSize: 11, color: rouge2 ? "#DC2626" : "#9CA3AF", fontWeight: rouge2 ? 600 : 400 }}>
+                                    {formatDateCourt(c.delai)}{j2 !== null ? ` · ${j2 === 0 ? "Aujourd'hui" : j2 < 0 ? `${Math.abs(j2)}j dépassé` : `${j2}j restant${j2 > 1 ? "s" : ""}`}` : ""}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -442,7 +540,8 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
                     selected={selected}
                     versionsSelected={versionsSelected}
                     onClose={() => setSelected(null)}
-                    onArchiver={null}
+                    onArchiver={!selected?.is_archived_dessinateur ? () => archiverDessinateur(selected.id) : undefined}
+                    onDesarchiver={selected?.is_archived_dessinateur ? () => desarchiverDessinateur(selected.id) : undefined}
                     showContacts={false}
                     hideClientName={true}
                     actionButtons={
@@ -498,6 +597,34 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
         )}
       </div>
       </div>
+
+      {/* Dropdown ··· commande (position fixed) */}
+      {menuCmdId && menuRect && (() => {
+        const c = commandes.find(x => x.id === menuCmdId);
+        if (!c) return null;
+        const spaceBelow = window.innerHeight - menuRect.bottom;
+        const top = spaceBelow >= 120 ? menuRect.bottom + 4 : menuRect.top - 4;
+        const transform = spaceBelow >= 120 ? "none" : "translateY(-100%)";
+        return (
+          <div onClick={e => e.stopPropagation()} style={{ position: "fixed", top, right: window.innerWidth - menuRect.right, transform, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zIndex: 1000, minWidth: 210, overflow: "hidden" }}>
+            {!c.is_archived_dessinateur ? (
+              <button onClick={() => { setMenuCmdId(null); archiverDessinateur(c.id); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                🗃️ Archiver la mission
+              </button>
+            ) : (
+              <button onClick={() => { setMenuCmdId(null); desarchiverDessinateur(c.id); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                📤 Désarchiver la mission
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Modal dépôt plans finaux */}
       {showPlansFinalModal && selected && (
