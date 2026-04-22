@@ -51,14 +51,33 @@ export default function GestionUtilisateurs() {
     if (!editForm || !selected) return;
     setSaving(true);
     setSaveError("");
-    // Update profile (without dessinateur_id — managed via utilisateur_dessinateurs)
-    const { error } = await supabase.from("profiles").update({
+
+    // Si l'email a changé, mettre à jour via Edge Function (auth.users + profiles)
+    const emailChanged = editForm.email && editForm.email !== selected.email;
+    if (emailChanged) {
+      const { error: emailError } = await supabase.functions.invoke("update-user-email", {
+        body: { user_id: selected.id, new_email: editForm.email },
+      });
+      if (emailError) { setSaveError(emailError.message); setSaving(false); return; }
+    }
+
+    // Update profile (sans email si déjà mis à jour via Edge Function)
+    const profileUpdate = {
       prenom: editForm.prenom,
       nom: editForm.nom,
       role: editForm.role,
       statut: editForm.statut,
       is_owner: editForm.is_owner,
-    }).eq("id", selected.id);
+      telephone: editForm.telephone,
+      entreprise: editForm.entreprise,
+      siren: editForm.siren,
+      adresse: editForm.adresse,
+      code_postal: editForm.code_postal,
+      ville: editForm.ville,
+    };
+    if (!emailChanged) profileUpdate.email = editForm.email;
+
+    const { error } = await supabase.from("profiles").update(profileUpdate).eq("id", selected.id);
     if (error) { setSaveError(error.message); setSaving(false); return; }
 
     // Atomic save of dessinateur assignments via RPC
@@ -113,7 +132,11 @@ export default function GestionUtilisateurs() {
 
   async function handleSelectCompte(c) {
     setSelected(c);
-    setEditForm({ prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false });
+    setEditForm({
+      prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false,
+      email: c.email || "", telephone: c.telephone || "", entreprise: c.entreprise || "",
+      siren: c.siren || "", adresse: c.adresse || "", code_postal: c.code_postal || "", ville: c.ville || "",
+    });
     setAssignationsEdit([]);
     setLoadingAssignations(true);
     const { data } = await supabase
@@ -263,6 +286,16 @@ export default function GestionUtilisateurs() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
             <div><label style={labelStyle}>Prénom</label><input value={editForm.prenom} onChange={e => setEditForm({ ...editForm, prenom: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Nom</label><input value={editForm.nom} onChange={e => setEditForm({ ...editForm, nom: e.target.value })} style={inputStyle} /></div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Email {editForm.email !== selected.email && <span style={{ color: "#F59E0B", fontWeight: 400 }}>(connexion + notifications seront mis à jour)</span>}</label>
+              <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} style={inputStyle} />
+            </div>
+            <div><label style={labelStyle}>Téléphone</label><input value={editForm.telephone} onChange={e => setEditForm({ ...editForm, telephone: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Entreprise</label><input value={editForm.entreprise} onChange={e => setEditForm({ ...editForm, entreprise: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>SIREN</label><input value={editForm.siren} onChange={e => setEditForm({ ...editForm, siren: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Adresse</label><input value={editForm.adresse} onChange={e => setEditForm({ ...editForm, adresse: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Code postal</label><input value={editForm.code_postal} onChange={e => setEditForm({ ...editForm, code_postal: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Ville</label><input value={editForm.ville} onChange={e => setEditForm({ ...editForm, ville: e.target.value })} style={inputStyle} /></div>
             <div>
               <label style={labelStyle}>Rôle</label>
               <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} style={inputStyle}>
