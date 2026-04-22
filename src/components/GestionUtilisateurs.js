@@ -55,10 +55,15 @@ export default function GestionUtilisateurs() {
     // Si l'email a changé, mettre à jour via Edge Function (auth.users + profiles)
     const emailChanged = editForm.email && editForm.email !== selected.email;
     if (emailChanged) {
-      const { error: emailError } = await supabase.functions.invoke("update-user-email", {
+      const { data: emailData, error: emailError } = await supabase.functions.invoke("update-user-email", {
         body: { user_id: selected.id, new_email: editForm.email },
       });
-      if (emailError) { setSaveError(emailError.message); setSaving(false); return; }
+      if (emailError) {
+        const msg = emailData?.error || emailError.message;
+        setSaveError(msg);
+        setSaving(false);
+        return;
+      }
     }
 
     // Update profile (sans email si déjà mis à jour via Edge Function)
