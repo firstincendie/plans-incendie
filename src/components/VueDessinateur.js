@@ -124,13 +124,19 @@ export default function VueDessinateur({ session, profil, onProfilUpdate }) {
 
   async function deposerPlanFinal(planIndex, file) {
     setUploadingPlanIndex(planIndex);
-    const ext = file.name.split(".").pop();
+    const ext = (file.name.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "");
     const refNumber = selected.ref.split("-")[1]; // "CMD-003" → "003"
-    const nomFichier = `${selected.nom_plan}-${refNumber}-${planIndex + 1}.${ext}`;
+    const nomPlanSafe = (selected.nom_plan || "plan").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const nomFichier = `${nomPlanSafe}-${refNumber}-${planIndex + 1}.${ext}`;
     const chemin = `finals/${selected.id}/${nomFichier}`;
 
     const { error: uploadError } = await supabase.storage.from("fichiers").upload(chemin, file, { upsert: true });
-    if (uploadError) { console.error(uploadError); setUploadingPlanIndex(null); return; }
+    if (uploadError) {
+      console.error(uploadError);
+      setUploadingPlanIndex(null);
+      alert("Échec du dépôt du plan : " + (uploadError.message || "erreur inconnue"));
+      return;
+    }
 
     const { data: urlData } = supabase.storage.from("fichiers").getPublicUrl(chemin);
     const nouvelleEntree = {
