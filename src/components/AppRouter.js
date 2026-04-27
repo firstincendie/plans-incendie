@@ -14,8 +14,9 @@ import ListeCommandes from "./ListeCommandes";
 import ListeArchives from "./ListeArchives";
 import ModalDetailCommande from "./ModalDetailCommande";
 import ModalDetailUtilisateur from "./ModalDetailUtilisateur";
+import Page404 from "./Page404";
 
-export default function AppRouter({ session, profil, sessionLoading, profilLoading, legacyShell, onProfilUpdate }) {
+export default function AppRouter({ session, profil, sessionLoading, profilLoading, onProfilUpdate }) {
   const dejaConnecte = !!session && !!profil && profil.statut === "actif";
 
   return (
@@ -49,7 +50,7 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
         </Route>
       </Route>
 
-      <Route path="*" element={legacyShell} />
+      <Route path="*" element={<Page404 />} />
     </Routes>
   );
 }

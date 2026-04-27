@@ -2,8 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 import AppRouter from "./components/AppRouter";
-import VueUtilisateur from "./components/VueUtilisateur";
-import VueDessinateur from "./components/VueDessinateur";
 import EcranEnAttente from "./components/EcranEnAttente";
 import EcranRefuse from "./components/EcranRefuse";
 import EcranBanni from "./components/EcranBanni";
@@ -71,22 +69,12 @@ export default function App() {
 
   const handleProfilUpdate = (updates) => setProfil(prev => ({ ...prev, ...updates }));
 
-  // Build the legacy shell: what was rendered before for an authenticated user.
-  // This will be progressively replaced by routes in subsequent tasks.
-  let legacyShell = null;
-  if (session && profil) {
-    legacyShell = profil.role === "dessinateur"
-      ? <VueDessinateur session={session} profil={profil} onProfilUpdate={handleProfilUpdate} />
-      : <VueUtilisateur session={session} profil={profil} onProfilUpdate={handleProfilUpdate} />;
-  }
-
   return (
     <AppRouter
       session={session}
       profil={profil}
       sessionLoading={session === undefined}
       profilLoading={!!session && !profil}
-      legacyShell={legacyShell}
       onProfilUpdate={handleProfilUpdate}
     />
   );
