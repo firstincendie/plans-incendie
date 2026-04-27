@@ -454,8 +454,8 @@ export default function ListeCommandes() {
         const c = commandes.find(x => x.id === menuCmdId);
         if (!c) return null;
         const spaceBelow = window.innerHeight - menuRect.bottom;
-        const top = spaceBelow >= 120 ? menuRect.bottom + 4 : menuRect.top - 4;
-        const transform = spaceBelow >= 120 ? "none" : "translateY(-100%)";
+        const top = spaceBelow >= 180 ? menuRect.bottom + 4 : menuRect.top - 4;
+        const transform = spaceBelow >= 180 ? "none" : "translateY(-100%)";
         return (
           <div
             onClick={e => e.stopPropagation()}
