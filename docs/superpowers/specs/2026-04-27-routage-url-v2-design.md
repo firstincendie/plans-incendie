@@ -1,8 +1,10 @@
 # Spec : V2 — Routage par URL
 
 **Date :** 2026-04-27
-**Statut :** Approuvé (revue agent)
+**Statut :** Approuvé (revue agent) — corrigé après revue du plan
 **Branche cible :** `V2`
+
+> **Note terminologique :** dans la conversation et le langage métier, l'utilisateur parle de « clients ». Dans la base de données et le code, le rôle s'appelle `"utilisateur"` (cf. `GestionUtilisateurs.js`, `PageMonCompte.js`, `PageReglages.js`). Cette spec utilise désormais `utilisateur` pour correspondre au code afin d'éviter toute ambiguïté à l'implémentation.
 
 ## Contexte
 
@@ -119,12 +121,12 @@ L'application plans-incendie n'a aujourd'hui aucun routage par URL. Toute la nav
 | URL | Rôles | Composant |
 |---|---|---|
 | `/` | tous | redirige `/commandes` |
-| `/commandes` | admin, dessinateur, client | `ListeCommandes` |
+| `/commandes` | admin, dessinateur, utilisateur | `ListeCommandes` |
 | `/commandes/:ref` | idem | `ListeCommandes` + `ModalDetailCommande` |
 | `/commandes/archives` | admin, dessinateur | `ListeArchives` |
 | `/commandes/archives/:ref` | idem | `ListeArchives` + `ModalDetailCommande` |
-| `/utilisateurs` | admin **+ `is_owner`** | `GestionUtilisateurs` |
-| `/utilisateurs/:uid` | admin **+ `is_owner`** | `GestionUtilisateurs` + `ModalDetailUtilisateur` |
+| `/utilisateurs` | admin/utilisateur **+ `is_owner`** | `GestionUtilisateurs` |
+| `/utilisateurs/:uid` | admin/utilisateur **+ `is_owner`** | `GestionUtilisateurs` + `ModalDetailUtilisateur` |
 | `/gestion-compte` | dessinateur | `GestionCompteDessinateur` (gestion sous-comptes) |
 | `/reglages` | tous | `PageReglages` |
 | `/mon-compte` | tous | `PageMonCompte` (avec prop `role` : "dessinateur" ou "utilisateur") |
@@ -134,13 +136,13 @@ L'application plans-incendie n'a aujourd'hui aucun routage par URL. Toute la nav
 
 Labels exacts repris de `VueUtilisateur.js` et `VueDessinateur.js`.
 
-| Item (label affiché) | URL | admin | dessinateur | client |
+| Item (label affiché) | URL | admin | dessinateur | utilisateur |
 |---|---|:---:|:---:|:---:|
-| **Commandes** (admin/client) / **Mes missions** (dessinateur) | `/commandes` | ✅ | ✅ | ✅ |
+| **Commandes** (admin/utilisateur) / **Mes missions** (dessinateur) | `/commandes` | ✅ | ✅ | ✅ |
 | **Gestion de compte** | `/gestion-compte` | ❌ | ✅ | ❌ |
 | **Réglages** | `/reglages` | ✅ | ✅ | ✅ |
 | **Mon compte** | `/mon-compte` | ✅ | ✅ | ✅ |
-| **Utilisateurs** | `/utilisateurs` | ✅ si `is_owner` | ❌ | ❌ |
+| **Utilisateurs** | `/utilisateurs` | ✅ si `is_owner` | ❌ | ✅ si `is_owner` |
 
 > `is_owner` est un flag du profil indiquant un compte propriétaire (par opposition à un sous-compte). Il existe déjà dans le code et conditionne l'item « Utilisateurs » dans la sidebar admin.
 

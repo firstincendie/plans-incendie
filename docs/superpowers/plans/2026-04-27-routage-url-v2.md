@@ -12,6 +12,18 @@
 
 **Branche d'exécution :** Ce plan doit s'exécuter sur la branche `V2`. Avant la Task 1 : `git checkout main && git checkout -b V2 && git push -u origin V2`. Tous les commits du plan se font sur cette branche.
 
+**Terminologie & faits du code à connaître absolument avant d'implémenter :**
+
+- Rôles dans la BDD (`profiles.role`) : `admin`, `dessinateur`, `utilisateur`. Il n'y a **pas** de rôle `client` — c'est le terme métier utilisé par l'utilisateur final mais le code dit `utilisateur`.
+- Colonnes pertinentes sur `commandes` :
+  - `utilisateur_id` (FK vers `profiles.id` du donneur d'ordre — pas `client_id`)
+  - `dessinateur_id` (FK vers le profil dessinateur assigné)
+  - `dessinateur` (nom string libre — utilisé dans `BarreFiltres` comme valeur de filtre)
+  - `is_archived` (boolean, archivage côté donneur d'ordre)
+  - `is_archived_dessinateur` (boolean, archivage **indépendant** côté dessinateur)
+- Les fetchs actuels ne filtrent pas par scope : `supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false })`. La sécurité est assurée par les **RLS Supabase**. La séparation actives/archivées et le filtrage par sous-compte sont **côté client**.
+- Sous-comptes (sub-accounts) : un profil avec `is_owner = true` peut avoir des sous-comptes liés (cf. `super-comptes-sous-comptes` specs). `VueUtilisateur` charge `sousComptes` et expose un `userFilter` pour filtrer les commandes par owner. `VueDessinateur` a une logique équivalente côté dessinateur.
+
 **Hors-scope tests automatisés :** La spec exclut explicitement les tests automatisés du routage. Le plan utilise des **vérifications manuelles dans le navigateur** entre chaque tâche. Chaque commit doit laisser l'app dans un état fonctionnel sur `npm start`.
 
 **Conventions de vérification manuelle :**
@@ -807,24 +819,66 @@ export default function Sidebar({ profil, onAvatarClick, mobileOpen, onMobileClo
 
 - [ ] **Step 3 : Créer `src/components/LayoutPrincipal.js`**
 
+`<LayoutPrincipal>` est le bon endroit pour charger **les commandes + les sous-comptes + la souscription realtime messages**, car :
+- Plusieurs pages enfants en ont besoin (`ListeCommandes`, `ListeArchives`, `PageMonCompte`).
+- Cela évite de dupliquer la logique entre `ListeCommandes` et `ListeArchives`.
+- Cela évite que le démontage/remontage entre `/commandes` et `/commandes/archives` réabonne le canal realtime à chaque changement de route (cf. risque #4 de la spec).
+- Les pages enfants lisent via `useOutletContext()` ce dont elles ont besoin.
+
 ```jsx
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { supabase } from "../supabase";
 import Sidebar from "./Sidebar";
 
 export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
-  // Reproduire le shell des Vue* : sidebar à gauche, contenu à droite, gestion menu mobile.
+  const [commandes, setCommandes] = useState([]);
+  const [sousComptes, setSousComptes] = useState([]);
+
+  useEffect(() => {
+    chargerTout();
+    // Souscription realtime messages : reproduire la logique exacte des Vue* (cf. notes implémenteur)
+    const canal = supabase.channel("messages-realtime").on(/* ... */).subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [profil.id]); // eslint-disable-line
+
+  async function chargerTout() {
+    // Reproduction du fetch actuel (pas de .eq scope — RLS Supabase gère la sécurité)
+    const [{ data: cmd }, { data: sub }] = await Promise.all([
+      supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false }),
+      // Charger les sous-comptes selon le rôle :
+      // - utilisateur owner : sub-comptes utilisateur (cf. logique actuelle dans VueUtilisateur, l.~120-126)
+      // - dessinateur owner : sub-comptes dessinateur (cf. VueDessinateur)
+      // - admin / non-owner : tableau vide
+      // À reproduire fidèlement depuis le code existant.
+      profil.is_owner ? supabase.from("profiles").select("*").eq("parent_id", profil.id) : Promise.resolve({ data: [] }),
+    ]);
+
+    if (cmd) setCommandes(cmd.map(c => ({
+      ...c,
+      // reproduire les normalisations actuelles (plans, fichiersPlan, logoClient, plansFinalises, messages)
+      // cf. VueUtilisateur.js l.115-125 et VueDessinateur.js l.86-96
+    })));
+    if (sub) setSousComptes(sub);
+  }
+
   return (
-    <div style={{ /* shell */ }}>
+    <div style={{ /* shell — reproduire styles des Vue* */ }}>
       <Sidebar profil={profil} />
       <main style={{ /* main */ }}>
-        <Outlet context={{ session, profil, onProfilUpdate }} />
+        <Outlet context={{ session, profil, onProfilUpdate, commandes, setCommandes, sousComptes }} />
       </main>
     </div>
   );
 }
 ```
 
-> **Note pour l'implémenteur :** le contexte (`session`, `profil`, `onProfilUpdate`) est passé via `<Outlet context>` pour être lu par les pages enfants via `useOutletContext()`. Cela évite le prop drilling.
+> **Notes pour l'implémenteur :**
+> - Le contexte exposé via `<Outlet context>` doit contenir : `session`, `profil`, `onProfilUpdate`, `commandes`, `setCommandes`, `sousComptes`. Ces valeurs sont lues par les pages enfants via `useOutletContext()`.
+> - **Reproduire fidèlement** le fetch et les normalisations depuis `VueUtilisateur.js:104-126` et `VueDessinateur.js:84-96`. Ne pas inventer de scope `.eq(...)` : la sécurité passe par les RLS Supabase, pas par des filtres côté client.
+> - **Reproduire fidèlement** la souscription realtime depuis le canal `messages-realtime` (chercher `supabase.channel` dans `VueUtilisateur.js` et `VueDessinateur.js`). Le pattern est presque identique des deux côtés.
+> - Le chargement de `sousComptes` est conditionnel à `profil.is_owner`. La requête exacte (table source, colonne de relation comme `parent_id` ou autre) doit être copiée depuis le code existant — le squelette ci-dessus est indicatif.
+> - Si la logique des deux Vue* diverge sur un point (ex: dessinateur charge des données supplémentaires comme `dessinateur_id` filtering), capturer cette divergence avec un `if (profil.role === "dessinateur") { ... }`.
 
 - [ ] **Step 4 : Vérification de compilation**
 
@@ -853,7 +907,7 @@ git commit -m "feat(v2): add LayoutPrincipal shell with role-aware Sidebar"
 - [ ] **Step 1 : Mettre à jour `AppRouter.js`**
 
 ```jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useOutletContext } from "react-router-dom";
 import PageConnexion from "./auth/PageConnexion";
 import PageInscription from "./auth/PageInscription";
 import PageMotDePasseOublie from "./auth/PageMotDePasseOublie";
@@ -892,16 +946,19 @@ function PageReglagesWrapper() {
 }
 
 function PageMonCompteWrapper() {
-  const { session, profil, onProfilUpdate } = useOutletContext();
-  // Note : l'ancien VueUtilisateur passait commandes={commandes} à PageMonCompte (utilisé pour stats ?).
-  // Vérifier si c'est nécessaire ; sinon, charger les commandes ici ou passer un tableau vide.
-  return <PageMonCompte profil={profil} session={session} role={profil.role === "dessinateur" ? "dessinateur" : "utilisateur"} commandes={[]} onProfilUpdate={onProfilUpdate} />;
+  const { session, profil, onProfilUpdate, commandes } = useOutletContext();
+  // PageMonCompte attend une prop `role` valant "dessinateur" ou "utilisateur"
+  // (cf. PageMonCompte.js l.5, l.374, l.450). Le rôle "admin" est mappé sur "utilisateur"
+  // pour préserver le comportement de VueUtilisateur.js:517 qui passe role="utilisateur".
+  const roleProp = profil.role === "dessinateur" ? "dessinateur" : "utilisateur";
+  return <PageMonCompte profil={profil} session={session} role={roleProp} commandes={commandes} onProfilUpdate={onProfilUpdate} />;
 }
 ```
 
-> **Note pour l'implémenteur :**
-> - Ajouter l'import : `import { useOutletContext } from "react-router-dom";`
-> - Vérifier dans `PageMonCompte.js` si la prop `commandes` est utilisée. Si oui, il faudra charger les commandes au niveau du layout ou via un hook partagé. Pour cette task, passer `[]` est acceptable temporairement et sera ajusté en Task 12.
+> **Notes pour l'implémenteur :**
+> - L'import de `useOutletContext` est explicite dans la première ligne d'import (ne pas oublier).
+> - `commandes` vient maintenant du contexte exposé par `<LayoutPrincipal>` (cf. Task 8 Step 3). Plus de placeholder vide.
+> - Le mapping `roleProp` reproduit exactement le comportement actuel : `VueUtilisateur` (utilisé pour admin et utilisateur) passe `role="utilisateur"` ; `VueDessinateur` passe `role="dessinateur"`.
 
 - [ ] **Step 2 : Mettre à jour `App.js` pour passer `onProfilUpdate` à `<AppRouter>`**
 
@@ -963,24 +1020,21 @@ import GestionUtilisateurs from "./GestionUtilisateurs";
   <Route path="/gestion-compte" element={<GestionCompteDessinateurWrapper />} />
 </Route>
 
-<Route element={<RequireRole profil={profil} roles={["admin", "client"]} requireOwner />}>
+<Route element={<RequireRole profil={profil} roles={["admin", "utilisateur"]} requireOwner />}>
   <Route path="/utilisateurs" element={<GestionUtilisateurs />} />
 </Route>
 ```
 
-> **Note :** la spec dit "admin uniquement" pour `/utilisateurs`, mais `VueUtilisateur.js:63` n'utilise que le flag `is_owner` sans tester le rôle (les comptes non-dessinateur sont admin/client). Passer `roles={["admin", "client"]} requireOwner` reproduit le comportement actuel exact. À confirmer avec l'utilisateur si on doit restreindre plus strictement à `admin`.
+> **Important :** les rôles dans le code sont `admin`, `dessinateur`, `utilisateur`. Il n'y a pas de rôle `client`. La règle d'accès actuelle pour `/utilisateurs` est `profil.is_owner === true` (cf. `VueUtilisateur.js:63`), ce qui inclut admin owner ET utilisateur owner. Le `roles={["admin", "utilisateur"]} requireOwner` reproduit ce comportement à l'identique.
 
 ```jsx
 function GestionCompteDessinateurWrapper() {
-  const { profil } = useOutletContext();
-  // VueDessinateur.js:352 passe sousComptes={sousComptes}.
-  // Vérifier d'où vient sousComptes : probablement un fetch dans VueDessinateur.
-  // Pour cette task, passer [] et créer un TODO pour charger correctement les sous-comptes.
-  return <GestionCompteDessinateur profil={profil} sousComptes={[]} />;
+  const { profil, sousComptes } = useOutletContext();
+  return <GestionCompteDessinateur profil={profil} sousComptes={sousComptes} />;
 }
 ```
 
-> **Note pour l'implémenteur :** lire `VueDessinateur.js` pour comprendre comment `sousComptes` est chargé et reproduire ce chargement (probablement un `useEffect` qui fetch sur `profiles` ou une RPC). Si le mécanisme est lourd, créer un hook `useSousComptes(profil)` réutilisable.
+> **Note pour l'implémenteur :** `sousComptes` vient du contexte du `<LayoutPrincipal>` (Task 8 Step 3). Ne pas re-fetcher ici. Vérifier que la requête de chargement dans `<LayoutPrincipal>` couvre bien le scope dessinateur (c'est-à-dire qu'un dessinateur owner voit ses sous-comptes dessinateurs). Si la logique diverge entre rôles, faire un `if` dans `chargerTout()` du layout.
 
 - [ ] **Step 2 : Vérification manuelle**
 
@@ -1027,20 +1081,27 @@ Identifier :
 
 - [ ] **Step 2 : Créer `src/components/ListeCommandes.js`**
 
+`ListeCommandes` **ne fetch pas** : elle consomme `commandes` et `sousComptes` exposés par `<LayoutPrincipal>`. Elle gère :
+- les filtres URL,
+- la séparation actives/archivées (filtrage côté client sur `is_archived` ou `is_archived_dessinateur` selon le rôle),
+- le filtrage par sous-compte (`userFilter` pour les owners),
+- le tri,
+- le rendu du tableau (markup à reproduire fidèlement depuis les Vue*),
+- la sous-route modal détail via `<Outlet>`.
+
 ```jsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams, useNavigate, useOutletContext, Outlet } from "react-router-dom";
-import { supabase } from "../supabase";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 // + autres imports nécessaires (Badge, etc.)
 
 export default function ListeCommandes() {
-  const { session, profil } = useOutletContext();
+  const { profil, commandes, setCommandes, sousComptes } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [commandes, setCommandes] = useState([]);
+  const [userFilter, setUserFilter] = useState(null); // null = tous, uuid = sous-compte filtré
   const navigate = useNavigate();
 
-  // Lire les filtres depuis l'URL
+  // Filtres lus depuis l'URL
   const filtres = {
     statut:      searchParams.get("statut") || "",
     dessinateur: searchParams.get("dessinateur") || "",
@@ -1052,7 +1113,6 @@ export default function ListeCommandes() {
     dir: searchParams.get("dir") || "desc",
   };
 
-  // Setters qui écrivent dans l'URL
   const setFiltres = (next) => {
     const params = new URLSearchParams(searchParams);
     ["statut", "dessinateur", "type", "periode"].forEach(k => {
@@ -1066,36 +1126,46 @@ export default function ListeCommandes() {
     const nextTri = typeof updaterOrValue === "function" ? updaterOrValue(tri) : updaterOrValue;
     const params = new URLSearchParams(searchParams);
     if (nextTri.col === "created_at" && nextTri.dir === "desc") {
-      params.delete("tri");
-      params.delete("dir");
+      params.delete("tri"); params.delete("dir");
     } else {
-      params.set("tri", nextTri.col);
-      params.set("dir", nextTri.dir);
+      params.set("tri", nextTri.col); params.set("dir", nextTri.dir);
     }
     setSearchParams(params, { replace: true });
   };
 
-  // Chargement initial des commandes (dépend du rôle)
-  useEffect(() => {
-    chargerCommandes();
-    // Souscription realtime : reproduire la logique des Vue*
-    // ...
-  }, [profil.id, profil.role]);
+  // 1. Filtre actives/archivées selon le rôle
+  //    - dessinateur : utilise is_archived_dessinateur (archivage propre au dessinateur)
+  //    - autres rôles (admin, utilisateur) : utilise is_archived
+  const champArchive = profil.role === "dessinateur" ? "is_archived_dessinateur" : "is_archived";
+  const actives = commandes.filter(c => !c[champArchive]);
 
-  async function chargerCommandes() {
-    let query = supabase.from("commandes").select("*").eq("archive", false);
-    if (profil.role === "dessinateur") query = query.eq("dessinateur", `${profil.prenom} ${profil.nom}`.trim());
-    if (profil.role === "client")      query = query.eq("client_id", profil.id);
-    const { data } = await query;
-    setCommandes(data || []);
-  }
+  // 2. Filtre par sous-compte si applicable (cf. VueUtilisateur.js:363, VueDessinateur.js:268-273)
+  const apresUserFilter = userFilter
+    ? actives.filter(c => {
+        if (profil.role === "dessinateur") {
+          // Filtre par sous-dessinateur : missions assignées à dessinateur_id = userFilter
+          return c.dessinateur_id === userFilter;
+        }
+        // Filtre par sous-compte utilisateur : utilisateur_id = userFilter
+        return c.utilisateur_id === userFilter;
+      })
+    : actives;
 
-  const commandesFiltrees = appliquerFiltresTri(commandes, filtres, tri);
+  // 3. Application des filtres + tri standards via le helper existant
+  const commandesFiltrees = appliquerFiltresTri(apresUserFilter, filtres, tri);
 
   return (
     <div>
+      {/* Sélecteur sous-compte si owner avec sous-comptes */}
+      {sousComptes.length > 0 && (
+        <select value={userFilter ?? ""} onChange={e => setUserFilter(e.target.value || null)}>
+          <option value="">Tous les comptes</option>
+          {sousComptes.map(s => <option key={s.id} value={s.id}>{s.prenom} {s.nom}</option>)}
+        </select>
+      )}
+
       <BarreFiltres
-        commandes={commandes}
+        commandes={actives}
         filtres={filtres}
         setFiltres={setFiltres}
         tri={tri}
@@ -1103,21 +1173,26 @@ export default function ListeCommandes() {
         showDessinateur={profil.role === "admin"}
         couleurAccent={profil.role === "dessinateur" ? "#FC6C1B" : "#122131"}
       />
+
       <table>
-        {/* ... rendu du tableau, lignes cliquables qui appellent navigate(`/commandes/${ref}`) */}
         {commandesFiltrees.map(c => (
           <tr key={c.id} onClick={() => navigate(`/commandes/${encodeURIComponent(c.ref)}`)}>
-            {/* ... */}
+            {/* Reproduire les colonnes existantes — voir VueUtilisateur.js:380+ et VueDessinateur.js:480+ */}
           </tr>
         ))}
       </table>
-      <Outlet context={{ commandes, setCommandes }} />
+
+      <Outlet context={{ commandes, setCommandes, sousComptes, profil }} />
     </div>
   );
 }
 ```
 
-> **Note pour l'implémenteur :** ce squelette est volontairement schématique. L'implémenteur doit reproduire fidèlement le markup, les colonnes, les styles, et la souscription realtime depuis `VueUtilisateur.js` et `VueDessinateur.js`. Le filtre de scope (`archive=false`, restriction par rôle) doit être identique au comportement actuel.
+> **Notes pour l'implémenteur :**
+> - **Pas de `.eq(...)` côté client** : la sécurité passe par les RLS Supabase. Filtrer en JS uniquement pour actives/archivées et userFilter.
+> - **Reproduire fidèlement** le markup du tableau (colonnes, badges, tooltips, boutons d'action, gestion des plans non lus, etc.) depuis `VueUtilisateur.js` (rendu commandes l.~380-500) et `VueDessinateur.js` (rendu missions l.~480-570). Les colonnes diffèrent légèrement entre les deux rôles — adapter via `if (profil.role === "dessinateur") { ... }`.
+> - **Tri par défaut `desc` sur `created_at`** : intentionnellement aligné avec l'état actuel du code. La spec mentionne `asc` comme défaut quand `?tri=` est défini sans `?dir=` — au moment où l'utilisateur partage une URL avec `?tri=delai`, le destinataire verra `desc`. Si le comportement souhaité est `asc` par défaut (cohérent avec la spec), changer `searchParams.get("dir") || "desc"` en `searchParams.get("dir") || "asc"`. **À confirmer avec l'utilisateur** si les URL partagées doivent toujours s'ouvrir en `asc`.
+> - **Sortir le `userFilter` dans l'URL ?** Pour V2, on garde `userFilter` en `useState` local (pas dans l'URL), ce qui correspond au comportement actuel des Vue*. Si l'utilisateur veut le partager via lien plus tard, on pourra le migrer vers `useSearchParams` dans une itération séparée.
 
 - [ ] **Step 3 : Brancher la route dans `AppRouter.js`**
 
@@ -1248,13 +1323,18 @@ git commit -m "feat(v2): wire commande detail modal to /commandes/:ref route"
 
 - [ ] **Step 1 : Créer `src/components/ListeArchives.js`**
 
-C'est essentiellement une copie de `ListeCommandes.js` avec :
-- `query.eq("archive", true)` au lieu de `false`.
-- Filtre par rôle adapté (un dessinateur archive indépendamment ; cf. commit récent "archivage indépendant pour dessinateurs"). Lire le code actuel d'archivage dans `VueDessinateur.js` pour comprendre le scope.
-- `navigate(\`/commandes/archives/${ref}\`)` sur clic ligne.
-- `<Outlet>` rend `<ModalDetailCommande retour="/commandes/archives" />`.
+C'est essentiellement une copie de `ListeCommandes.js` avec **une seule différence** : la première étape de filtrage prend les **archivées** au lieu des actives :
 
-> **Note :** si la duplication entre `ListeCommandes` et `ListeArchives` devient trop forte, envisager de les unifier en un composant paramétré `<ListeBase mode="actives|archivees" />`. À évaluer pendant l'implémentation, mais ne pas sur-abstraire si la divergence est faible.
+```jsx
+const champArchive = profil.role === "dessinateur" ? "is_archived_dessinateur" : "is_archived";
+const archivees = commandes.filter(c => c[champArchive] === true);
+```
+
+Le reste (filtres URL, sous-comptes, tri, rendu) est identique. Sur clic ligne : `navigate(\`/commandes/archives/${encodeURIComponent(c.ref)}\`)`. `<Outlet>` rend `<ModalDetailCommande retour="/commandes/archives" />`.
+
+> **Note pour l'implémenteur :** la duplication avec `ListeCommandes` est volontaire pour V2 (cf. spec migration step 7 « dupliquer le pattern »). Si la duplication dépasse 80% à l'implémentation, envisager une factorisation en `<ListeBase mode="actives|archivees" />` mais ne pas le faire prématurément. La spec autorise l'évaluation pendant l'implémentation.
+
+> **Important :** les RLS Supabase doivent autoriser les commandes archivées dans le résultat du fetch unique fait par `<LayoutPrincipal>`. Vérifier en démarrant l'app et en allant sur `/commandes/archives` que les archivées s'affichent bien — si la query renvoyée ne les contient pas, c'est une RLS qui les exclut côté serveur, et il faudra ajuster le fetch ou les RLS.
 
 - [ ] **Step 2 : Brancher les routes dans `AppRouter.js`**
 
@@ -1303,16 +1383,17 @@ Comprendre :
 - Comment la fermeture est déclenchée (`setSelected(null)`).
 - Quelle structure exposer aux enfants (la liste des comptes, le setter).
 
-- [ ] **Step 2 : Modifier `GestionUtilisateurs` pour rendre `<Outlet context={...}>`**
+- [ ] **Step 2 : Modifier `GestionUtilisateurs` pour rendre `<Outlet context={...}>` et naviguer au clic ligne**
 
-Au lieu d'avoir un panneau de détail rendu directement par `selected`, on délègue à la sous-route. Le composant expose `comptes`, `selected`, `setSelected` via `useOutletContext`.
+Au lieu d'avoir un panneau de détail piloté directement par le state local `selected`, on délègue à la sous-route. Modifications précises :
 
-```jsx
-// À la fin du JSX de GestionUtilisateurs, ajouter :
-<Outlet context={{ comptes, selected, setSelected, /* + setters de mutation */ }} />
-```
+1. **Ajouter l'import** : `import { Outlet, useNavigate } from "react-router-dom";`
+2. **Ajouter `const navigate = useNavigate();`** au début de la fonction.
+3. **Remplacer le clic ligne** : à la ligne 139 (`setSelected(c)` dans le `onClick` des lignes du tableau, à confirmer en lisant le fichier — chercher l'occurrence où une ligne du tableau appelle `setSelected(c)` pour ouvrir le panneau de détail), remplacer par `navigate(\`/utilisateurs/\${c.id}\`)`.
+4. **Conserver `selected` et `setSelected` internes** : ils restent utilisés par le panneau de détail interne (édition de l'utilisateur). C'est `<ModalDetailUtilisateur>` qui synchronise `selected` avec `useParams().uid`.
+5. **Ajouter `<Outlet context={{ comptes, selected, setSelected }} />`** à la fin du JSX retourné, après le panneau de détail existant (qui reste rendu en interne).
 
-> **Note pour l'implémenteur :** ne pas casser le comportement actuel hors-route : si on charge `/utilisateurs` sans `:uid`, le panneau de détail doit toujours apparaître quand on clique sur une ligne (parce que la navigation interne via `setSelected` continue à fonctionner). On peut soit : (a) supprimer `setSelected` du clic ligne et naviguer vers `/utilisateurs/:uid` à la place ; (b) garder le comportement existant et faire que le wrapper `<ModalDetailUtilisateur>` se synchronise avec `selected`. **Option (a) est plus propre** et cohérente avec le pattern Commandes.
+> **Note pour l'implémenteur :** lire le fichier en entier d'abord. Le clic ligne actuel se trouve dans la fonction de rendu d'une ligne du tableau (chercher `style={{ display: "grid", gridTemplateColumns: "3fr 1fr 1fr 1.4fr"` qui est la ligne 218 d'après le grep). La ligne porte un `onClick` qui appelle `setSelected(c)` — c'est cette occurrence à transformer en `navigate(\`/utilisateurs/\${c.id}\`)`.
 
 - [ ] **Step 3 : Créer `src/components/ModalDetailUtilisateur.js`**
 
@@ -1592,6 +1673,17 @@ Dans Supabase Dashboard → Authentication → URL Configuration → Redirect UR
 - [ ] **Step 4 : Tester le rewrite sur staging avant prod**
 
 Sur l'URL Vercel : taper `/commandes/REF-XYZ` directement dans la barre d'adresse, valider, F5. Si pas de 404 → la règle Vercel fonctionne.
+
+- [ ] **Step 4bis : Vérifier que `.htaccess` est bien copié dans le build**
+
+Si le Step 2 a ajouté `public/.htaccess`, exécuter en local :
+
+```bash
+npm run build
+ls build/.htaccess
+```
+
+Expected : le fichier existe dans `build/`. CRA copie normalement `public/` vers `build/` y compris les dotfiles, mais certains workflows FTP excluent les fichiers cachés par défaut. Inspecter `.github/workflows/deploy.yml` pour vérifier que `.htaccess` n'est pas exclu lors de l'upload FTP. Si exclusion → ajuster le pattern du workflow.
 
 - [ ] **Step 5 : Merger V2 → main**
 
