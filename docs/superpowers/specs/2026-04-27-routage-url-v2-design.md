@@ -1,7 +1,7 @@
 # Spec : V2 — Routage par URL
 
 **Date :** 2026-04-27
-**Statut :** En revue
+**Statut :** Approuvé (revue agent)
 **Branche cible :** `V2`
 
 ## Contexte
