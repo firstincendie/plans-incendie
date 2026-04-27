@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
 
-export default function PageResetMotDePasse({ onSuccess }) {
+export default function PageResetMotDePasse() {
+  const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [erreur, setErreur] = useState("");
@@ -19,7 +21,10 @@ export default function PageResetMotDePasse({ onSuccess }) {
       setErreur(error.message);
     } else {
       setFait(true);
-      setTimeout(() => onSuccess(), 2000);
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate("/connexion", { replace: true });
+      }, 2000);
     }
     setChargement(false);
   };

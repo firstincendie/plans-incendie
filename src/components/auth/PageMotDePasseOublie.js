@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
 
-export default function PageMotDePasseOublie({ onRetour }) {
+export default function PageMotDePasseOublie() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [envoye, setEnvoye] = useState(false);
   const [erreur, setErreur] = useState("");
@@ -38,7 +40,7 @@ export default function PageMotDePasseOublie({ onRetour }) {
             <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "16px", color: "#166534", fontSize: 14, marginBottom: 24 }}>
               ✅ Email envoyé ! Vérifiez votre boîte mail et suivez le lien pour réinitialiser votre mot de passe.
             </div>
-            <button onClick={onRetour} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+            <button onClick={() => navigate("/connexion")} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
               ← Retour à la connexion
             </button>
           </div>
@@ -70,7 +72,7 @@ export default function PageMotDePasseOublie({ onRetour }) {
               {chargement ? "Envoi..." : "Envoyer le lien"}
             </button>
 
-            <button type="button" onClick={onRetour} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+            <button type="button" onClick={() => navigate("/connexion")} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
               ← Retour à la connexion
             </button>
           </form>

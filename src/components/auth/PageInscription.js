@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
 
 const CHAMPS_INIT = {
@@ -33,7 +34,8 @@ function PasswordInput({ value, onChange, placeholder, required, minLength }) {
   );
 }
 
-export default function PageInscription({ onRetour }) {
+export default function PageInscription() {
+  const navigate = useNavigate();
   const [role, setRole] = useState("utilisateur");
   const [champs, setChamps] = useState(CHAMPS_INIT);
   const [etape, setEtape] = useState(1);
@@ -88,7 +90,7 @@ export default function PageInscription({ onRetour }) {
           <div style={{ color: "#64748B", fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
             Votre demande d'accès a bien été reçue. Un administrateur va examiner votre dossier et vous recevrez un email de confirmation à <strong>{champs.email}</strong> une fois votre compte activé.
           </div>
-          <button onClick={onRetour} style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+          <button onClick={() => navigate("/connexion")} style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
             Retour à la connexion
           </button>
         </div>
@@ -193,7 +195,7 @@ export default function PageInscription({ onRetour }) {
             {chargement ? "Envoi en cours..." : "Envoyer ma demande"}
           </button>
 
-          <button type="button" onClick={onRetour} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+          <button type="button" onClick={() => navigate("/connexion")} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
             ← Retour à la connexion
           </button>
         </form>

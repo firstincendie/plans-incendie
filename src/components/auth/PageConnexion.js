@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../../supabase";
 
-export default function PageConnexion({ onMotDePasseOublie, onInscription }) {
+export default function PageConnexion() {
   const [email, setEmail] = useState("");
   const [mdp, setMdp] = useState("");
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleConnexion = async (e) => {
     e.preventDefault();
@@ -14,8 +17,12 @@ export default function PageConnexion({ onMotDePasseOublie, onInscription }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password: mdp });
     if (error) {
       setErreur("Email ou mot de passe incorrect.");
+      setChargement(false);
+      return;
     }
     setChargement(false);
+    const redirect = searchParams.get("redirect");
+    navigate(redirect ? decodeURIComponent(redirect) : "/commandes", { replace: true });
   };
 
   return (
@@ -68,12 +75,12 @@ export default function PageConnexion({ onMotDePasseOublie, onInscription }) {
         </form>
 
         <div style={{ marginTop: 20, textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={onMotDePasseOublie} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
+          <button onClick={() => navigate("/mot-de-passe-oublie")} style={{ background: "none", border: "none", color: "#386CA3", fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
             Mot de passe oublié ?
           </button>
           <div style={{ color: "#64748B", fontSize: 13 }}>
             Pas encore de compte ?{" "}
-            <button onClick={onInscription} style={{ background: "none", border: "none", color: "#FC6C1B", fontSize: 13, cursor: "pointer", fontWeight: 700, padding: 0 }}>
+            <button onClick={() => navigate("/inscription")} style={{ background: "none", border: "none", color: "#FC6C1B", fontSize: 13, cursor: "pointer", fontWeight: 700, padding: 0 }}>
               Faire une demande
             </button>
           </div>
