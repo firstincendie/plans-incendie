@@ -2,9 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 import AppRouter from "./components/AppRouter";
-import EcranEnAttente from "./components/EcranEnAttente";
-import EcranRefuse from "./components/EcranRefuse";
-import EcranBanni from "./components/EcranBanni";
 
 const INACTIVITE_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -58,13 +55,6 @@ export default function App() {
       .eq("id", uid)
       .single();
     setProfil(data);
-  }
-
-  // Status screen checks — will be moved to RequireAuth in Task 9
-  if (profil) {
-    if (profil.statut === "en_attente") return <EcranEnAttente />;
-    if (profil.statut === "refuse") return <EcranRefuse />;
-    if (profil.statut === "banni") return <EcranBanni />;
   }
 
   const handleProfilUpdate = (updates) => setProfil(prev => ({ ...prev, ...updates }));

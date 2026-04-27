@@ -11,7 +11,6 @@ export default function ListeCommandes() {
   const [userFilter, setUserFilter] = useState(null);
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
-  const [showArchivees, setShowArchivees] = useState(false);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
   const navigate = useNavigate();
 
@@ -381,24 +380,14 @@ export default function ListeCommandes() {
             {actives.map(c => renderCarteCmdUtilisateur(c))}
           </div>
 
-          {/* Archivées */}
+          {/* Archivées — lien vers la page dédiée */}
           {archivees.length > 0 && (
             <div style={{ marginBottom: 8 }}>
               <button
-                onClick={() => setShowArchivees(v => !v)}
-                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
-                {showArchivees ? "▲ Masquer les archivées" : `▼ ${archLabel}`}
+                onClick={() => navigate("/commandes/archives")}
+                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>
+                {`${archLabel} →`}
               </button>
-              {showArchivees && (
-                <>
-                  <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
-                    {archivees.map(c => renderLigneCmdUtilisateur(c, true))}
-                  </div>
-                  <div className="cmd-cards" style={{ marginBottom: 16 }}>
-                    {archivees.map(c => renderCarteCmdUtilisateur(c, true))}
-                  </div>
-                </>
-              )}
             </div>
           )}
         </>
@@ -423,24 +412,14 @@ export default function ListeCommandes() {
             {actives.map(c => renderCarteCmdDessinateur(c))}
           </div>
 
-          {/* Archivées */}
+          {/* Archivées — lien vers la page dédiée */}
           {archivees.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <button
-                onClick={() => setShowArchivees(v => !v)}
-                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0", marginBottom: 8 }}>
-                {showArchivees ? "▲ Masquer les missions archivées" : `▼ Voir les ${archivees.length} ${archivees.length > 1 ? "missions" : "mission"} archivée${archivees.length > 1 ? "s" : ""}`}
+                onClick={() => navigate("/commandes/archives")}
+                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>
+                {`${archLabel} →`}
               </button>
-              {showArchivees && (
-                <>
-                  <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", opacity: 0.7, marginBottom: 16 }}>
-                    {archivees.map(c => renderLigneCmdDessinateur(c, true))}
-                  </div>
-                  <div className="cmd-cards" style={{ marginBottom: 16 }}>
-                    {archivees.map(c => renderCarteCmdDessinateur(c, true))}
-                  </div>
-                </>
-              )}
             </div>
           )}
         </>
