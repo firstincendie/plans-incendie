@@ -4,9 +4,12 @@ import PageInscription from "./auth/PageInscription";
 import PageMotDePasseOublie from "./auth/PageMotDePasseOublie";
 import PageResetMotDePasse from "./auth/PageResetMotDePasse";
 import RequireAuth from "./RequireAuth";
+import RequireRole from "./RequireRole";
 import LayoutPrincipal from "./LayoutPrincipal";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
+import GestionCompteDessinateur from "./GestionCompteDessinateur";
+import GestionUtilisateurs from "./GestionUtilisateurs";
 
 export default function AppRouter({ session, profil, sessionLoading, profilLoading, legacyShell, onProfilUpdate }) {
   const dejaConnecte = !!session && !!profil && profil.statut === "actif";
@@ -22,6 +25,14 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
         <Route element={<LayoutPrincipal session={session} profil={profil} onProfilUpdate={onProfilUpdate} />}>
           <Route path="/reglages" element={<PageReglagesWrapper />} />
           <Route path="/mon-compte" element={<PageMonCompteWrapper />} />
+
+          <Route element={<RequireRole profil={profil} roles={["dessinateur"]} />}>
+            <Route path="/gestion-compte" element={<GestionCompteDessinateurWrapper />} />
+          </Route>
+
+          <Route element={<RequireRole profil={profil} roles={["admin", "utilisateur"]} requireOwner />}>
+            <Route path="/utilisateurs" element={<GestionUtilisateurs />} />
+          </Route>
         </Route>
       </Route>
 
@@ -41,4 +52,9 @@ function PageMonCompteWrapper() {
   // The legacy code maps admin and utilisateur both to "utilisateur" (cf VueUtilisateur.js:517).
   const roleProp = profil.role === "dessinateur" ? "dessinateur" : "utilisateur";
   return <PageMonCompte profil={profil} session={session} role={roleProp} commandes={commandes} onProfilUpdate={onProfilUpdate} />;
+}
+
+function GestionCompteDessinateurWrapper() {
+  const { profil, sousComptes } = useOutletContext();
+  return <GestionCompteDessinateur profil={profil} sousComptes={sousComptes} />;
 }
