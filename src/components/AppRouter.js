@@ -13,6 +13,7 @@ import GestionUtilisateurs from "./GestionUtilisateurs";
 import ListeCommandes from "./ListeCommandes";
 import ListeArchives from "./ListeArchives";
 import ModalDetailCommande from "./ModalDetailCommande";
+import ModalDetailUtilisateur from "./ModalDetailUtilisateur";
 
 export default function AppRouter({ session, profil, sessionLoading, profilLoading, legacyShell, onProfilUpdate }) {
   const dejaConnecte = !!session && !!profil && profil.statut === "actif";
@@ -41,7 +42,9 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
           </Route>
 
           <Route element={<RequireRole profil={profil} roles={["admin", "utilisateur"]} requireOwner />}>
-            <Route path="/utilisateurs" element={<GestionUtilisateurs />} />
+            <Route path="/utilisateurs" element={<GestionUtilisateurs />}>
+              <Route path=":uid" element={<ModalDetailUtilisateur />} />
+            </Route>
           </Route>
         </Route>
       </Route>

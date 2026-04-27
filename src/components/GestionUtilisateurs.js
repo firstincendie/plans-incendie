@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 
 export default function GestionUtilisateurs() {
+  const navigate = useNavigate();
   const [comptes, setComptes] = useState([]);
   const [dessinateurs, setDessinateurs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +108,7 @@ export default function GestionUtilisateurs() {
     const { error } = await supabase.functions.invoke("delete-user", { body: { user_id: id } });
     if (!error) {
       setComptes(prev => prev.filter(c => c.id !== id));
-      if (selected?.id === id) setSelected(null);
+      if (selected?.id === id) { setSelected(null); navigate("/utilisateurs"); }
     } else {
       alert("Erreur lors de la suppression : " + error.message);
     }
@@ -135,22 +137,30 @@ export default function GestionUtilisateurs() {
     await chargerComptes();
   }
 
-  async function handleSelectCompte(c) {
-    setSelected(c);
+  useEffect(() => {
+    if (!selected) {
+      setEditForm(null);
+      setAssignationsEdit([]);
+      return;
+    }
     setEditForm({
-      prenom: c.prenom, nom: c.nom, role: c.role, statut: c.statut, is_owner: c.is_owner || false,
-      email: c.email || "", telephone: c.telephone || "", entreprise: c.entreprise || "",
-      siren: c.siren || "", adresse: c.adresse || "", code_postal: c.code_postal || "", ville: c.ville || "",
+      prenom: selected.prenom, nom: selected.nom, role: selected.role, statut: selected.statut,
+      is_owner: selected.is_owner || false, email: selected.email || "",
+      telephone: selected.telephone || "", entreprise: selected.entreprise || "",
+      siren: selected.siren || "", adresse: selected.adresse || "",
+      code_postal: selected.code_postal || "", ville: selected.ville || "",
     });
     setAssignationsEdit([]);
     setLoadingAssignations(true);
-    const { data } = await supabase
+    supabase
       .from("utilisateur_dessinateurs")
       .select("dessinateur_id, is_default")
-      .eq("utilisateur_id", c.id);
-    setAssignationsEdit(data || []);
-    setLoadingAssignations(false);
-  }
+      .eq("utilisateur_id", selected.id)
+      .then(({ data }) => {
+        setAssignationsEdit(data || []);
+        setLoadingAssignations(false);
+      });
+  }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const comptesFiltres = filtre === "tous" ? comptes : comptes.filter(c => c.statut === filtre);
 
@@ -214,7 +224,7 @@ export default function GestionUtilisateurs() {
               {comptesFiltres.map(c => {
                 const maitre = c.master_id ? comptes.find(p => p.id === c.master_id) : null;
                 return (
-                  <div key={c.id} onClick={() => handleSelectCompte(c)}
+                  <div key={c.id} onClick={() => navigate(`/utilisateurs/${c.id}`)}
                     style={{ display: "grid", gridTemplateColumns: "3fr 1fr 1fr 1.4fr", padding: "12px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: selected?.id === c.id ? "#F8FAFC" : "transparent", transition: "background 0.1s" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -246,7 +256,7 @@ export default function GestionUtilisateurs() {
             {comptesFiltres.map(c => {
               const maitre = c.master_id ? comptes.find(p => p.id === c.master_id) : null;
               return (
-                <div key={c.id} onClick={() => handleSelectCompte(c)}
+                <div key={c.id} onClick={() => navigate(`/utilisateurs/${c.id}`)}
                   style={{ background: "#fff", border: "1.5px solid " + (selected?.id === c.id ? "#122131" : "#E5E7EB"), borderRadius: 10, padding: "12px 14px", marginBottom: 8, cursor: "pointer" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
@@ -284,7 +294,7 @@ export default function GestionUtilisateurs() {
               <div style={{ fontSize: 16, fontWeight: 700, color: "#122131" }}>{selected.prenom} {selected.nom}</div>
               <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>{selected.email}</div>
             </div>
-            <button onClick={() => { setSelected(null); setEditForm(null); setSaveError(""); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
+            <button onClick={() => { setSelected(null); setEditForm(null); setSaveError(""); navigate("/utilisateurs"); }} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
           </div>
 
           {/* Champs principaux */}
@@ -403,6 +413,9 @@ export default function GestionUtilisateurs() {
           </div>
         </div>
       )}
+
+      {/* Outlet pour sous-routes (ex: /utilisateurs/:uid) */}
+      <Outlet context={{ comptes, selected, setSelected }} />
 
       {/* Modal création */}
       {showCreateModal && (
