@@ -69,13 +69,15 @@ export default function App() {
     if (profil.statut === "banni") return <EcranBanni />;
   }
 
+  const handleProfilUpdate = (updates) => setProfil(prev => ({ ...prev, ...updates }));
+
   // Build the legacy shell: what was rendered before for an authenticated user.
   // This will be progressively replaced by routes in subsequent tasks.
   let legacyShell = null;
   if (session && profil) {
     legacyShell = profil.role === "dessinateur"
-      ? <VueDessinateur session={session} profil={profil} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />
-      : <VueUtilisateur session={session} profil={profil} onProfilUpdate={(updates) => setProfil(prev => ({ ...prev, ...updates }))} />;
+      ? <VueDessinateur session={session} profil={profil} onProfilUpdate={handleProfilUpdate} />
+      : <VueUtilisateur session={session} profil={profil} onProfilUpdate={handleProfilUpdate} />;
   }
 
   return (
@@ -85,6 +87,7 @@ export default function App() {
       sessionLoading={session === undefined}
       profilLoading={!!session && !profil}
       legacyShell={legacyShell}
+      onProfilUpdate={handleProfilUpdate}
     />
   );
 }
