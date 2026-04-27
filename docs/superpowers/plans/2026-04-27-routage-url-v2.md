@@ -1424,10 +1424,12 @@ export default function ModalDetailUtilisateur() {
 }
 ```
 
-- [ ] **Step 4 : Brancher la route**
+- [ ] **Step 4 : Brancher la route imbriquée**
+
+> **Important :** la route `/utilisateurs` a déjà été déclarée en Task 10 Step 1. Cette étape **modifie** la déclaration existante pour ajouter la sous-route `:uid`, et ne duplique pas la route parente. Localiser le bloc créé en Task 10 dans `AppRouter.js` et le remplacer par la version imbriquée ci-dessous (mêmes rôles, même `requireOwner`) :
 
 ```jsx
-<Route element={<RequireRole profil={profil} roles={["admin", "client"]} requireOwner />}>
+<Route element={<RequireRole profil={profil} roles={["admin", "utilisateur"]} requireOwner />}>
   <Route path="/utilisateurs" element={<GestionUtilisateurs />}>
     <Route path=":uid" element={<ModalDetailUtilisateur />} />
   </Route>
