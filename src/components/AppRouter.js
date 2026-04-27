@@ -11,6 +11,7 @@ import PageMonCompte from "./PageMonCompte";
 import GestionCompteDessinateur from "./GestionCompteDessinateur";
 import GestionUtilisateurs from "./GestionUtilisateurs";
 import ListeCommandes from "./ListeCommandes";
+import ListeArchives from "./ListeArchives";
 import ModalDetailCommande from "./ModalDetailCommande";
 
 export default function AppRouter({ session, profil, sessionLoading, profilLoading, legacyShell, onProfilUpdate }) {
@@ -26,6 +27,9 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
       <Route element={<RequireAuth session={session} profil={profil} sessionLoading={sessionLoading} profilLoading={profilLoading} />}>
         <Route element={<LayoutPrincipal session={session} profil={profil} onProfilUpdate={onProfilUpdate} />}>
           <Route index element={<Navigate to="/commandes" replace />} />
+          <Route path="/commandes/archives" element={<ListeArchives />}>
+            <Route path=":ref" element={<ModalDetailCommande retour="/commandes/archives" />} />
+          </Route>
           <Route path="/commandes" element={<ListeCommandes />}>
             <Route path=":ref" element={<ModalDetailCommande />} />
           </Route>
