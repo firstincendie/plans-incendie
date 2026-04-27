@@ -6,7 +6,7 @@ import Badge from "./Badge";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 
 export default function ListeCommandes() {
-  const { profil, commandes, setCommandes, sousComptes } = useOutletContext();
+  const { profil, commandes, setCommandes, sousComptes, session } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [userFilter, setUserFilter] = useState(null);
   const [menuCmdId, setMenuCmdId] = useState(null);
@@ -447,7 +447,7 @@ export default function ListeCommandes() {
       )}
 
       {/* Outlet — for Task 12 modal */}
-      <Outlet context={{ commandes, setCommandes, sousComptes, profil }} />
+      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session }} />
 
       {/* ---- DROPDOWN ··· (position fixed, escapes overflow:hidden) ---- */}
       {menuCmdId && menuRect && (() => {
