@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 import AppRouter from "./components/AppRouter";
 import VueUtilisateur from "./components/VueUtilisateur";
 import VueDessinateur from "./components/VueDessinateur";
-import PageResetMotDePasse from "./components/auth/PageResetMotDePasse";
 import EcranEnAttente from "./components/EcranEnAttente";
 import EcranRefuse from "./components/EcranRefuse";
 import EcranBanni from "./components/EcranBanni";
@@ -13,7 +13,7 @@ const INACTIVITE_MS = 30 * 60 * 1000; // 30 minutes
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [profil, setProfil] = useState(null);
-  const [resetMode, setResetMode] = useState(false);
+  const navigate = useNavigate();
   const timerInactivite = useRef(null);
 
   useEffect(() => {
@@ -22,7 +22,10 @@ export default function App() {
       if (session) chargerProfil(session.user.id);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") { setResetMode(true); return; }
+      if (event === "PASSWORD_RECOVERY") {
+        navigate("/reset-mot-de-passe", { replace: true });
+        return;
+      }
       setSession(session);
       if (session) chargerProfil(session.user.id);
       else { setProfil(null); }
@@ -57,11 +60,6 @@ export default function App() {
       .eq("id", uid)
       .single();
     setProfil(data);
-  }
-
-  // resetMode is preserved here (Task 6 will migrate it to navigation)
-  if (resetMode) {
-    return <PageResetMotDePasse />;
   }
 
   // Status screen checks — will be moved to RequireAuth in Task 9
