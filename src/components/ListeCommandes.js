@@ -12,6 +12,7 @@ export default function ListeCommandes() {
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
   const [showArchivees, setShowArchivees] = useState(false);
+  const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
   const navigate = useNavigate();
 
   // --- Filters from URL ---
@@ -77,6 +78,37 @@ export default function ListeCommandes() {
     const { error } = await supabase.from("commandes").update({ is_archived: false }).eq("id", id);
     if (!error) setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived: false } : c));
   }
+  async function dupliquer(c) {
+    const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
+    const { data, error } = await supabase.from("commandes").insert([{
+      ref,
+      utilisateur_id: c.utilisateur_id,
+      nom_plan: c.nom_plan + " (copie)",
+      client_nom: c.client_nom, client_prenom: c.client_prenom,
+      client_email: c.client_email, client_telephone: c.client_telephone,
+      adresse1: c.adresse1, adresse2: c.adresse2,
+      code_postal: c.code_postal, ville: c.ville,
+      delai: c.delai, plans: c.plans,
+      fichiers_plan: c.fichiers_plan || [], logo_client: c.logo_client || [],
+      instructions: c.instructions,
+      plans_finalises: [], statut: "En attente",
+      dessinateur_id: c.dessinateur_id || null,
+      dessinateur: c.dessinateur || null,
+    }]).select("*, messages(*)").single();
+    if (!error && data) {
+      setCommandes(prev => [{ ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] }, ...prev]);
+    }
+  }
+
+  async function supprimerCommande(id) {
+    const { error } = await supabase.from("commandes").delete().eq("id", id);
+    if (!error) {
+      setCommandes(prev => prev.filter(c => c.id !== id));
+    } else {
+      console.error("Erreur suppression commande:", error);
+    }
+  }
+
   async function archiverDessinateur(id) {
     const { error } = await supabase.from("commandes").update({ is_archived_dessinateur: true }).eq("id", id);
     if (!error) setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived_dessinateur: true } : c));
@@ -459,6 +491,13 @@ export default function ListeCommandes() {
                     ✏️ Voir / modifier
                   </button>
                   <button
+                    onClick={() => { setMenuCmdId(null); dupliquer(c); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                    📋 Dupliquer la commande
+                  </button>
+                  <button
                     onClick={() => { setMenuCmdId(null); archiver(c.id); }}
                     style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
@@ -467,18 +506,49 @@ export default function ListeCommandes() {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => { setMenuCmdId(null); desarchiver(c.id); }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
-                  onMouseLeave={e => e.currentTarget.style.background = "none"}>
-                  📤 Désarchiver la commande
-                </button>
+                <>
+                  <button
+                    onClick={() => { setMenuCmdId(null); desarchiver(c.id); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                    📤 Désarchiver la commande
+                  </button>
+                  <button
+                    onClick={() => { setMenuCmdId(null); setShowConfirmSupprimer(c.id); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#DC2626", textAlign: "left" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#FEF2F2"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                    🗑️ Supprimer la commande
+                  </button>
+                </>
               )
             )}
           </div>
         );
       })()}
+
+      {/* Modal confirmation suppression */}
+      {showConfirmSupprimer && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 400, boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#122131", marginBottom: 12 }}>Supprimer la commande ?</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 24, lineHeight: 1.6 }}>
+              Cette action est irréversible. La commande et toutes ses données associées (messages, versions, fichiers) seront définitivement supprimées.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowConfirmSupprimer(null)}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={() => { supprimerCommande(showConfirmSupprimer); setShowConfirmSupprimer(null); }}
+                style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                Supprimer définitivement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
