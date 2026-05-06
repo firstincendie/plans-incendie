@@ -194,9 +194,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   }
 
   async function dupliquer(c) {
-    const ref2 = "CMD-" + String(commandes.length + 1).padStart(3, "0");
     const { data, error } = await supabase.from("commandes").insert([{
-      ref: ref2,
       utilisateur_id: c.utilisateur_id,
       nom_plan: c.nom_plan + " (copie)",
       client_nom: c.client_nom, client_prenom: c.client_prenom,

@@ -78,9 +78,7 @@ export default function ListeCommandes() {
     if (!error) setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived: false } : c));
   }
   async function dupliquer(c) {
-    const ref = "CMD-" + String(commandes.length + 1).padStart(3, "0");
     const { data, error } = await supabase.from("commandes").insert([{
-      ref,
       utilisateur_id: c.utilisateur_id,
       nom_plan: c.nom_plan + " (copie)",
       client_nom: c.client_nom, client_prenom: c.client_prenom,
