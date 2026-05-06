@@ -25,3 +25,10 @@ yarn-error.log*
 # git worktrees
 .worktrees/
 .claude/worktrees/
+
+# claude code local settings
+.claude/settings.json
+.claude/settings.local.json
+
+# supabase cli temp
+supabase/.temp/
