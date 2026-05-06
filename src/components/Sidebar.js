@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { supabase } from "../supabase";
+import pkg from "../../package.json";
 
 export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
@@ -91,6 +92,9 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
 
       {/* Avatar / pied de sidebar */}
       <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
+        <div style={{ padding: "4px 12px", fontSize: 10, color: "#9CA3AF", textAlign: "left" }}>
+          v{pkg.version}
+        </div>
         {showMenuProfil && (
           <div
             onClick={e => e.stopPropagation()}
