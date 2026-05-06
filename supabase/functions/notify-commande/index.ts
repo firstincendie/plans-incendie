@@ -30,7 +30,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json", "Authorization": req.headers.get("Authorization") ?? "" },
         body: JSON.stringify({
           to: dessinateur.email,
-          subject: `Nouvelle commande — ${nom_plan}`,
+          subject: `Incendie Plan - Nouvelle commande`,
           html: `
             <h2>Bonjour ${dessinateur.prenom},</h2>
             <p>Une nouvelle commande vient d'être créée et vous est assignée.</p>
@@ -57,7 +57,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json", "Authorization": req.headers.get("Authorization") ?? "" },
         body: JSON.stringify({
           to: utilisateur.email,
-          subject: `Commande créée — ${nom_plan}`,
+          subject: `Incendie Plan - Commande créée`,
           html: `
             <h2>Bonjour ${utilisateur.prenom},</h2>
             <p>Votre commande <strong>${nom_plan}</strong> (${ref}) a bien été créée et est en attente de traitement.</p>

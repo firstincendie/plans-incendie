@@ -90,7 +90,7 @@ serve(async (req) => {
   if (event === "commencé") {
     if (utilisateur && utilisateur.notif_commande_acceptee !== false) {
       await sendEmail(authHeader, utilisateur.email,
-        `Commande acceptée — ${nom_plan}`,
+        `Incendie Plan - Commande acceptée`,
         `<h2>Bonjour ${utilisateur.prenom},</h2>
          <p>Le dessinateur a accepté votre commande <strong>${nom_plan}</strong> (${ref}) et a commencé à travailler dessus.</p>
          ${lienCommande}`
@@ -101,7 +101,7 @@ serve(async (req) => {
   } else if (event === "modification") {
     if (dessinateur && dessinateur.notif_demande_modification !== false) {
       await sendEmail(authHeader, dessinateur.email,
-        `Demande de modification — ${nom_plan}`,
+        `Incendie Plan - Demande de modification`,
         `<h2>Bonjour ${dessinateur.prenom},</h2>
          <p>L'utilisateur a demandé des modifications sur la commande <strong>${nom_plan}</strong> (${ref}).</p>
          <p>Consultez le message dans la messagerie de la commande.</p>
@@ -113,7 +113,7 @@ serve(async (req) => {
   } else if (event === "validation_en_cours") {
     if (utilisateur && utilisateur.notif_commande_validee !== false) {
       await sendEmail(authHeader, utilisateur.email,
-        `Ébauche validée — ${nom_plan}`,
+        `Incendie Plan - Ébauche validée`,
         `<h2>Bonjour ${utilisateur.prenom},</h2>
          <p>Vous avez validé l'ébauche de la commande <strong>${nom_plan}</strong> (${ref}).</p>
          <p>Le dessinateur va maintenant déposer les plans finaux.</p>
@@ -123,7 +123,7 @@ serve(async (req) => {
     }
     if (dessinateur && dessinateur.notif_validation_en_cours !== false) {
       await sendEmail(authHeader, dessinateur.email,
-        `En attente de votre dépôt final — ${nom_plan}`,
+        `Incendie Plan - En attente de votre dépôt final`,
         `<h2>Bonjour ${dessinateur.prenom},</h2>
          <p>L'utilisateur a validé l'ébauche de la commande <strong>${nom_plan}</strong> (${ref}).</p>
          <p>Vous pouvez maintenant déposer les plans finaux.</p>
@@ -135,7 +135,7 @@ serve(async (req) => {
   } else if (event === "plans_finaux") {
     if (utilisateur && utilisateur.notif_plans_finaux !== false) {
       await sendEmail(authHeader, utilisateur.email,
-        `Plans finaux déposés — ${nom_plan}`,
+        `Incendie Plan - Plans finaux déposés`,
         `<h2>Bonjour ${utilisateur.prenom},</h2>
          <p>Le dessinateur a déposé tous les plans finaux pour la commande <strong>${nom_plan}</strong> (${ref}).</p>
          <p>Connectez-vous pour les consulter et valider la commande.</p>
@@ -147,7 +147,7 @@ serve(async (req) => {
   } else if (event === "termine") {
     if (dessinateur && dessinateur.notif_commande_terminee !== false) {
       await sendEmail(authHeader, dessinateur.email,
-        `Commande terminée — ${nom_plan}`,
+        `Incendie Plan - Commande terminée`,
         `<h2>Bonjour ${dessinateur.prenom},</h2>
          <p>L'utilisateur a validé les plans finaux de la commande <strong>${nom_plan}</strong> (${ref}).</p>
          <p>La mission est terminée.</p>

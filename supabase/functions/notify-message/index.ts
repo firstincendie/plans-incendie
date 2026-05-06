@@ -61,7 +61,7 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json", "Authorization": req.headers.get("Authorization") ?? "" },
       body: JSON.stringify({
         to,
-        subject: `Nouveau message — ${nom_plan}`,
+        subject: `Incendie Plan - Nouveau message sur ${nom_plan}`,
         html: `
           <h2>Nouveau message de ${auteur_nom}</h2>
           <p><strong>Commande :</strong> ${nom_plan}</p>
