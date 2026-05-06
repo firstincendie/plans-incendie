@@ -45,7 +45,7 @@ serve(async (req) => {
     headers: { "Content-Type": "application/json", "Authorization": req.headers.get("Authorization") ?? "" },
     body: JSON.stringify({
       to: utilisateur.email,
-      subject: `Ébauche déposée — ${nom_plan}`,
+      subject: `Incendie Plan - Ébauche déposée`,
       html: `
         <h2>Bonjour ${utilisateur.prenom},</h2>
         <p>Le dessinateur a déposé la <strong>version ${numero_version}</strong> de votre plan.</p>

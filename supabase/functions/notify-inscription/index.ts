@@ -24,7 +24,7 @@ serve(async (req) => {
     },
     body: JSON.stringify({
       to: OWNER_EMAIL,
-      subject: `Nouvelle inscription — ${prenom} ${nom}`,
+      subject: `Incendie Plan - Nouvelle demande`,
       html: `
         <h2>Nouvelle inscription sur Incendie Plan</h2>
         <p><strong>Nom :</strong> ${prenom} ${nom}</p>
