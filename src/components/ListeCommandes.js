@@ -303,6 +303,14 @@ export default function ListeCommandes() {
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
           {isDessinateur ? "Mes missions" : "Commandes"}
         </h1>
+        {!isDessinateur && (
+          <button
+            onClick={() => navigate("/commandes/nouvelle")}
+            style={{ background: "#122131", color: "white", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >
+            + Nouvelle commande
+          </button>
+        )}
       </div>
 
       {/* Stats row */}

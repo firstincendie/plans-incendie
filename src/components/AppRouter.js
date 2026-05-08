@@ -13,6 +13,7 @@ import GestionUtilisateurs from "./GestionUtilisateurs";
 import ListeCommandes from "./ListeCommandes";
 import ListeArchives from "./ListeArchives";
 import ModalDetailCommande from "./ModalDetailCommande";
+import NouvelleCommandeModal from "./NouvelleCommandeModal";
 import ModalDetailUtilisateur from "./ModalDetailUtilisateur";
 import Page404 from "./Page404";
 
@@ -33,6 +34,7 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
             <Route path=":ref" element={<ModalDetailCommande retour="/commandes/archives" />} />
           </Route>
           <Route path="/commandes" element={<ListeCommandes />}>
+            <Route path="nouvelle" element={<NouvelleCommandeModal />} />
             <Route path=":ref" element={<ModalDetailCommande />} />
           </Route>
           <Route path="/reglages" element={<PageReglagesWrapper />} />
