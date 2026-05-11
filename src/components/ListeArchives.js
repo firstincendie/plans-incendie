@@ -20,15 +20,18 @@ export default function ListeArchives() {
     dessinateur: searchParams.get("dessinateur") || "",
     type:        searchParams.get("type") || "",
     periode:     searchParams.get("periode") || "",
+    q:           searchParams.get("q") || "",
+    nonlus:      searchParams.get("nonlus") || "",
   };
+  // Tri par défaut : délai le plus court d'abord
   const tri = {
-    col: searchParams.get("tri") || "created_at",
-    dir: searchParams.get("dir") || "desc",
+    col: searchParams.get("tri") || "delai",
+    dir: searchParams.get("dir") || "asc",
   };
 
   const setFiltres = (next) => {
     const params = new URLSearchParams(searchParams);
-    ["statut", "dessinateur", "type", "periode"].forEach(k => {
+    ["statut", "dessinateur", "type", "periode", "q", "nonlus"].forEach(k => {
       if (next[k]) params.set(k, next[k]);
       else params.delete(k);
     });
@@ -38,7 +41,7 @@ export default function ListeArchives() {
   const setTri = (updaterOrValue) => {
     const nextTri = typeof updaterOrValue === "function" ? updaterOrValue(tri) : updaterOrValue;
     const params = new URLSearchParams(searchParams);
-    if (nextTri.col === "created_at" && nextTri.dir === "desc") {
+    if (nextTri.col === "delai" && nextTri.dir === "asc") {
       params.delete("tri"); params.delete("dir");
     } else {
       params.set("tri", nextTri.col); params.set("dir", nextTri.dir);
@@ -46,26 +49,64 @@ export default function ListeArchives() {
     setSearchParams(params, { replace: true });
   };
 
+  const toggleTri = (col) =>
+    setTri(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
+
+  // --- Role + accent ---
+  const isDessinateur = profil.role === "dessinateur";
+  const couleurAccent = isDessinateur ? "#FC6C1B" : "#122131";
+
   // --- Archive field per role ---
-  const champArchive = profil.role === "dessinateur" ? "is_archived_dessinateur" : "is_archived";
+  const champArchive = isDessinateur ? "is_archived_dessinateur" : "is_archived";
 
   // --- userFilter sub-compte ---
   const commandesVisibles = userFilter
     ? commandes.filter(c => {
-        if (profil.role === "dessinateur") return c.dessinateur_id === userFilter;
+        if (isDessinateur) return c.dessinateur_id === userFilter;
         return c.utilisateur_id === userFilter;
       })
     : commandes;
-
-  // --- Apply filters + sort, then keep only archived ---
-  const cmdFiltrees = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const archivees = cmdFiltrees.filter(c => c[champArchive] === true);
 
   // --- Unread count helper ---
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const nonLusDe = c => c.messages
     ? c.messages.filter(m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)).length
     : 0;
+
+  // Headers cliquables + sélecteur mobile
+  const Th = ({ col, label }) => (
+    <span
+      onClick={() => toggleTri(col)}
+      style={{ cursor: "pointer", userSelect: "none", color: tri.col === col ? couleurAccent : undefined }}>
+      {label}{tri.col === col ? (tri.dir === "asc" ? " ↑" : " ↓") : ""}
+    </span>
+  );
+  const MobileSort = () => {
+    const options = [
+      { v: "delai|asc", l: "Délai le plus court" },
+      { v: "delai|desc", l: "Délai le plus long" },
+      { v: "created_at|desc", l: "Plus récente" },
+      { v: "created_at|asc", l: "Plus ancienne" },
+      { v: "statut|asc", l: "Statut (A-Z)" },
+      { v: "nom_plan|asc", l: "Plan (A-Z)" },
+      ...(!isDessinateur ? [{ v: "dessinateur|asc", l: "Dessinateur (A-Z)" }] : []),
+    ];
+    return (
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <select
+          value={`${tri.col}|${tri.dir}`}
+          onChange={e => { const [col, dir] = e.target.value.split("|"); setTri({ col, dir }); }}
+          style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" }}>
+          {options.map(o => <option key={o.v} value={o.v}>Trier : {o.l}</option>)}
+        </select>
+      </div>
+    );
+  };
+
+  // --- Apply filters + sort, then keep only archived, et filtre notifications ---
+  const cmdFiltrees0 = appliquerFiltresTri(commandesVisibles, filtres, tri);
+  const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => nonLusDe(c) > 0) : cmdFiltrees0;
+  const archivees = cmdFiltrees.filter(c => c[champArchive] === true);
 
   // --- Quick actions: desarchive ---
   async function desarchiver(id) {
@@ -256,8 +297,6 @@ export default function ListeArchives() {
     );
   }
 
-  const isDessinateur = profil.role === "dessinateur";
-
   return (
     <div onClick={() => { menuCmdId && setMenuCmdId(null); }}>
 
@@ -299,10 +338,8 @@ export default function ListeArchives() {
         commandes={commandes}
         filtres={filtres}
         setFiltres={setFiltres}
-        tri={tri}
-        setTri={setTri}
         showDessinateur={!isDessinateur}
-        couleurAccent={isDessinateur ? "#FC6C1B" : "#122131"}
+        couleurAccent={couleurAccent}
       />
 
       {/* Sélecteur sous-compte */}
@@ -328,7 +365,13 @@ export default function ListeArchives() {
           <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {sousComptes.length > 0 && <span>Compte</span>}
-              <span>Plan</span><span>Dessinateur</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span><span></span>
+              <Th col="nom_plan" label="Plan" />
+              <Th col="dessinateur" label="Dessinateur" />
+              <Th col="created_at" label="Créé le" />
+              <span>Plans</span>
+              <Th col="delai" label="Délai" />
+              <Th col="statut" label="Statut" />
+              <span></span>
             </div>
             {archivees.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande archivée.</div>}
             {archivees.map(c => renderLigneCmdUtilisateur(c))}
@@ -336,6 +379,7 @@ export default function ListeArchives() {
 
           {/* Archivées — mobile */}
           <div className="cmd-cards" style={{ marginBottom: 16 }}>
+            <MobileSort />
             {archivees.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande archivée.</div>}
             {archivees.map(c => renderCarteCmdUtilisateur(c))}
           </div>
@@ -349,7 +393,12 @@ export default function ListeArchives() {
           <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: cmdColsDessinateur, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
               {sousComptes.length > 0 && <span>Dessinateur</span>}
-              <span>Plan</span><span>Créé le</span><span>Plans</span><span>Délai</span><span>Statut</span><span></span>
+              <Th col="nom_plan" label="Plan" />
+              <Th col="created_at" label="Créé le" />
+              <span>Plans</span>
+              <Th col="delai" label="Délai" />
+              <Th col="statut" label="Statut" />
+              <span></span>
             </div>
             {archivees.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission archivée.</div>}
             {archivees.map(c => renderLigneCmdDessinateur(c))}
@@ -357,6 +406,7 @@ export default function ListeArchives() {
 
           {/* Archivées — mobile */}
           <div className="cmd-cards" style={{ marginBottom: 16 }}>
+            <MobileSort />
             {archivees.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission archivée.</div>}
             {archivees.map(c => renderCarteCmdDessinateur(c))}
           </div>

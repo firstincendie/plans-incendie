@@ -1,25 +1,42 @@
 import { STATUTS_ADMIN } from "../constants";
 import { getPeriode } from "../helpers";
 
-export default function BarreFiltres({ commandes, filtres, setFiltres, tri, setTri, showDessinateur = true, couleurAccent = "#122131" }) {
+export default function BarreFiltres({ commandes, filtres, setFiltres, showDessinateur = true, couleurAccent = "#122131" }) {
   const periodes     = [...new Set(commandes.map(c => getPeriode(c.created_at)).filter(Boolean))].sort().reverse();
   const typesDispos  = [...new Set(commandes.flatMap(c => (c.plans || []).map(p => p.type)).filter(Boolean))];
   const dessinateurs = [...new Set(commandes.map(c => c.dessinateur).filter(Boolean))].sort();
 
-  function toggleTri(col) { setTri(prev => prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }); }
-
   const selStyle = { padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", cursor: "pointer" };
-  const actif = filtres.statut || filtres.dessinateur || filtres.type || filtres.periode;
-
-  const trisBtns = [
-    { col: "created_at", label: "Date" },
-    { col: "delai",      label: "Délai" },
-    { col: "statut",     label: "Statut" },
-    ...(showDessinateur ? [{ col: "dessinateur", label: "Dessinateur" }] : []),
-  ];
+  const actif = filtres.statut || filtres.dessinateur || filtres.type || filtres.periode || filtres.q || filtres.nonlus;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
+      {/* Recherche */}
+      <input
+        type="text"
+        value={filtres.q || ""}
+        onChange={e => setFiltres({ ...filtres, q: e.target.value })}
+        placeholder="🔍 Rechercher (plan, client, ref)"
+        style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", minWidth: 180, flex: "1 1 220px", boxSizing: "border-box" }}
+      />
+
+      {/* Toggle notifications */}
+      <button
+        onClick={() => setFiltres({ ...filtres, nonlus: filtres.nonlus ? "" : "1" })}
+        style={{
+          padding: "6px 10px",
+          borderRadius: 7,
+          border: "1px solid " + (filtres.nonlus ? couleurAccent : "#E5E7EB"),
+          background: filtres.nonlus ? "#FFF3EE" : "#fff",
+          color: filtres.nonlus ? couleurAccent : "#374151",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}>
+        🔔 Avec notifications
+      </button>
+
       <select value={filtres.statut} onChange={e => setFiltres({ ...filtres, statut: e.target.value })} style={selStyle}>
         <option value="">Tous les statuts</option>
         {STATUTS_ADMIN.map(s => <option key={s}>{s}</option>)}
@@ -44,22 +61,22 @@ export default function BarreFiltres({ commandes, filtres, setFiltres, tri, setT
         })}
       </select>
       {actif && (
-        <button onClick={() => setFiltres({ statut: "", dessinateur: "", type: "", periode: "" })}
+        <button onClick={() => setFiltres({ statut: "", dessinateur: "", type: "", periode: "", q: "", nonlus: "" })}
           style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
           ✕ Réinitialiser
         </button>
       )}
-      <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
-        {trisBtns.map(({ col, label }) => (
-          <button key={col} onClick={() => toggleTri(col)}
-            style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid " + (tri.col === col ? couleurAccent : "#E5E7EB"), fontSize: 11, fontWeight: 600, cursor: "pointer", background: tri.col === col ? "#EEF3F8" : "#fff", color: tri.col === col ? couleurAccent : "#6B7280" }}>
-            {label}{tri.col === col ? (tri.dir === "asc" ? " ↑" : " ↓") : ""}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
+
+// Insensible à la casse + accents
+function norm(s) {
+  return (s == null ? "" : String(s)).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+// Sortable: nulls / vides toujours en fin de liste, peu importe la direction.
+const DATE_COLS = new Set(["delai", "created_at"]);
 
 export function appliquerFiltresTri(commandes, filtres, tri) {
   let r = [...commandes];
@@ -67,10 +84,29 @@ export function appliquerFiltresTri(commandes, filtres, tri) {
   if (filtres.dessinateur) r = r.filter(c => c.dessinateur === filtres.dessinateur);
   if (filtres.type)        r = r.filter(c => (c.plans || []).some(p => p.type === filtres.type));
   if (filtres.periode)     r = r.filter(c => getPeriode(c.created_at) === filtres.periode);
-  if (filtres.client)      r = r.filter(c => c.client === filtres.client);
-  if (tri.col) r.sort((a, b) => {
-    const va = a[tri.col] || ""; const vb = b[tri.col] || "";
-    return tri.dir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
-  });
+  if (filtres.q) {
+    const q = norm(filtres.q);
+    r = r.filter(c =>
+      norm(c.nom_plan).includes(q) ||
+      norm(c.client_nom).includes(q) ||
+      norm(c.client_prenom).includes(q) ||
+      norm(c.ref).includes(q)
+    );
+  }
+  if (tri.col) {
+    r.sort((a, b) => {
+      const va = a[tri.col]; const vb = b[tri.col];
+      const aN = va == null || va === "";
+      const bN = vb == null || vb === "";
+      if (aN && bN) return 0;
+      if (aN) return 1;
+      if (bN) return -1;
+      if (DATE_COLS.has(tri.col)) {
+        return tri.dir === "asc" ? new Date(va) - new Date(vb) : new Date(vb) - new Date(va);
+      }
+      const sa = String(va), sb = String(vb);
+      return tri.dir === "asc" ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+  }
   return r;
 }
