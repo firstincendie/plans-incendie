@@ -316,7 +316,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   // ---- Admin/utilisateur workflow handlers ----
 
   async function envoyerDemandeModification() {
-    if (!modifMsg.trim()) return;
+    // Accepte texte seul, fichier(s) seul(s), ou les deux — au moins un requis
+    if (!modifMsg.trim() && modifFichiers.length === 0) return;
     setEnvoyantModif(true);
     await envoyerMessage(commande.id, auteurNom, modifMsg, modifFichiers);
     await changerStatut(commande.id, "Modification dessinateur");
@@ -578,15 +579,20 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 500 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>✏️ Demander une modification</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur".</div>
-            <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)} rows={4} placeholder="Décrivez les modifications..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, resize: "vertical", boxSizing: "border-box", marginBottom: 14 }} />
-            <ZoneUpload label="📎 Fichiers joints (optionnel)" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-              <button onClick={() => { setShowModifModal(false); setModifMsg(""); setModifFichiers([]); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
-              <button onClick={envoyerDemandeModification} disabled={!modifMsg.trim() || envoyantModif}
-                style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: !modifMsg.trim() ? "#F3F4F6" : "#D97706", color: !modifMsg.trim() ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: !modifMsg.trim() ? "not-allowed" : "pointer" }}>
-                {envoyantModif ? "Envoi..." : "Envoyer"}
-              </button>
-            </div>
+            <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)} rows={4} placeholder="Décrivez les modifications (ou joignez juste un fichier)..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, resize: "vertical", boxSizing: "border-box", marginBottom: 14 }} />
+            <ZoneUpload label="📎 Fichiers joints" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
+            {(() => {
+              const vide = !modifMsg.trim() && modifFichiers.length === 0;
+              return (
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                  <button onClick={() => { setShowModifModal(false); setModifMsg(""); setModifFichiers([]); }} style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+                  <button onClick={envoyerDemandeModification} disabled={vide || envoyantModif}
+                    style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: vide ? "#F3F4F6" : "#D97706", color: vide ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: vide ? "not-allowed" : "pointer" }}>
+                    {envoyantModif ? "Envoi..." : "Envoyer"}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
