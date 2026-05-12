@@ -71,6 +71,21 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       .then(({ data }) => setNote(data?.note ?? ""));
   }, [commande?.id, session?.user?.id]); // eslint-disable-line
 
+  // Auto-clear du marquage "non lue" manuel à l'ouverture de la commande
+  useEffect(() => {
+    if (!commande?.marque_non_lu) return;
+    if (!session?.user?.id) return;
+    const cid = commande.id;
+    supabase
+      .from("commande_marquage_non_lu")
+      .delete()
+      .eq("commande_id", cid)
+      .eq("user_id", session.user.id)
+      .then(({ error }) => {
+        if (!error) setCommandes(prev => prev.map(c => c.id === cid ? { ...c, marque_non_lu: false } : c));
+      });
+  }, [commande?.id, commande?.marque_non_lu, session?.user?.id]); // eslint-disable-line
+
   if (!commande) return null;
 
   const versionsSelected = versions.filter(v => v.commande_id === commande.id);

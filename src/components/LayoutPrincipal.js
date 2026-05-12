@@ -64,7 +64,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     // Requête sous-comptes — les deux Vue* utilisent eq("master_id", profil.id) :
     //   VueUtilisateur.js:109 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
     //   VueDessinateur.js:88 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
-    const [{ data: cmd }, { data: sub }] = await Promise.all([
+    const [{ data: cmd }, { data: sub }, { data: marques }] = await Promise.all([
       supabase
         .from("commandes")
         .select("*, messages(*)")
@@ -72,9 +72,11 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
       profil.is_owner
         ? supabase.from("profiles").select("id, prenom, nom").eq("master_id", profil.id)
         : Promise.resolve({ data: [] }),
+      supabase.from("commande_marquage_non_lu").select("commande_id"),
     ]);
 
     if (cmd) {
+      const marquesSet = new Set((marques || []).map(m => m.commande_id));
       // Normalisation reproduite de VueUtilisateur.js:115-124 et VueDessinateur.js:90-99
       setCommandes(cmd.map(c => ({
         ...c,
@@ -82,6 +84,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         fichiersPlan: c.fichiers_plan || [],
         logoClient: c.logo_client || [],
         plansFinalises: c.plans_finalises || [],
+        marque_non_lu: marquesSet.has(c.id),
         messages: (c.messages || [])
           .filter(m => !m.visible_par || m.visible_par.includes(nom))
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),

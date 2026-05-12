@@ -73,6 +73,24 @@ export default function ListeArchives() {
     ? c.messages.filter(m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)).length
     : 0;
 
+  // Badge (chiffre si messages non lus naturels, sinon point orange si manuellement marquée)
+  const NotifBadge = ({ c }) => {
+    const n = nonLusDe(c);
+    if (n > 0) return <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{n}</span>;
+    if (c.marque_non_lu) return <span title="Marquée comme non lue" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#FC6C1B", flexShrink: 0 }} />;
+    return null;
+  };
+
+  async function marquerNonLue(commandeId) {
+    if (!session?.user?.id) return;
+    const { error } = await supabase
+      .from("commande_marquage_non_lu")
+      .upsert({ commande_id: commandeId, user_id: session.user.id });
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === commandeId ? { ...c, marque_non_lu: true } : c));
+    }
+  }
+
   // Headers cliquables + sélecteur mobile
   const Th = ({ col, label }) => (
     <span
@@ -158,7 +176,7 @@ export default function ListeArchives() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-            {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
+            <NotifBadge c={c} />
           </div>
           <div style={{ fontSize: 11, color: "#9CA3AF" }}>{ownerLabel ? `${ownerLabel} — ${c.ref}` : c.ref}</div>
         </div>
@@ -197,7 +215,7 @@ export default function ListeArchives() {
           <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nom_plan || "—"}</span>
-              {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{nonLusDe(c)}</span>}
+              <NotifBadge c={c} />
             </div>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{ownerLabel ? `${ownerLabel} · ` : ""}{c.ref}</div>
           </div>
@@ -241,7 +259,7 @@ export default function ListeArchives() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontWeight: 600, fontSize: 13 }}>{c.nom_plan || "—"}</span>
-            {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(c)}</span>}
+            <NotifBadge c={c} />
           </div>
           <div style={{ fontSize: 11, color: "#9CA3AF" }}>{c.ref}</div>
         </div>
@@ -273,7 +291,7 @@ export default function ListeArchives() {
           <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nom_plan || "—"}</span>
-              {nonLusDe(c) > 0 && <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{nonLusDe(c)}</span>}
+              <NotifBadge c={c} />
             </div>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{c.ref}</div>
           </div>
@@ -421,12 +439,19 @@ export default function ListeArchives() {
         const c = commandes.find(x => x.id === menuCmdId);
         if (!c) return null;
         const spaceBelow = window.innerHeight - menuRect.bottom;
-        const top = spaceBelow >= 180 ? menuRect.bottom + 4 : menuRect.top - 4;
-        const transform = spaceBelow >= 180 ? "none" : "translateY(-100%)";
+        const top = spaceBelow >= 200 ? menuRect.bottom + 4 : menuRect.top - 4;
+        const transform = spaceBelow >= 200 ? "none" : "translateY(-100%)";
         return (
           <div
             onClick={e => e.stopPropagation()}
             style={{ position: "fixed", top, right: window.innerWidth - menuRect.right, transform, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zIndex: 1000, minWidth: 210, overflow: "hidden" }}>
+            <button
+              onClick={() => { setMenuCmdId(null); marquerNonLue(c.id); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+              🔵 Marquer en non lue
+            </button>
             {isDessinateur ? (
               /* Dessinateur menu: désarchiver uniquement */
               <button
