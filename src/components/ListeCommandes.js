@@ -78,7 +78,7 @@ export default function ListeCommandes() {
   const NotifBadge = ({ c }) => {
     const n = nonLusDe(c);
     if (n > 0) return <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{n}</span>;
-    if (c.marque_non_lu) return <span title="Marquée comme non lue" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#FC6C1B", flexShrink: 0 }} />;
+    if (c.marque_non_lu) return <span title="Marquée comme non lue" style={{ display: "inline-block", width: 14, height: 14, borderRadius: "50%", background: "#FC6C1B", flexShrink: 0 }} />;
     return null;
   };
 
@@ -523,7 +523,7 @@ export default function ListeCommandes() {
               style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
               onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
               onMouseLeave={e => e.currentTarget.style.background = "none"}>
-              🔵 Marquer en non lue
+              🟠 Marquer en non lue
             </button>
             {isDessinateur ? (
               /* Dessinateur menu: archive / désarchiver uniquement */
