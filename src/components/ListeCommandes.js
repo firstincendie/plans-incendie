@@ -162,7 +162,7 @@ export default function ListeCommandes() {
 
   // --- Apply filters + sort, puis post-filter notifications ---
   const cmdFiltrees0 = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => nonLusDe(c) > 0) : cmdFiltrees0;
+  const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => hasNotif(c)) : cmdFiltrees0;
   const actives   = cmdFiltrees.filter(c => !c[champArchive]);
   const archivees = cmdFiltrees.filter(c =>  c[champArchive]);
 

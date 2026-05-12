@@ -155,7 +155,7 @@ export default function ListeArchives() {
 
   // --- Apply filters + sort, then keep only archived, et filtre notifications ---
   const cmdFiltrees0 = appliquerFiltresTri(commandesVisibles, filtres, tri);
-  const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => nonLusDe(c) > 0) : cmdFiltrees0;
+  const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => hasNotif(c)) : cmdFiltrees0;
   const archivees = cmdFiltrees.filter(c => c[champArchive] === true);
 
   // --- Quick actions: desarchive ---
