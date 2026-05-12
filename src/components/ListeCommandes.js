@@ -93,6 +93,41 @@ export default function ListeCommandes() {
     }
   }
 
+  // Marquer en lue : (a) clear le marquage manuel s'il existe + (b) ajouter
+  // auteurNom au lu_par de chaque message d'un autre auteur non encore lu.
+  async function marquerLue(commandeId) {
+    if (!session?.user?.id) return;
+    const cmd = commandes.find(x => x.id === commandeId);
+    if (!cmd) return;
+    const nonLus = (cmd.messages || []).filter(m =>
+      m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+    );
+    await Promise.all([
+      ...nonLus.map(m =>
+        supabase.from("messages").update({ lu_par: [...(m.lu_par || []), auteurNom] }).eq("id", m.id)
+      ),
+      cmd.marque_non_lu
+        ? supabase.from("commande_marquage_non_lu").delete()
+            .eq("commande_id", commandeId).eq("user_id", session.user.id)
+        : Promise.resolve(),
+    ]);
+    setCommandes(prev => prev.map(c => {
+      if (c.id !== commandeId) return c;
+      return {
+        ...c,
+        marque_non_lu: false,
+        messages: (c.messages || []).map(m =>
+          nonLus.some(n => n.id === m.id)
+            ? { ...m, lu_par: [...(m.lu_par || []), auteurNom] }
+            : m
+        ),
+      };
+    }));
+  }
+
+  // L'une OU l'autre selon l'état actuel de la commande
+  const hasNotif = (c) => nonLusDe(c) > 0 || !!c.marque_non_lu;
+
   // En-tête de colonne cliquable pour tri (desktop tables)
   const Th = ({ col, label }) => (
     <span
@@ -517,14 +552,24 @@ export default function ListeCommandes() {
           <div
             onClick={e => e.stopPropagation()}
             style={{ position: "fixed", top, right: window.innerWidth - menuRect.right, transform, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", zIndex: 1000, minWidth: 210, overflow: "hidden" }}>
-            {/* Marquer en non lue — disponible pour les deux rôles, actives + archives */}
-            <button
-              onClick={() => { setMenuCmdId(null); marquerNonLue(c.id); }}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
-              onMouseLeave={e => e.currentTarget.style.background = "none"}>
-              🟠 Marquer en non lue
-            </button>
+            {/* Marquer en non lue / lue — mutuellement exclusifs selon l'état */}
+            {hasNotif(c) ? (
+              <button
+                onClick={() => { setMenuCmdId(null); marquerLue(c.id); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                ✓ Marquer en lue
+              </button>
+            ) : (
+              <button
+                onClick={() => { setMenuCmdId(null); marquerNonLue(c.id); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
+                onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                🟠 Marquer en non lue
+              </button>
+            )}
             {isDessinateur ? (
               /* Dessinateur menu: archive / désarchiver uniquement */
               !c.is_archived_dessinateur ? (
