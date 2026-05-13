@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "../supabase";
-import { formatDateMsg } from "../helpers";
+import { formatDateMsg, formatDateCourt } from "../helpers";
 import DetailCommandeModal from "./DetailCommandeModal";
 import ZoneUpload from "./ZoneUpload";
 
@@ -33,6 +33,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [envoyantModif, setEnvoyantModif] = useState(false);
   const [demandantValidation, setDemandantValidation] = useState(false);
   const [showDemandeValidationModal, setShowDemandeValidationModal] = useState(false);
+  const [modifNouvelleDelai, setModifNouvelleDelai] = useState("");
+  const [validNouvelleDelai, setValidNouvelleDelai] = useState("");
   const [showValiderCommandeModal, setShowValiderCommandeModal] = useState(false);
   const [validant, setValidant] = useState(false);
 
@@ -70,6 +72,14 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       .maybeSingle()
       .then(({ data }) => setNote(data?.note ?? ""));
   }, [commande?.id, session?.user?.id]); // eslint-disable-line
+
+  // Init du champ "nouvelle date" quand on ouvre les modales de demande
+  useEffect(() => {
+    if (showModifModal) setModifNouvelleDelai(commande?.delai ? commande.delai.substring(0, 10) : "");
+  }, [showModifModal, commande?.delai]);
+  useEffect(() => {
+    if (showDemandeValidationModal) setValidNouvelleDelai(commande?.delai ? commande.delai.substring(0, 10) : "");
+  }, [showDemandeValidationModal, commande?.delai]);
 
   // Auto-clear du marquage "non lue" manuel à l'ouverture de la commande
   useEffect(() => {
@@ -315,11 +325,28 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
 
   // ---- Admin/utilisateur workflow handlers ----
 
+  // Met à jour commande.delai si différent du courant.
+  // Retourne un snippet de message à concaténer ("" si aucun changement).
+  async function appliquerNouveauDelai(nouveauDelai) {
+    const courant = commande.delai ? commande.delai.substring(0, 10) : "";
+    if (nouveauDelai === courant) return "";
+    const valeur = nouveauDelai || null;
+    const { error } = await supabase.from("commandes").update({ delai: valeur }).eq("id", commande.id);
+    if (error) return "";
+    const valeurLocale = valeur && valeur.length === 10 ? valeur + "T12:00:00" : valeur;
+    setCommandes(prev => prev.map(c => c.id === commande.id ? { ...c, delai: valeurLocale } : c));
+    return valeur
+      ? `\n📅 Délai mis à jour : ${formatDateCourt(valeurLocale)}`
+      : `\n📅 Délai effacé`;
+  }
+
   async function envoyerDemandeModification() {
     // Accepte texte seul, fichier(s) seul(s), ou les deux — au moins un requis
     if (!modifMsg.trim() && modifFichiers.length === 0) return;
     setEnvoyantModif(true);
-    await envoyerMessage(commande.id, auteurNom, modifMsg, modifFichiers);
+    const snippet = await appliquerNouveauDelai(modifNouvelleDelai);
+    const texte = (modifMsg.trim() || "") + snippet;
+    await envoyerMessage(commande.id, auteurNom, texte, modifFichiers);
     await changerStatut(commande.id, "Modification dessinateur");
     supabase.functions.invoke("notify-statut", {
       body: { commande_id: commande.id, event: "modification" },
@@ -331,8 +358,9 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     if (demandantValidation) return;
     setDemandantValidation(true);
     setShowDemandeValidationModal(false);
+    const snippet = await appliquerNouveauDelai(validNouvelleDelai);
     await changerStatut(commande.id, "Validation en cours");
-    await envoyerMessage(commande.id, auteurNom, "📋 Validation demandée.");
+    await envoyerMessage(commande.id, auteurNom, "📋 Validation demandée." + snippet);
     supabase.functions.invoke("notify-statut", {
       body: { commande_id: commande.id, event: "validation_en_cours" },
     });
@@ -556,8 +584,13 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 440 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>📋 Demander la validation</div>
-            <div style={{ fontSize: 13, color: "#374151", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: "#374151", marginBottom: 16 }}>
               Le dessinateur recevra une notification et devra déposer les plans finaux. Êtes-vous sûr ?
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>📅 Mettre à jour le délai (optionnel)</label>
+              <input type="date" value={validNouvelleDelai} min={new Date().toISOString().split("T")[0]} onChange={e => setValidNouvelleDelai(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setShowDemandeValidationModal(false)}
@@ -581,6 +614,11 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>Le statut passera en "Modification dessinateur".</div>
             <textarea value={modifMsg} onChange={e => setModifMsg(e.target.value)} rows={4} placeholder="Décrivez les modifications (ou joignez juste un fichier)..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, resize: "vertical", boxSizing: "border-box", marginBottom: 14 }} />
             <ZoneUpload label="📎 Fichiers joints" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
+            <div style={{ marginTop: 14 }}>
+              <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>📅 Mettre à jour le délai (optionnel)</label>
+              <input type="date" value={modifNouvelleDelai} min={new Date().toISOString().split("T")[0]} onChange={e => setModifNouvelleDelai(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
+            </div>
             {(() => {
               const vide = !modifMsg.trim() && modifFichiers.length === 0;
               return (
