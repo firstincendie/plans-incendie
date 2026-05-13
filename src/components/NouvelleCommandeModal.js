@@ -58,7 +58,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
   const fermer = () => navigate(retour, { replace: true });
 
   async function creerCommande() {
-    if (!form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id) return;
+    if (!form.nom_plan || form.fichiersPlan.length === 0 || !form.dessinateur_id) return;
     setSaving(true);
     setSaveError("");
     const dessinateurChoisi = dessinateursDispos.find(d => d.id === form.dessinateur_id);
@@ -70,7 +70,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
       client_email: form.client_email, client_telephone: form.client_telephone,
       adresse1: form.adresse1, adresse2: form.adresse2,
       code_postal: form.code_postal, ville: form.ville,
-      delai: form.delai,
+      delai: form.delai || null,
       plans: form.plans,
       fichiers_plan: form.fichiersPlan,
       logo_client: form.logoClient,
@@ -115,7 +115,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
     fermer();
   }
 
-  const submitDisabled = !form.nom_plan || !form.delai || form.fichiersPlan.length === 0 || !form.dessinateur_id;
+  const submitDisabled = !form.nom_plan || form.fichiersPlan.length === 0 || !form.dessinateur_id;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
@@ -188,7 +188,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Délai souhaité *</label>
+            <label style={labelStyle}>Délai souhaité</label>
             <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
           </div>
 
