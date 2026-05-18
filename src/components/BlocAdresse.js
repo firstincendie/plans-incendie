@@ -12,7 +12,6 @@ export default function BlocAdresse({ commande }) {
 
   return (
     <div style={{ marginBottom: 16, padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #E5E7EB" }}>
-      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 6 }}>📍 Adresse</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {lignes.map(l => (
           <LigneCopiable key={l.label} label={l.label} valeur={l.val} labelWidth={60} />

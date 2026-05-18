@@ -13,7 +13,6 @@ export default function BlocContact({ commande }) {
 
   return (
     <div style={{ background: "#F9FAFB", border: "1px solid #D1D5DB", borderRadius: 8, padding: "10px 14px" }}>
-      <div style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600, marginBottom: 6 }}>👤 Contact</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {lignes.map(l => (
           <LigneCopiable key={l.label} label={l.label} valeur={l.val} href={l.href} labelWidth={70} />
