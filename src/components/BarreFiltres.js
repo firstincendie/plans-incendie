@@ -16,7 +16,7 @@ export default function BarreFiltres({ commandes, filtres, setFiltres, showDessi
         type="text"
         value={filtres.q || ""}
         onChange={e => setFiltres({ ...filtres, q: e.target.value })}
-        placeholder="🔍 Rechercher (plan, client, ref)"
+        placeholder="🔍 Rechercher (plan, client, email, ref)"
         style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", minWidth: 180, flex: "1 1 220px", boxSizing: "border-box" }}
       />
 
@@ -90,6 +90,7 @@ export function appliquerFiltresTri(commandes, filtres, tri) {
       norm(c.nom_plan).includes(q) ||
       norm(c.client_nom).includes(q) ||
       norm(c.client_prenom).includes(q) ||
+      norm(c.client_email).includes(q) ||
       norm(c.ref).includes(q)
     );
   }
