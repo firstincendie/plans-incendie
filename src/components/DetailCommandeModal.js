@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { formatDateCourt, formatDateBulle, joursRestants } from "../helpers";
 import Badge from "./Badge";
 import BlocAdresse from "./BlocAdresse";
+import BlocContact from "./BlocContact";
 import Messagerie from "./Messagerie";
 import TableauPlans from "./TableauPlans";
 
@@ -87,35 +88,16 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
         </div>
       </div>
 
-      {/* Adresse + Contacts */}
-      <div style={{ display: "grid", gridTemplateColumns: showContacts ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 24 }}>
+      {/* Adresse + Contact */}
+      <div className="detail-adr-contact" style={{ display: "grid", gridTemplateColumns: showContacts ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 24 }}>
         <div>
           <SectionTitle>Adresse</SectionTitle>
-          <BlocAdresse commande={selected} copiable={showContacts} />
+          <BlocAdresse commande={selected} />
         </div>
         {showContacts && (
           <div>
-            <SectionTitle>Contacts</SectionTitle>
-            <div style={{ background: "#F9FAFB", border: "1px solid #D1D5DB", borderRadius: 8, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
-              {selected.client_prenom || selected.client_nom ? (
-                <div>
-                  <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Nom</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{`${selected.client_prenom ?? ""} ${selected.client_nom ?? ""}`.trim()}</div>
-                </div>
-              ) : null}
-              {selected.client_email && (
-                <div>
-                  <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Email</div>
-                  <a href={`mailto:${selected.client_email}`} style={{ fontSize: 13, color: "#2563EB", textDecoration: "none" }}>{selected.client_email}</a>
-                </div>
-              )}
-              {selected.client_telephone && (
-                <div>
-                  <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Téléphone</div>
-                  <a href={`tel:${selected.client_telephone}`} style={{ fontSize: 13, color: "#2563EB", textDecoration: "none" }}>{selected.client_telephone}</a>
-                </div>
-              )}
-            </div>
+            <SectionTitle>Contact</SectionTitle>
+            <BlocContact commande={selected} />
           </div>
         )}
       </div>
@@ -250,11 +232,11 @@ function buildChangesText(original, editForm) {
     lines.push(`- Délai : ${fmtOld} → ${fmtNew}`);
   }
 
-  const contactFields = ["client_nom", "client_prenom", "client_email", "client_telephone"];
+  const contactFields = ["client_societe", "client_nom", "client_prenom", "client_email", "client_telephone"];
   if (contactFields.some(f => (editForm[f] || "") !== (original[f] || "")))
-    lines.push("- Contacts mis à jour");
+    lines.push("- Contact mis à jour");
 
-  const adresseFields = ["adresse1", "adresse2", "code_postal", "ville"];
+  const adresseFields = ["numero_rue", "adresse1", "code_postal", "ville"];
   if (adresseFields.some(f => (editForm[f] || "") !== (original[f] || "")))
     lines.push("- Adresse mise à jour");
 
@@ -293,14 +275,17 @@ function EditContent({ editForm, setEditForm }) {
         <input type="date" style={inputStyle} value={editForm.delai || ""} onChange={e => set("delai", e.target.value)} />
       </div>
 
-      {/* Contacts */}
+      {/* Contact */}
       <div style={{ marginBottom: 16 }}>
-        <SectionTitle>Contacts</SectionTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <div><label style={labelStyle}>Prénom</label><input style={inputStyle} value={editForm.client_prenom || ""} onChange={e => set("client_prenom", e.target.value)} /></div>
-          <div><label style={labelStyle}>Nom</label><input style={inputStyle} value={editForm.client_nom || ""} onChange={e => set("client_nom", e.target.value)} /></div>
-          <div><label style={labelStyle}>Email</label><input type="email" style={inputStyle} value={editForm.client_email || ""} onChange={e => set("client_email", e.target.value)} /></div>
-          <div><label style={labelStyle}>Téléphone</label><input style={inputStyle} value={editForm.client_telephone || ""} onChange={e => set("client_telephone", e.target.value)} /></div>
+        <SectionTitle>Contact</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div><label style={labelStyle}>Société</label><input style={inputStyle} value={editForm.client_societe || ""} onChange={e => set("client_societe", e.target.value)} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div><label style={labelStyle}>Nom</label><input style={inputStyle} value={editForm.client_nom || ""} onChange={e => set("client_nom", e.target.value)} /></div>
+            <div><label style={labelStyle}>Prénom</label><input style={inputStyle} value={editForm.client_prenom || ""} onChange={e => set("client_prenom", e.target.value)} /></div>
+            <div><label style={labelStyle}>Email</label><input type="email" style={inputStyle} value={editForm.client_email || ""} onChange={e => set("client_email", e.target.value)} /></div>
+            <div><label style={labelStyle}>Téléphone</label><input style={inputStyle} value={editForm.client_telephone || ""} onChange={e => set("client_telephone", e.target.value)} /></div>
+          </div>
         </div>
       </div>
 
@@ -308,8 +293,10 @@ function EditContent({ editForm, setEditForm }) {
       <div style={{ marginBottom: 16 }}>
         <SectionTitle>Adresse</SectionTitle>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <input style={inputStyle} placeholder="Adresse ligne 1" value={editForm.adresse1 || ""} onChange={e => set("adresse1", e.target.value)} />
-          <input style={inputStyle} placeholder="Adresse ligne 2" value={editForm.adresse2 || ""} onChange={e => set("adresse2", e.target.value)} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 3fr", gap: 6 }}>
+            <input style={inputStyle} placeholder="N°" value={editForm.numero_rue || ""} onChange={e => set("numero_rue", e.target.value)} />
+            <input style={inputStyle} placeholder="Rue" value={editForm.adresse1 || ""} onChange={e => set("adresse1", e.target.value)} />
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 6 }}>
             <input style={inputStyle} placeholder="Code postal" value={editForm.code_postal || ""} onChange={e => set("code_postal", e.target.value)} />
             <input style={inputStyle} placeholder="Ville" value={editForm.ville || ""} onChange={e => set("ville", e.target.value)} />
@@ -429,12 +416,13 @@ export default function DetailCommandeModal({
     if (!selected) return;
     setEditForm({
       nom_plan: selected.nom_plan || "",
+      client_societe: selected.client_societe || "",
       client_nom: selected.client_nom || "",
       client_prenom: selected.client_prenom || "",
       client_email: selected.client_email || "",
       client_telephone: selected.client_telephone || "",
+      numero_rue: selected.numero_rue || "",
       adresse1: selected.adresse1 || "",
-      adresse2: selected.adresse2 || "",
       code_postal: selected.code_postal || "",
       ville: selected.ville || "",
       delai: selected.delai ? selected.delai.substring(0, 10) : "",
@@ -448,12 +436,13 @@ export default function DetailCommandeModal({
     setSavingEdit(true);
     const updates = {
       nom_plan: editForm.nom_plan,
+      client_societe: editForm.client_societe || null,
       client_nom: editForm.client_nom,
       client_prenom: editForm.client_prenom,
       client_email: editForm.client_email,
       client_telephone: editForm.client_telephone,
+      numero_rue: editForm.numero_rue || null,
       adresse1: editForm.adresse1,
-      adresse2: editForm.adresse2,
       code_postal: editForm.code_postal,
       ville: editForm.ville,
       delai: editForm.delai || null,

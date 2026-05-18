@@ -20,8 +20,9 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
   const formVide = (defaultDessinateurId = "") => ({
     utilisateur_id: profil.id,
     nom_plan: "",
+    client_societe: "",
     client_nom: "", client_prenom: "", client_email: "", client_telephone: "",
-    adresse1: "", adresse2: "", code_postal: "", ville: "",
+    numero_rue: "", adresse1: "", code_postal: "", ville: "",
     delai: "",
     plans: [planVide()],
     fichiersPlan: [],
@@ -66,9 +67,11 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
     const { data, error } = await supabase.from("commandes").insert([{
       utilisateur_id: form.utilisateur_id,
       nom_plan: form.nom_plan,
+      client_societe: form.client_societe || null,
       client_nom: form.client_nom, client_prenom: form.client_prenom,
       client_email: form.client_email, client_telephone: form.client_telephone,
-      adresse1: form.adresse1, adresse2: form.adresse2,
+      numero_rue: form.numero_rue || null,
+      adresse1: form.adresse1,
       code_postal: form.code_postal, ville: form.ville,
       delai: form.delai || null,
       plans: form.plans,
@@ -143,9 +146,14 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
             <input type="text" value={form.nom_plan} placeholder="Ex: Résidence Les Pins — Bât A" onChange={e => setForm({ ...form, nom_plan: e.target.value })} style={inputStyle} />
           </div>
 
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Société</label>
+            <input type="text" value={form.client_societe} onChange={e => setForm({ ...form, client_societe: e.target.value })} style={inputStyle} />
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div><label style={labelStyle}>Prénom client</label><input type="text" value={form.client_prenom} onChange={e => setForm({ ...form, client_prenom: e.target.value })} style={inputStyle} /></div>
             <div><label style={labelStyle}>Nom client</label><input type="text" value={form.client_nom} onChange={e => setForm({ ...form, client_nom: e.target.value })} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Prénom client</label><input type="text" value={form.client_prenom} onChange={e => setForm({ ...form, client_prenom: e.target.value })} style={inputStyle} /></div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -155,8 +163,10 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
 
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Adresse</label>
-            <input type="text" value={form.adresse1} placeholder="Adresse ligne 1" onChange={e => setForm({ ...form, adresse1: e.target.value })} style={{ ...inputStyle, marginBottom: 6 }} />
-            <input type="text" value={form.adresse2} placeholder="Complément d'adresse" onChange={e => setForm({ ...form, adresse2: e.target.value })} style={{ ...inputStyle, marginBottom: 6 }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 3fr", gap: 8, marginBottom: 6 }}>
+              <input type="text" value={form.numero_rue} placeholder="N°" onChange={e => setForm({ ...form, numero_rue: e.target.value })} style={inputStyle} />
+              <input type="text" value={form.adresse1} placeholder="Rue" onChange={e => setForm({ ...form, adresse1: e.target.value })} style={inputStyle} />
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 8 }}>
               <input type="text" value={form.code_postal} placeholder="Code postal" onChange={e => setForm({ ...form, code_postal: e.target.value })} style={inputStyle} />
               <input type="text" value={form.ville} placeholder="Ville" onChange={e => setForm({ ...form, ville: e.target.value })} style={inputStyle} />

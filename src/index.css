@@ -128,6 +128,8 @@ code {
   .gu-cards { display: block; }
   .cmd-table { display: none; }
   .cmd-cards { display: block; }
+  /* Adresse + Contact : stack vertical sur mobile au lieu de cote-a-cote */
+  .detail-adr-contact { grid-template-columns: 1fr !important; }
 }
 
 /* ===== Sidebar mobile ===== */
