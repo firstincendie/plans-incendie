@@ -589,8 +589,16 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>📅 Mettre à jour le délai (optionnel)</label>
-              <input type="date" value={validNouvelleDelai} min={new Date().toISOString().split("T")[0]} onChange={e => setValidNouvelleDelai(e.target.value)}
-                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
+              <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+                <input type="date" value={validNouvelleDelai} min={new Date().toISOString().split("T")[0]} onChange={e => setValidNouvelleDelai(e.target.value)}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
+                {validNouvelleDelai && (
+                  <button type="button" onClick={() => setValidNouvelleDelai("")} title="Effacer la date"
+                    style={{ padding: "0 12px", borderRadius: 8, border: "1px solid #D1D5DB", background: "#fff", fontSize: 13, color: "#6B7280", cursor: "pointer" }}>
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setShowDemandeValidationModal(false)}
@@ -616,8 +624,16 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
             <ZoneUpload label="📎 Fichiers joints" fichiers={modifFichiers} onAjouter={f => setModifFichiers(f)} onSupprimer={i => setModifFichiers(modifFichiers.filter((_, idx) => idx !== i))} accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
             <div style={{ marginTop: 14 }}>
               <label style={{ fontSize: 12, color: "#6B7280", display: "block", marginBottom: 4, fontWeight: 600 }}>📅 Mettre à jour le délai (optionnel)</label>
-              <input type="date" value={modifNouvelleDelai} min={new Date().toISOString().split("T")[0]} onChange={e => setModifNouvelleDelai(e.target.value)}
-                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
+              <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+                <input type="date" value={modifNouvelleDelai} min={new Date().toISOString().split("T")[0]} onChange={e => setModifNouvelleDelai(e.target.value)}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
+                {modifNouvelleDelai && (
+                  <button type="button" onClick={() => setModifNouvelleDelai("")} title="Effacer la date"
+                    style={{ padding: "0 12px", borderRadius: 8, border: "1px solid #D1D5DB", background: "#fff", fontSize: 13, color: "#6B7280", cursor: "pointer" }}>
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
             {(() => {
               const vide = !modifMsg.trim() && modifFichiers.length === 0;

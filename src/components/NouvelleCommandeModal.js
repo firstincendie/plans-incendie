@@ -199,7 +199,15 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
 
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Délai souhaité</label>
-            <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={inputStyle} />
+            <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+              <input type="date" value={form.delai} min={new Date().toISOString().split("T")[0]} onChange={e => setForm({ ...form, delai: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
+              {form.delai && (
+                <button type="button" onClick={() => setForm({ ...form, delai: "" })} title="Effacer la date"
+                  style={{ padding: "0 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, color: "#6B7280", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={{ marginBottom: 12 }}>

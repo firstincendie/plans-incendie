@@ -272,7 +272,15 @@ function EditContent({ editForm, setEditForm }) {
       {/* Délai */}
       <div style={{ marginBottom: 16 }}>
         <SectionTitle>Délai</SectionTitle>
-        <input type="date" style={inputStyle} value={editForm.delai || ""} onChange={e => set("delai", e.target.value)} />
+        <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+          <input type="date" style={{ ...inputStyle, flex: 1 }} value={editForm.delai || ""} onChange={e => set("delai", e.target.value)} />
+          {editForm.delai && (
+            <button type="button" onClick={() => set("delai", "")} title="Effacer la date"
+              style={{ padding: "0 12px", borderRadius: 7, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, color: "#6B7280", cursor: "pointer" }}>
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Contact */}
