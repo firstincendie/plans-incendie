@@ -351,9 +351,18 @@ export default function ListeArchives() {
     <div onClick={() => { menuCmdId && setMenuCmdId(null); }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-          {isDessinateur ? "Missions archivées" : "Archives"}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+          <span>{isDessinateur ? "Missions archivées" : "Archives"}</span>
+          {(() => {
+            const n = commandesVisibles.filter(c => c[champArchive] === true && hasNotif(c)).length;
+            return n > 0 ? (
+              <span title={`${n} commande${n > 1 ? "s" : ""} archivée${n > 1 ? "s" : ""} avec notification`}
+                style={{ background: "#FC6C1B", color: "#fff", borderRadius: 12, padding: "2px 10px", fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>
+                {n}
+              </span>
+            ) : null;
+          })()}
         </h1>
       </div>
 
