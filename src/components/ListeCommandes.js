@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate, useOutletContext, Outlet } from "react-router-dom";
 import { supabase } from "../supabase";
-import { formatDateCourt, joursRestants } from "../helpers";
+import { formatDateCourt, joursRestants, delaiPalette } from "../helpers";
 import Badge from "./Badge";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 
@@ -233,7 +233,7 @@ export default function ListeCommandes() {
           ? `${profil.prenom} ${profil.nom}`
           : `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim());
     const j = joursRestants(c.delai);
-    const rouge = j !== null && j <= 3;
+    const d = delaiPalette(j);
     return (
       <div key={c.id} onClick={() => ouvrirDetail(c)}
         style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: "transparent", opacity: dim ? 0.75 : 1, transition: "background 0.1s" }}
@@ -253,8 +253,8 @@ export default function ListeCommandes() {
         <div>
           {c.delai ? (
             <>
-              <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{formatDateCourt(c.delai)}</div>
-              {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
+              <div style={{ fontSize: 12, color: d.text }}>{formatDateCourt(c.delai)}</div>
+              {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: d.accent ? d.text : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
             </>
           ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
         </div>
@@ -272,7 +272,7 @@ export default function ListeCommandes() {
 
   function renderCarteCmdUtilisateur(c, dim = false) {
     const j = joursRestants(c.delai);
-    const rouge = j !== null && j <= 3;
+    const d = delaiPalette(j);
     const owner = sousComptes.find(s => s.id === c.utilisateur_id);
     const ownerLabel = owner ? `${owner.prenom} ${owner.nom}` : null;
     return (
@@ -298,7 +298,7 @@ export default function ListeCommandes() {
           </div>
         </div>
         {c.delai && (
-          <div style={{ marginTop: 6, fontSize: 11, color: rouge ? "#DC2626" : "#9CA3AF", fontWeight: rouge ? 600 : 400 }}>
+          <div style={{ marginTop: 6, fontSize: 11, color: d.accent ? d.text : "#9CA3AF", fontWeight: d.accent ? 600 : 400 }}>
             {formatDateCourt(c.delai)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
           </div>
         )}
@@ -316,7 +316,7 @@ export default function ListeCommandes() {
   function renderLigneCmdDessinateur(c, dim = false) {
     const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
     const j = joursRestants(c.delai);
-    const rouge = j !== null && j <= 3;
+    const d = delaiPalette(j);
     return (
       <div key={c.id} onClick={() => ouvrirDetail(c)}
         style={{ display: "grid", gridTemplateColumns: cmdColsDessinateur, padding: "14px 20px", borderBottom: "1px solid #F3F4F6", alignItems: "center", cursor: "pointer", background: "transparent", opacity: dim ? 0.75 : 1, transition: "background 0.1s" }}
@@ -333,8 +333,8 @@ export default function ListeCommandes() {
         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
         <div>
-          <div style={{ fontSize: 12, color: rouge ? "#DC2626" : "#6B7280" }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
-          {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: rouge ? "#DC2626" : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
+          <div style={{ fontSize: 12, color: d.text }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+          {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: d.accent ? d.text : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
         </div>
         <Badge statut={c.statut} />
         <div onClick={e => e.stopPropagation()}>
@@ -350,7 +350,7 @@ export default function ListeCommandes() {
 
   function renderCarteCmdDessinateur(c, dim = false) {
     const j = joursRestants(c.delai);
-    const rouge = j !== null && j <= 3;
+    const d = delaiPalette(j);
     return (
       <div key={c.id} onClick={() => ouvrirDetail(c)}
         style={{ background: "#fff", border: "1.5px solid #E5E7EB", borderRadius: 10, padding: "12px 14px", marginBottom: 8, cursor: "pointer", opacity: dim ? 0.75 : 1 }}>
@@ -374,7 +374,7 @@ export default function ListeCommandes() {
           </div>
         </div>
         {c.delai && (
-          <div style={{ marginTop: 6, fontSize: 11, color: rouge ? "#DC2626" : "#9CA3AF", fontWeight: rouge ? 600 : 400 }}>
+          <div style={{ marginTop: 6, fontSize: 11, color: d.accent ? d.text : "#9CA3AF", fontWeight: d.accent ? 600 : 400 }}>
             {formatDateCourt(c.delai)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
           </div>
         )}

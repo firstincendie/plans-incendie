@@ -74,3 +74,17 @@ export function joursRestants(dateStr) {
   const diff = new Date(dateStr).setHours(0,0,0,0) - new Date().setHours(0,0,0,0);
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
+
+// Palette de couleurs pour l'affichage d'un délai en fonction des jours restants :
+//  - dépassé (j < 0)      → violet
+//  - urgent (0..2 jours)  → rouge
+//  - proche (3..7 jours)  → orange
+//  - loin (> 7) / null    → neutre gris
+export function delaiPalette(j) {
+  const neutre = { accent: false, text: "#6B7280", bg: "#F3F4F6", border: "#E5E7EB" };
+  if (j === null || j === undefined) return neutre;
+  if (j < 0)  return { accent: true, text: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" }; // violet — dépassé
+  if (j < 3)  return { accent: true, text: "#DC2626", bg: "#FEF2F2", border: "#FECACA" }; // rouge — < 3 jours
+  if (j <= 7) return { accent: true, text: "#D97706", bg: "#FFFBEB", border: "#FDE68A" }; // orange — 3 à 7 jours
+  return neutre;
+}

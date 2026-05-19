@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { formatDateCourt, formatDateBulle, joursRestants } from "../helpers";
+import { formatDateCourt, formatDateBulle, joursRestants, delaiPalette } from "../helpers";
 import Badge from "./Badge";
 import BlocAdresse from "./BlocAdresse";
 import BlocContact from "./BlocContact";
@@ -51,9 +51,10 @@ function LigneFichier({ fichier }) {
 
 function InfosContent({ selected, versionsSelected, showContacts }) {
   const jours = joursRestants(selected.delai);
-  const couleurDelai = jours !== null && jours <= 3 ? "#DC2626" : "#78350F";
-  const bgDelai = jours !== null && jours <= 3 ? "#FEF2F2" : "#FEF3C7";
-  const borderDelai = jours !== null && jours <= 3 ? "#FECACA" : "#FDE68A";
+  const palette = delaiPalette(jours);
+  const couleurDelai = palette.text;
+  const bgDelai = palette.bg;
+  const borderDelai = palette.border;
 
   // Fichiers de toutes les versions
   const fichiersVersions = versionsSelected.flatMap(v =>
