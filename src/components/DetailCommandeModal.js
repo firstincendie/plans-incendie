@@ -89,18 +89,18 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
         </div>
       </div>
 
-      {/* Adresse + Contact */}
+      {/* Contact + Adresse */}
       <div className="detail-adr-contact" style={{ display: "grid", gridTemplateColumns: showContacts ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 24 }}>
-        <div>
-          <SectionTitle>Adresse</SectionTitle>
-          <BlocAdresse commande={selected} />
-        </div>
         {showContacts && (
           <div>
             <SectionTitle>Contact</SectionTitle>
             <BlocContact commande={selected} />
           </div>
         )}
+        <div>
+          <SectionTitle>Adresse</SectionTitle>
+          <BlocAdresse commande={selected} />
+        </div>
       </div>
 
       {/* Tableau des plans */}

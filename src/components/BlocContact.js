@@ -3,10 +3,10 @@ import LigneCopiable from "./LigneCopiable";
 export default function BlocContact({ commande }) {
   const lignes = [
     { label: "Société", val: commande.client_societe,   href: null },
-    { label: "Nom",     val: commande.client_nom,       href: null },
     { label: "Prénom",  val: commande.client_prenom,    href: null },
-    { label: "Email",   val: commande.client_email,     href: commande.client_email ? `mailto:${commande.client_email}` : null },
+    { label: "Nom",     val: commande.client_nom,       href: null },
     { label: "Tel",     val: commande.client_telephone, href: commande.client_telephone ? `tel:${commande.client_telephone}` : null },
+    { label: "Email",   val: commande.client_email,     href: commande.client_email ? `mailto:${commande.client_email}` : null },
   ];
   const hasAny = lignes.some(l => l.val);
   if (!hasAny) return null;
