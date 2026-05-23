@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "../supabase";
-import { formatDateMsg, formatDateCourt } from "../helpers";
+import { formatDateMsg, formatDateCourt, ajouterJours } from "../helpers";
 import DetailCommandeModal from "./DetailCommandeModal";
 import ZoneUpload from "./ZoneUpload";
 
@@ -73,12 +73,13 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       .then(({ data }) => setNote(data?.note ?? ""));
   }, [commande?.id, session?.user?.id]); // eslint-disable-line
 
-  // Init du champ "nouvelle date" quand on ouvre les modales de demande
+  // Init du champ "nouvelle date" quand on ouvre les modales de demande.
+  // Défaut : délai actuel + 3 jours (ou aujourd'hui + 3 si pas de délai).
   useEffect(() => {
-    if (showModifModal) setModifNouvelleDelai(commande?.delai ? commande.delai.substring(0, 10) : "");
+    if (showModifModal) setModifNouvelleDelai(ajouterJours(commande?.delai || null, 3));
   }, [showModifModal, commande?.delai]);
   useEffect(() => {
-    if (showDemandeValidationModal) setValidNouvelleDelai(commande?.delai ? commande.delai.substring(0, 10) : "");
+    if (showDemandeValidationModal) setValidNouvelleDelai(ajouterJours(commande?.delai || null, 3));
   }, [showDemandeValidationModal, commande?.delai]);
 
   // Auto-clear du marquage "non lue" manuel à l'ouverture de la commande

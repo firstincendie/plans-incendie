@@ -75,6 +75,15 @@ export function joursRestants(dateStr) {
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
+// Ajoute days jours à baseDateStr (ou à aujourd'hui si baseDateStr est null/vide)
+// et retourne au format ISO court "YYYY-MM-DD" — directement compatible <input type="date" />.
+export function ajouterJours(baseDateStr, days) {
+  const d = baseDateStr ? new Date(baseDateStr) : new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().substring(0, 10);
+}
+
 // Palette de couleurs pour l'affichage d'un délai en fonction des jours restants :
 //  - dépassé (j < 0)      → violet
 //  - urgent (0..2 jours)  → rouge

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { supabase } from "../supabase";
-import { formatDateMsg } from "../helpers";
+import { formatDateMsg, ajouterJours } from "../helpers";
 import { planVide } from "../constants";
 import TableauPlans from "./TableauPlans";
 import ZoneUpload from "./ZoneUpload";
@@ -23,7 +23,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
     client_societe: "",
     client_nom: "", client_prenom: "", client_email: "", client_telephone: "",
     numero_rue: "", adresse1: "", code_postal: "", ville: "",
-    delai: "",
+    delai: ajouterJours(null, 7), // défaut : aujourd'hui + 7 jours
     plans: [planVide()],
     fichiersPlan: [],
     logoClient: [],
