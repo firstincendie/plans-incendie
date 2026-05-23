@@ -14,16 +14,17 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const auteurNomRef = useRef(auteurNom);
   auteurNomRef.current = auteurNom;
 
-  // Total unread messages across non-archived commandes (for sidebar badge)
+  // Nombre de commandes actives avec notification (messages non lus OU marquage manuel)
+  // — même décompte que la pastille a cote du titre de la page Commandes.
   const role = profil.role;
-  const totalNonLus = commandes
-    .filter(c => role === "dessinateur" ? !c.is_archived_dessinateur : !c.is_archived)
-    .reduce((acc, c) => {
-      const n = c.messages.filter(
-        m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
-      ).length;
-      return acc + n;
-    }, 0);
+  const totalNonLus = commandes.filter(c => {
+    const archived = role === "dessinateur" ? c.is_archived_dessinateur : c.is_archived;
+    if (archived) return false;
+    const nbNonLus = (c.messages || []).filter(
+      m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)
+    ).length;
+    return nbNonLus > 0 || c.marque_non_lu;
+  }).length;
 
   useEffect(() => {
     chargerTout();
