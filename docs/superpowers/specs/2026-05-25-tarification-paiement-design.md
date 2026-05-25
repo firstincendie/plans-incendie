@@ -1,6 +1,6 @@
 # Cahier des charges — Tarification & Paiement
 
-**Produit :** Plans‑Incendie · **Date :** 2026‑05‑25 · **Version :** 1.2 · **Statut :** À valider
+**Produit :** Plans‑Incendie · **Date :** 2026‑05‑25 · **Version :** 1.3 · **Statut :** À valider
 
 > Ce document remplace le brouillon de brainstorm précédent (facturation mensuelle / modèle linéaire), abandonné au profit du modèle décrit ici : **commande à formats de délai, paiement par carte à la validation, encaissement par la société puis reversement aux dessinateurs**.
 
@@ -42,7 +42,7 @@ L'objectif est d'ajouter :
 - **Format de délai** : engagement de rapidité choisi à la commande (24h, 48h, 72h, normale).
 - **Temps dessinateur** : temps réellement passé par le dessinateur, décompté **uniquement pendant ses heures de travail** et **mis en pause** quand on attend le client.
 - **Plan principal** : plan détaillé complet, facturé au **plein tarif** (type × format).
-- **Déclinaison** : plan d'évacuation **dérivé** d'un principal, où seul l'emplacement / le repère « Vous êtes ici » change → **tarif réduit forfaitaire**.
+- **Déclinaison** : plan **dérivé** d'un principal — **d'intervention ou d'évacuation** —, réutilisant le travail (souvent en déplaçant le « Vous êtes ici ») → **tarif réduit forfaitaire**.
 - **Déclassement** : recalcul automatique du prix au format réellement tenu quand le dessinateur est en retard.
 - **Filigrane** : marquage visible **« ÉBAUCHE »** sur l'aperçu et le document téléchargeable, retiré après paiement.
 - **Destination charge (Stripe Connect)** : le client paie une fois ; le prestataire répartit automatiquement la part du dessinateur et la commission de la société, sans porte‑monnaie permanent.
@@ -60,19 +60,30 @@ L'objectif est d'ajouter :
 Une même base de travail sert souvent à produire plusieurs plans : le dessinateur réalise un plan, puis le **décline** (il ne recommence pas de zéro). On distingue donc :
 
 - **Plan principal** : plan complet, **plein tarif** selon (type × format).
-- **Déclinaison** : plan d'évacuation **dérivé** d'un principal (ex. une évacuation tirée de l'intervention, ou une copie où seul le « Vous êtes ici » change de place) → **tarif réduit forfaitaire**, **identique quel que soit son format ou son type**.
+- **Déclinaison** : plan **dérivé** d'un principal, **d'intervention ou d'évacuation** (ex. une évacuation tirée de l'intervention, ou une copie où seul le « Vous êtes ici » change de place) → **tarif réduit forfaitaire**, **identique quel que soit son format ou son type**.
 
 **Règles :**
 
 - Un **Plan de masse** est **toujours principal et autonome** : il ne peut **jamais** être une déclinaison, et on ne lui rattache pas de déclinaison.
-- Une déclinaison est toujours rattachée à un principal **Intervention** ou **Évacuation**.
+- Une déclinaison est rattachée à un principal **Intervention** ou **Évacuation**, et peut elle‑même être de type **Intervention** ou **Évacuation**.
 
 **Composition à la commande (étape 1) :**
 
 - Le client ajoute un **plan principal** (type + format → plein tarif).
-- Sous un principal Intervention / Évacuation, il ajoute des **déclinaisons** (bouton « + Ajouter une déclinaison »), chacune avec son **emplacement** et son format → tarif déclinaison.
-- Le client peut créer **plusieurs principaux** (ex. plusieurs bâtiments), chacun avec ses déclinaisons.
+- Sous un principal Intervention / Évacuation, il ajoute des **déclinaisons** (bouton « + Ajouter une déclinaison »), chacune avec son **type** (intervention ou évacuation), **format, orientation, matière et emplacement** → tarif déclinaison.
+- Le client peut créer **plusieurs principaux** (bouton « + Ajouter un plan »), chacun avec ses déclinaisons.
 - À la **prise en charge**, le dessinateur peut requalifier le **format** ou la **nature principal ↔ déclinaison** (cf. §10).
+
+Structure type :
+
+```
+• Plan intervention — A3 — Horizontal — Bâche        [principal]
+     - Plan intervention — A3 — Horizontal — Bâche   [déclinaison]
+     - Plan évacuation  — A3 — Horizontal — Bâche    [déclinaison]
+     - + Ajouter une déclinaison
+• Plan de masse — A2 — Vertical — PVC                [principal autonome]
++ Ajouter un plan
+```
 
 **Exemples :**
 
