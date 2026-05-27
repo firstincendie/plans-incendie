@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
 import { formatDateMsg, formatDateCourt, ajouterJours } from "../helpers";
 import DetailCommandeModal from "./DetailCommandeModal";
@@ -8,6 +8,10 @@ import ZoneUpload from "./ZoneUpload";
 export default function ModalDetailCommande({ retour = "/commandes" }) {
   const { ref } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // search params courants propages depuis la liste — on les replace dans retour
+  // pour preserver les filtres / tri quand on ferme le detail.
+  const retourAvecParams = `${retour}${location.search}`;
   const { commandes, setCommandes, profil, session } = useOutletContext();
 
   const commande = commandes.find(c => c.ref === decodeURIComponent(ref || ""));
@@ -45,7 +49,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   useEffect(() => {
     if (commandes.length > 0 && !commande) {
       console.warn(`Commande introuvable : ${ref}`);
-      navigate(retour, { replace: true });
+      navigate(retourAvecParams, { replace: true });
     }
   }, [commande, commandes.length, ref, retour, navigate]);
 
@@ -102,6 +106,21 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const versionsSelected = versions.filter(v => v.commande_id === commande.id);
 
   // ---- Helpers ----
+
+  // Suppression d'un message ou d'une note. La RLS messages_delete enforce les
+  // règles côté serveur (auteur match + note OU lu_par vide).
+  async function supprimerMessage(messageId) {
+    if (!messageId) return;
+    const { error } = await supabase.from("messages").delete().eq("id", messageId);
+    if (error) {
+      console.error("Suppression message:", error);
+      return;
+    }
+    setCommandes(prev => prev.map(c => c.id !== commande.id ? c : {
+      ...c,
+      messages: (c.messages || []).filter(m => m.id !== messageId),
+    }));
+  }
 
   async function envoyerMessage(commandeId, auteur, texte, fichiers = [], options = {}) {
     const { data, error } = await supabase.from("messages").insert([{
@@ -191,7 +210,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     const { error } = await supabase.from("commandes").update({ is_archived: true }).eq("id", id);
     if (!error) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived: true } : c));
-      navigate(retour, { replace: true });
+      navigate(retourAvecParams, { replace: true });
     }
   }
 
@@ -199,7 +218,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     const { error } = await supabase.from("commandes").update({ is_archived: false }).eq("id", id);
     if (!error) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived: false } : c));
-      navigate(retour, { replace: true });
+      navigate(retourAvecParams, { replace: true });
     }
   }
 
@@ -207,7 +226,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     const { error } = await supabase.from("commandes").update({ is_archived_dessinateur: false }).eq("id", id);
     if (!error) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived_dessinateur: false } : c));
-      navigate(retour, { replace: true });
+      navigate(retourAvecParams, { replace: true });
     }
   }
 
@@ -215,7 +234,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     const { error } = await supabase.from("commandes").update({ is_archived_dessinateur: true }).eq("id", id);
     if (!error) {
       setCommandes(prev => prev.map(c => c.id === id ? { ...c, is_archived_dessinateur: true } : c));
-      navigate(retour, { replace: true });
+      navigate(retourAvecParams, { replace: true });
     }
   }
 
@@ -239,7 +258,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         { ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] },
         ...prev,
       ]);
-      navigate(retour, { replace: true });
+      navigate(retourAvecParams, { replace: true });
     }
   }
 
@@ -473,7 +492,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       <DetailCommandeModal
         selected={commande}
         versionsSelected={versionsSelected}
-        onClose={() => navigate(retour)}
+        onClose={() => navigate(retourAvecParams)}
         onArchiver={onArchiver}
         onDesarchiver={onDesarchiver}
         onSupprimer={onSupprimer}
@@ -484,6 +503,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         msgInput={msgInput}
         setMsgInput={setMsgInput}
         onEnvoyer={envoyerMessageHandler}
+        onSupprimerMessage={supprimerMessage}
         auteurNom={auteurNom}
         onMarquerLu={() => marquerMessagesLus(commande.id)}
         note={note}
