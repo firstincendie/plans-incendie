@@ -51,7 +51,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       console.warn(`Commande introuvable : ${ref}`);
       navigate(retourAvecParams, { replace: true });
     }
-  }, [commande, commandes.length, ref, retour, navigate]);
+  }, [commande, commandes.length, ref, retourAvecParams, navigate]);
 
   // Fetch versions for this commande
   useEffect(() => {
