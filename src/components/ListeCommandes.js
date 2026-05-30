@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams, useNavigate, useOutletContext, Outlet } from "react-router-dom";
+import { useSearchParams, useNavigate, useOutletContext, useLocation, Outlet } from "react-router-dom";
 import { supabase } from "../supabase";
 import { formatDateCourt, joursRestants, delaiPalette } from "../helpers";
 import Badge from "./Badge";
@@ -13,6 +13,7 @@ export default function ListeCommandes() {
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // --- Filters from URL ---
   const filtres = {
@@ -214,8 +215,10 @@ export default function ListeCommandes() {
   }
 
   // --- Row click handler ---
+  // On propage location.search pour que les filtres et le tri courants soient
+  // restaurés quand l'utilisateur ferme le détail (✕ → /commandes?<params>).
   function ouvrirDetail(c) {
-    navigate(`/commandes/${encodeURIComponent(c.ref)}`);
+    navigate(`/commandes/${encodeURIComponent(c.ref)}${location.search}`);
   }
 
   // ============================================================
@@ -603,7 +606,7 @@ export default function ListeCommandes() {
               !c.is_archived ? (
                 <>
                   <button
-                    onClick={() => { setMenuCmdId(null); navigate(`/commandes/${encodeURIComponent(c.ref)}`); }}
+                    onClick={() => { setMenuCmdId(null); navigate(`/commandes/${encodeURIComponent(c.ref)}${location.search}`); }}
                     style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}>

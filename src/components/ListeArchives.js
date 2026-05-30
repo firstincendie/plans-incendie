@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams, useNavigate, useOutletContext, Outlet } from "react-router-dom";
+import { useSearchParams, useNavigate, useOutletContext, useLocation, Outlet } from "react-router-dom";
 import { supabase } from "../supabase";
 import { formatDateCourt, joursRestants, delaiPalette } from "../helpers";
 import Badge from "./Badge";
@@ -13,6 +13,7 @@ export default function ListeArchives() {
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // --- Filters from URL ---
   const filtres = {
@@ -180,7 +181,7 @@ export default function ListeArchives() {
 
   // --- Row click handler ---
   function ouvrirDetail(c) {
-    navigate(`/commandes/archives/${encodeURIComponent(c.ref)}`);
+    navigate(`/commandes/archives/${encodeURIComponent(c.ref)}${location.search}`);
   }
 
   // ============================================================
