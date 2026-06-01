@@ -49,7 +49,7 @@ function LigneFichier({ fichier }) {
   );
 }
 
-function InfosContent({ selected, versionsSelected, showContacts }) {
+function InfosContent({ selected, versionsSelected, showContacts, adresseComplete }) {
   const jours = joursRestants(selected.delai);
   const palette = delaiPalette(jours);
   const couleurDelai = palette.text;
@@ -99,7 +99,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
         )}
         <div>
           <SectionTitle>Adresse</SectionTitle>
-          <BlocAdresse commande={selected} />
+          <BlocAdresse commande={selected} complet={adresseComplete} />
         </div>
       </div>
 
@@ -406,6 +406,8 @@ export default function DetailCommandeModal({
   note, setNote, onSaveNote, noteSaveError,
   onModifierCommande, canModifier,
   startInEditMode,
+  adresseComplete,
+  onNaviguerPrec, onNaviguerSuiv, canNaviguerPrec = false, canNaviguerSuiv = false, clavierActif = true,
 }) {
   const [mobTab, setMobTab] = useState("infos");
   const [editMode, setEditMode] = useState(false);
@@ -420,6 +422,27 @@ export default function DetailCommandeModal({
       setEditMode(false);
     }
   }, [selected?.id]); // eslint-disable-line
+
+  // Raccourcis clavier : Échap ferme le détail, ←/→ naviguent entre commandes.
+  // Désactivés en mode édition ou quand une sous-modale est ouverte (clavierActif).
+  useEffect(() => {
+    if (!clavierActif || editMode) return;
+    function onKey(e) {
+      // Ignore si l'utilisateur saisit du texte (note, message, champ…)
+      const tag = e.target.tagName;
+      const saisie = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
+      if (e.key === "Escape") {
+        if (saisie) { e.target.blur(); return; }
+        onClose();
+      } else if (e.key === "ArrowLeft" && !saisie) {
+        onNaviguerPrec?.();
+      } else if (e.key === "ArrowRight" && !saisie) {
+        onNaviguerSuiv?.();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [clavierActif, editMode, onClose, onNaviguerPrec, onNaviguerSuiv]);
 
   function enterEditMode() {
     if (!selected) return;
@@ -487,6 +510,12 @@ export default function DetailCommandeModal({
     border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#374151", whiteSpace: "nowrap",
   };
 
+  const NAV_BTN = {
+    width: 32, height: 36, borderRadius: 6, fontSize: 18, fontWeight: 700, lineHeight: 1,
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    border: "1px solid #D1D5DB", background: "#F9FAFB", color: "#374151",
+  };
+
   const chatContent = (
     <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
       onEnvoyer={onEnvoyer} onSupprimer={onSupprimerMessage} auteurActif={auteurNom} allowFichier
@@ -500,9 +529,19 @@ export default function DetailCommandeModal({
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "2px solid #E5E7EB", flexShrink: 0, background: "#fff" }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#122131" }}>{selected.nom_plan}</div>
-            <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, fontWeight: 500 }}>{sousTitre}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            {(onNaviguerPrec || onNaviguerSuiv) && !editMode && (
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <button onClick={onNaviguerPrec} disabled={!canNaviguerPrec} title="Commande précédente (←)"
+                  style={{ ...NAV_BTN, cursor: canNaviguerPrec ? "pointer" : "not-allowed", opacity: canNaviguerPrec ? 1 : 0.4 }}>‹</button>
+                <button onClick={onNaviguerSuiv} disabled={!canNaviguerSuiv} title="Commande suivante (→)"
+                  style={{ ...NAV_BTN, cursor: canNaviguerSuiv ? "pointer" : "not-allowed", opacity: canNaviguerSuiv ? 1 : 0.4 }}>›</button>
+              </div>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#122131" }}>{selected.nom_plan}</div>
+              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, fontWeight: 500 }}>{sousTitre}</div>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Badge statut={selected.statut} />
@@ -546,7 +585,7 @@ export default function DetailCommandeModal({
               </>
             ) : (
               <>
-                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} adresseComplete={adresseComplete} />
                 <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
                 {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
               </>
@@ -577,7 +616,7 @@ export default function DetailCommandeModal({
               </>
             ) : (
               <>
-                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} adresseComplete={adresseComplete} />
                 <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
                 {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
               </>

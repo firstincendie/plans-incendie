@@ -12,9 +12,18 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   // search params courants propages depuis la liste — on les replace dans retour
   // pour preserver les filtres / tri quand on ferme le detail.
   const retourAvecParams = `${retour}${location.search}`;
-  const { commandes, setCommandes, profil, session } = useOutletContext();
+  const { commandes, setCommandes, profil, session, commandesOrdonnees } = useOutletContext();
 
   const commande = commandes.find(c => c.ref === decodeURIComponent(ref || ""));
+
+  // Navigation clavier ←/→ entre commandes, dans l'ordre/filtre de la liste affichée.
+  const liste = commandesOrdonnees || [];
+  const indexCourant = commande ? liste.findIndex(c => c.id === commande.id) : -1;
+  const naviguerVers = (delta) => {
+    if (indexCourant < 0) return;
+    const cible = liste[indexCourant + delta];
+    if (cible) navigate(`${retour}/${encodeURIComponent(cible.ref)}${location.search}`);
+  };
 
   // Local state handled by this adapter
   const [msgInput, setMsgInput] = useState("");
@@ -513,6 +522,12 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         onModifierCommande={modifierCommande}
         canModifier={canModifier}
         startInEditMode={false}
+        adresseComplete={isDessinateur}
+        onNaviguerPrec={() => naviguerVers(-1)}
+        onNaviguerSuiv={() => naviguerVers(1)}
+        canNaviguerPrec={indexCourant > 0}
+        canNaviguerSuiv={indexCourant >= 0 && indexCourant < liste.length - 1}
+        clavierActif={!showDepotModal && !showPlansFinalModal && !showModifModal && !showDemandeValidationModal && !showValiderCommandeModal}
       />
 
       {/* Modal dépôt plans finaux (dessinateur) */}
