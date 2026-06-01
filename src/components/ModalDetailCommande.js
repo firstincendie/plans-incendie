@@ -525,6 +525,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         adresseComplete={isDessinateur}
         onNaviguerPrec={() => naviguerVers(-1)}
         onNaviguerSuiv={() => naviguerVers(1)}
+        canNaviguerPrec={indexCourant > 0}
+        canNaviguerSuiv={indexCourant >= 0 && indexCourant < liste.length - 1}
         clavierActif={!showDepotModal && !showPlansFinalModal && !showModifModal && !showDemandeValidationModal && !showValiderCommandeModal}
       />
 
