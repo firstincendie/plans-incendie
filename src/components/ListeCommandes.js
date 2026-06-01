@@ -550,8 +550,9 @@ export default function ListeCommandes() {
         </>
       )}
 
-      {/* Outlet — for Task 12 modal */}
-      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session }} />
+      {/* Outlet — for Task 12 modal. commandesOrdonnees = liste active dans
+          l'ordre/filtre affiché, pour la navigation clavier ←/→ du détail. */}
+      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session, commandesOrdonnees: actives }} />
 
       {/* ---- DROPDOWN ··· (position fixed, escapes overflow:hidden) ---- */}
       {menuCmdId && menuRect && (() => {

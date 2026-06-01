@@ -49,7 +49,7 @@ function LigneFichier({ fichier }) {
   );
 }
 
-function InfosContent({ selected, versionsSelected, showContacts }) {
+function InfosContent({ selected, versionsSelected, showContacts, adresseComplete }) {
   const jours = joursRestants(selected.delai);
   const palette = delaiPalette(jours);
   const couleurDelai = palette.text;
@@ -99,7 +99,7 @@ function InfosContent({ selected, versionsSelected, showContacts }) {
         )}
         <div>
           <SectionTitle>Adresse</SectionTitle>
-          <BlocAdresse commande={selected} />
+          <BlocAdresse commande={selected} complet={adresseComplete} />
         </div>
       </div>
 
@@ -406,6 +406,8 @@ export default function DetailCommandeModal({
   note, setNote, onSaveNote, noteSaveError,
   onModifierCommande, canModifier,
   startInEditMode,
+  adresseComplete,
+  onNaviguerPrec, onNaviguerSuiv, clavierActif = true,
 }) {
   const [mobTab, setMobTab] = useState("infos");
   const [editMode, setEditMode] = useState(false);
@@ -420,6 +422,27 @@ export default function DetailCommandeModal({
       setEditMode(false);
     }
   }, [selected?.id]); // eslint-disable-line
+
+  // Raccourcis clavier : Échap ferme le détail, ←/→ naviguent entre commandes.
+  // Désactivés en mode édition ou quand une sous-modale est ouverte (clavierActif).
+  useEffect(() => {
+    if (!clavierActif || editMode) return;
+    function onKey(e) {
+      // Ignore si l'utilisateur saisit du texte (note, message, champ…)
+      const tag = e.target.tagName;
+      const saisie = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
+      if (e.key === "Escape") {
+        if (saisie) { e.target.blur(); return; }
+        onClose();
+      } else if (e.key === "ArrowLeft" && !saisie) {
+        onNaviguerPrec?.();
+      } else if (e.key === "ArrowRight" && !saisie) {
+        onNaviguerSuiv?.();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [clavierActif, editMode, onClose, onNaviguerPrec, onNaviguerSuiv]);
 
   function enterEditMode() {
     if (!selected) return;
@@ -546,7 +569,7 @@ export default function DetailCommandeModal({
               </>
             ) : (
               <>
-                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} adresseComplete={adresseComplete} />
                 <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
                 {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
               </>
@@ -577,7 +600,7 @@ export default function DetailCommandeModal({
               </>
             ) : (
               <>
-                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} />
+                <InfosContent selected={selected} versionsSelected={versionsSelected} showContacts={showContacts} adresseComplete={adresseComplete} />
                 <NotesSection note={note ?? ""} setNote={setNote} onSaveNote={onSaveNote} noteSaveError={noteSaveError} />
                 {actionButtons && <div style={{ marginTop: 16 }}>{actionButtons}</div>}
               </>

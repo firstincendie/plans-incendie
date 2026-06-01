@@ -473,8 +473,9 @@ export default function ListeArchives() {
         </>
       )}
 
-      {/* Outlet — for modal detail */}
-      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session }} />
+      {/* Outlet — for modal detail. commandesOrdonnees = liste archivée dans
+          l'ordre/filtre affiché, pour la navigation clavier ←/→ du détail. */}
+      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session, commandesOrdonnees: archivees }} />
 
       {/* ---- DROPDOWN ··· (position fixed, escapes overflow:hidden) ---- */}
       {menuCmdId && menuRect && (() => {
