@@ -593,7 +593,7 @@ export default function ListeCommandes() {
               !c.is_archived ? (
                 <>
                   <button
-                    onClick={() => { setMenuCmdId(null); navigate(`/commandes/${encodeURIComponent(c.ref)}${location.search}`); }}
+                    onClick={() => { setMenuCmdId(null); navigate(`/commandes/${encodeURIComponent(c.ref)}${location.search}`, { state: { editer: true } }); }}
                     style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "11px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#F9FAFB"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}>

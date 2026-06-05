@@ -503,7 +503,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         noteSaveError={noteSaveError}
         onModifierCommande={modifierCommande}
         canModifier={canModifier}
-        startInEditMode={false}
+        startInEditMode={canModifier && !!location.state?.editer}
         adresseComplete={isDessinateur}
         onNaviguerPrec={() => naviguerVers(-1)}
         onNaviguerSuiv={() => naviguerVers(1)}
