@@ -247,28 +247,10 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     }
   }
 
-  async function dupliquer(c) {
-    const { data, error } = await supabase.from("commandes").insert([{
-      utilisateur_id: c.utilisateur_id,
-      nom_plan: c.nom_plan + " (copie)",
-      client_nom: c.client_nom, client_prenom: c.client_prenom,
-      client_email: c.client_email, client_telephone: c.client_telephone,
-      adresse1: c.adresse1, adresse2: c.adresse2,
-      code_postal: c.code_postal, ville: c.ville,
-      delai: c.delai, plans: c.plans,
-      fichiers_plan: c.fichiers_plan || [], logo_client: c.logo_client || [],
-      instructions: c.instructions,
-      plans_finalises: [], statut: "En attente",
-      dessinateur_id: c.dessinateur_id || null,
-      dessinateur: c.dessinateur || null,
-    }]).select("*, messages(*)").single();
-    if (!error && data) {
-      setCommandes(prev => [
-        { ...data, plans: data.plans || [], fichiersPlan: data.fichiers_plan || [], logoClient: data.logo_client || [], plansFinalises: [], messages: [] },
-        ...prev,
-      ]);
-      navigate(retourAvecParams, { replace: true });
-    }
+  // Duplication : ouvre le configurateur pré-rempli avec la commande source
+  // pour permettre une modification avant création (cf. NouvelleCommandeModal).
+  function dupliquer(c) {
+    navigate("/commandes/nouvelle", { state: { dupliquerDe: c } });
   }
 
   // ---- Dessinateur workflow handlers ----
@@ -521,7 +503,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         noteSaveError={noteSaveError}
         onModifierCommande={modifierCommande}
         canModifier={canModifier}
-        startInEditMode={false}
+        startInEditMode={canModifier && !!location.state?.editer}
         adresseComplete={isDessinateur}
         onNaviguerPrec={() => naviguerVers(-1)}
         onNaviguerSuiv={() => naviguerVers(1)}
