@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
 import { formatDateMsg, ajouterJours } from "../helpers";
 import { planVide } from "../constants";
@@ -12,6 +12,11 @@ const labelStyle = { fontSize: 12, color: "#6B7280", display: "block", marginBot
 export default function NouvelleCommandeModal({ retour = "/commandes" }) {
   const { setCommandes, sousComptes, profil } = useOutletContext();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Duplication : commande source passée via le state du routeur. Le formulaire
+  // est pré-rempli pour permettre une modification avant création.
+  const source = location.state?.dupliquerDe || null;
 
   const [dessinateursDispos, setDessinateursDispos] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -30,7 +35,25 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
     instructions: "",
     dessinateur_id: defaultDessinateurId,
   });
-  const [form, setForm] = useState(formVide());
+
+  // Pré-remplissage depuis une commande à dupliquer.
+  const formDepuisSource = (c) => ({
+    utilisateur_id: c.utilisateur_id || profil.id,
+    nom_plan: `${c.nom_plan || ""} (copie)`,
+    client_societe: c.client_societe || "",
+    client_nom: c.client_nom || "", client_prenom: c.client_prenom || "",
+    client_email: c.client_email || "", client_telephone: c.client_telephone || "",
+    numero_rue: c.numero_rue || "", adresse1: c.adresse1 || "",
+    code_postal: c.code_postal || "", ville: c.ville || "",
+    delai: c.delai ? c.delai.substring(0, 10) : ajouterJours(null, 7),
+    plans: (c.plans && c.plans.length) ? JSON.parse(JSON.stringify(c.plans)) : [planVide()],
+    fichiersPlan: c.fichiersPlan || [],
+    logoClient: c.logoClient || [],
+    instructions: c.instructions || "",
+    dessinateur_id: c.dessinateur_id || "",
+  });
+
+  const [form, setForm] = useState(source ? formDepuisSource(source) : formVide());
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
 
@@ -50,8 +73,13 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
         is_default: d.is_default,
       }));
       setDessinateursDispos(liste);
-      const defaultId = liste.find(d => d.is_default)?.id ?? liste[0]?.id ?? "";
-      setForm(f => ({ ...f, dessinateur_id: defaultId }));
+      // En duplication, on conserve le dessinateur de la commande source
+      // (s'il est toujours disponible). Sinon, on applique le défaut.
+      setForm(f => {
+        if (f.dessinateur_id && liste.some(d => d.id === f.dessinateur_id)) return f;
+        const defaultId = liste.find(d => d.is_default)?.id ?? liste[0]?.id ?? "";
+        return { ...f, dessinateur_id: defaultId };
+      });
     })();
     return () => { cancelled = true; };
   }, [profil.id]);
@@ -124,7 +152,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 680, maxWidth: "calc(100vw - 24px)", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Nouvelle commande</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{source ? "Dupliquer la commande" : "Nouvelle commande"}</h2>
           <button onClick={fermer} style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#9CA3AF" }}>✕</button>
         </div>
 
@@ -259,7 +287,7 @@ export default function NouvelleCommandeModal({ retour = "/commandes" }) {
               background: submitDisabled ? "#F3F4F6" : "#122131",
               color: submitDisabled ? "#9CA3AF" : "#fff",
             }}>
-            {saving ? "Enregistrement..." : "Créer la commande"}
+            {saving ? "Enregistrement..." : source ? "Dupliquer la commande" : "Créer la commande"}
           </button>
         </div>
 
