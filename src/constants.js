@@ -13,6 +13,14 @@ export const MATIERES     = ["Bache M1", "Plexiglass", "Aluminium"];
 export const ORIENTATIONS = ["", "Horizontale", "Verticale"];
 export const planVide = () => ({ numero: "", type: "Évacuation", emplacement: "", orientation: "", format: "A3", matiere: "" });
 
+// Motifs proposés dans le formulaire "Signaler un problème"
+export const MOTIFS_TICKET = [
+  "Bug technique",
+  "Question commande",
+  "Facturation / compte",
+  "Autre",
+];
+
 export const PATTERNS_CONTACTS = [
   // Email complet
   { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, label: "adresse email" }, // eslint-disable-line no-useless-escape

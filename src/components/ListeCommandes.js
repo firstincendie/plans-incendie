@@ -386,7 +386,7 @@ export default function ListeCommandes() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: isDessinateur ? 6 : 6, gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          <span>{isDessinateur ? "Mes missions" : "Commandes"}</span>
+          <span>{isDessinateur ? "Missions en cours" : "Commandes en cours"} ({actives.length})</span>
           {(() => {
             const n = commandesVisibles.filter(c => !c[champArchive] && hasNotif(c)).length;
             return n > 0 ? (
@@ -406,33 +406,6 @@ export default function ListeCommandes() {
           </button>
         )}
       </div>
-
-      {/* Stats row */}
-      {isDessinateur ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
-          {[
-            { label: "En cours", val: commandes.filter(c => !c.is_archived_dessinateur).length, color: "#FC6C1B", bg: "#FFF3EE" },
-            { label: "Validées",  val: commandes.filter(c => c.statut === "Validé").length,          color: "#059669", bg: "#F0FDF4" },
-            { label: "Total",     val: commandes.length,                                              color: "#374151", bg: "#F8FAFC" },
-          ].map(s => (
-            <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
-              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 5 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
-          {[
-            { label: "en cours", val: commandes.filter(c => !c.is_archived).length, color: "#122131" },
-            { label: "total",    val: commandes.length,                              color: "#9CA3AF" },
-          ].map(s => (
-            <span key={s.label} style={{ fontSize: 13, color: "#6B7280" }}>
-              <span style={{ fontWeight: 700, fontSize: 18, color: s.color }}>{s.val}</span> {s.label}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Barre filtres */}
       <BarreFiltres

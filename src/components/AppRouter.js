@@ -12,6 +12,7 @@ import GestionCompteDessinateur from "./GestionCompteDessinateur";
 import GestionUtilisateurs from "./GestionUtilisateurs";
 import ListeCommandes from "./ListeCommandes";
 import ListeArchives from "./ListeArchives";
+import PageGestion from "./PageGestion";
 import ModalDetailCommande from "./ModalDetailCommande";
 import NouvelleCommandeModal from "./NouvelleCommandeModal";
 import ModalDetailUtilisateur from "./ModalDetailUtilisateur";
@@ -48,6 +49,7 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
             <Route path="/utilisateurs" element={<GestionUtilisateurs />}>
               <Route path=":uid" element={<ModalDetailUtilisateur />} />
             </Route>
+            <Route path="/gestion" element={<PageGestion />} />
           </Route>
         </Route>
       </Route>

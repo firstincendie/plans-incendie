@@ -130,6 +130,8 @@ code {
   .cmd-cards { display: block; }
   /* Adresse + Contact : stack vertical sur mobile au lieu de cote-a-cote */
   .detail-adr-contact { grid-template-columns: 1fr !important; }
+  /* Gestion > Messages : formulaire + liste empilés sur mobile */
+  .gestion-annonces-grid { grid-template-columns: 1fr !important; }
 }
 
 /* ===== Sidebar mobile ===== */

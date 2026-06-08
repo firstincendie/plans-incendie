@@ -354,7 +354,7 @@ export default function ListeArchives() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          <span>{isDessinateur ? "Missions archivées" : "Archives"}</span>
+          <span>{isDessinateur ? "Missions archivées" : "Commandes archivées"} ({archivees.length})</span>
           {(() => {
             const n = commandesVisibles.filter(c => c[champArchive] === true && hasNotif(c)).length;
             return n > 0 ? (
@@ -366,32 +366,6 @@ export default function ListeArchives() {
           })()}
         </h1>
       </div>
-
-      {/* Stats row */}
-      {isDessinateur ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 24 }}>
-          {[
-            { label: "Archivées", val: archivees.length, color: "#FC6C1B", bg: "#FFF3EE" },
-            { label: "Total missions", val: commandes.length, color: "#374151", bg: "#F8FAFC" },
-          ].map(s => (
-            <div key={s.label} style={{ background: s.bg, border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 22px" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
-              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 5 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
-          {[
-            { label: "archivées", val: archivees.length, color: "#122131" },
-            { label: "total",     val: commandes.length, color: "#9CA3AF" },
-          ].map(s => (
-            <span key={s.label} style={{ fontSize: 13, color: "#6B7280" }}>
-              <span style={{ fontWeight: 700, fontSize: 18, color: s.color }}>{s.val}</span> {s.label}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Barre filtres */}
       <BarreFiltres
