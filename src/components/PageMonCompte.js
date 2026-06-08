@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
+import MesTickets from "./MesTickets";
 
 export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [], dessinateurAssigne }) {
+  // Section pilotée par l'URL (?section=), navigation via le menu de la sidebar.
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const sectionActive = ["profil", "reseau", "tickets"].includes(sectionParam) ? sectionParam : "profil";
   const clientsAssignes = role === "dessinateur"
     ? [...new Set(commandes.map(c => c.client).filter(Boolean))].sort()
     : [];
@@ -207,12 +213,28 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
 
   const initiales = `${(form.prenom?.[0] || "").toUpperCase()}${(form.nom?.[0] || "").toUpperCase()}`;
 
-  return (
-    <div style={{ maxWidth: 600 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 28px 0", color: "#122131" }}>Mon compte</h1>
+  const sections = [
+    { id: "profil", label: "Profil" },
+    { id: "reseau", label: role === "dessinateur" ? "Mes clients" : "Mon réseau" },
+    { id: "tickets", label: "Mes tickets" },
+  ];
 
+  const titreSection = sections.find(s => s.id === sectionActive)?.label || "Mon compte";
+
+  return (
+    <div style={{ maxWidth: 620 }}>
+      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0", color: "#122131" }}>{titreSection}</h1>
+
+      <div>
+        {/* Contenu de la section active */}
+        <div>
+          {sectionActive === "tickets" && <MesTickets profil={profil} />}
+
+          {sectionActive !== "tickets" && (
       <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 28 }}>
 
+        {/* ===== SECTION PROFIL ===== */}
+        {sectionActive === "profil" && <>
         {/* Avatar */}
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
           <div style={sectionTitle}>Photo de profil</div>
@@ -248,25 +270,10 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         </div>
 
-        {/* Code d'invitation */}
-        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
-          <div style={sectionTitle}>Code d'invitation</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.15em", color: "#122131", background: "#F1F5F9", padding: "8px 16px", borderRadius: 8 }}>
-              {profil?.invite_code ?? "—"}
-            </code>
-            <button
-              type="button"
-              onClick={() => navigator.clipboard.writeText(profil?.invite_code ?? "")}
-              style={{ padding: "8px 14px", border: "1.5px solid #E2E8F0", borderRadius: 8, background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151" }}
-            >
-              Copier
-            </button>
-          </div>
-          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8 }}>
-            Partagez ce code pour inviter quelqu'un à rejoindre votre espace.
-          </div>
-        </div>
+        </>}
+
+        {/* ===== SECTION RESEAU ===== */}
+        {sectionActive === "reseau" && <>
 
         {/* Rejoindre un maître / Quitter le groupe */}
         {role !== "admin" && (
@@ -320,8 +327,10 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
             )}
           </div>
         )}
+        </>}
 
-        {/* Identité */}
+        {/* Identité — section Profil */}
+        {sectionActive === "profil" && <>
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
           <div style={sectionTitle}>Informations personnelles</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -369,9 +378,10 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
             </div>
           </div>
         </div>
+        </>}
 
-        {/* Mes dessinateurs — utilisateurs uniquement */}
-        {role === "utilisateur" && (
+        {/* Mes dessinateurs — utilisateurs uniquement — section Réseau */}
+        {sectionActive === "reseau" && role === "utilisateur" && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
             <div style={sectionTitle}>Mes dessinateurs</div>
             {mesDessinateurs.length === 0 ? (
@@ -416,7 +426,8 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         )}
 
-        {/* Mot de passe */}
+        {/* Mot de passe — section Profil */}
+        {sectionActive === "profil" && (
         <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
           <div style={sectionTitle}>Changer le mot de passe</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -444,10 +455,10 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
             </div>
           </div>
         </div>
+        )}
 
-
-        {/* Section Clients assignés — dessinateur uniquement */}
-        {role === "dessinateur" && (
+        {/* Clients assignés — dessinateur uniquement — section Réseau */}
+        {sectionActive === "reseau" && role === "dessinateur" && (
           <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
             <div style={sectionTitle}>Clients assignés</div>
             {clientsAssignes.length === 0 ? (
@@ -476,16 +487,21 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            type="submit"
-            disabled={saving}
-            style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "11px 28px", fontWeight: 700, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
-          >
-            {saving ? "Enregistrement..." : "Enregistrer les modifications"}
-          </button>
-        </div>
+        {sectionActive === "profil" && (
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{ background: "#386CA3", color: "#fff", border: "none", borderRadius: 8, padding: "11px 28px", fontWeight: 700, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+            >
+              {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+            </button>
+          </div>
+        )}
       </form>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

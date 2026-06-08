@@ -1,32 +1,36 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import { formatDateCourt } from "../helpers";
 import TicketChat from "./TicketChat";
+import ZoneUpload from "./ZoneUpload";
+import PiecesJointes from "./PiecesJointes";
 
 export default function PageGestion() {
-  const { profil } = useOutletContext();
-  const [onglet, setOnglet] = useState("tickets"); // "tickets" | "annonces"
+  const { profil, tickets: ticketsGlobal = [], setTickets: setTicketsGlobal } = useOutletContext();
+  const [searchParams] = useSearchParams();
+  const onglet = searchParams.get("tab") === "annonces" ? "annonces" : "tickets";
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
+
+  // Propage la lecture au state global (badges sidebar).
+  function marquerLuGlobal(ticketId, messageIds) {
+    setTicketsGlobal?.(prev => prev.map(t =>
+      t.id !== ticketId ? t : {
+        ...t,
+        messages: (t.messages || []).map(m =>
+          messageIds.includes(m.id) ? { ...m, lu_par: [...(m.lu_par || []), profil.id] } : m
+        ),
+      }
+    ));
+  }
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 16px" }}>Gestion</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 20px" }}>
+        {onglet === "annonces" ? "Annonces" : "Signalements"}
+      </h1>
 
-      {/* Onglets */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "2px solid #E5E7EB", marginBottom: 20 }}>
-        {[
-          { id: "tickets", label: "🎫 Signalements" },
-          { id: "annonces", label: "📢 Messages" },
-        ].map(o => (
-          <button key={o.id} onClick={() => setOnglet(o.id)}
-            style={{ padding: "10px 18px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: onglet === o.id ? "#122131" : "#9CA3AF", borderBottom: `3px solid ${onglet === o.id ? "#122131" : "transparent"}`, marginBottom: -2 }}>
-            {o.label}
-          </button>
-        ))}
-      </div>
-
-      {onglet === "tickets" ? <OngletTickets profil={profil} auteurNom={auteurNom} /> : <OngletAnnonces profil={profil} />}
+      {onglet === "tickets" ? <OngletTickets profil={profil} auteurNom={auteurNom} onLu={marquerLuGlobal} ticketsGlobal={ticketsGlobal} /> : <OngletAnnonces profil={profil} />}
     </div>
   );
 }
@@ -34,11 +38,17 @@ export default function PageGestion() {
 // ============================================================
 // ONGLET TICKETS
 // ============================================================
-function OngletTickets({ profil, auteurNom }) {
+function OngletTickets({ profil, auteurNom, onLu, ticketsGlobal = [] }) {
   const [tickets, setTickets] = useState([]);
   const [filtre, setFiltre] = useState("ouvert"); // "ouvert" | "cloture" | "tous"
   const [selId, setSelId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Nb de messages non lus d'un ticket (depuis le state global porteur de lu_par).
+  const nonLusDe = (ticketId) => {
+    const g = ticketsGlobal.find(t => t.id === ticketId);
+    return (g?.messages || []).filter(m => m.auteur_id !== profil.id && !(m.lu_par || []).includes(profil.id)).length;
+  };
 
   useEffect(() => { charger(); }, []); // eslint-disable-line
 
@@ -86,6 +96,9 @@ function OngletTickets({ profil, auteurNom }) {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {nonLusDe(t.id) > 0 && (
+                    <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(t.id)}</span>
+                  )}
                   <StatutBadge statut={t.statut} />
                   <span style={{ fontSize: 12, color: "#9CA3AF" }}>{selId === t.id ? "▲" : "▼"}</span>
                 </div>
@@ -99,6 +112,7 @@ function OngletTickets({ profil, auteurNom }) {
                     auteurNom={auteurNom}
                     isAdmin={true}
                     onStatutChange={(s) => setTickets(prev => prev.map(x => x.id === t.id ? { ...x, statut: s } : x))}
+                    onLu={onLu}
                   />
                 </div>
               )}
@@ -118,6 +132,7 @@ function OngletAnnonces({ profil }) {
   const [titre, setTitre] = useState("");
   const [contenu, setContenu] = useState("");
   const [type, setType] = useState("info");
+  const [fichiers, setFichiers] = useState([]);
   const [envoi, setEnvoi] = useState(false);
 
   useEffect(() => { charger(); }, []); // eslint-disable-line
@@ -134,11 +149,12 @@ function OngletAnnonces({ profil }) {
       titre: titre.trim(),
       contenu: contenu.trim(),
       type,
+      fichiers,
       created_by: profil.id,
     }]).select().single();
     if (!error && data) {
       setAnnonces(prev => [data, ...prev]);
-      setTitre(""); setContenu(""); setType("info");
+      setTitre(""); setContenu(""); setType("info"); setFichiers([]);
     }
     setEnvoi(false);
   }
@@ -157,7 +173,7 @@ function OngletAnnonces({ profil }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }} className="gestion-annonces-grid">
       {/* Formulaire création */}
       <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Nouveau message</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Nouvelle annonce</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <label style={labelStyle}>Type</label>
@@ -174,16 +190,22 @@ function OngletAnnonces({ profil }) {
             <label style={labelStyle}>Message</label>
             <textarea value={contenu} onChange={e => setContenu(e.target.value)} rows={4} placeholder="Contenu visible par tous les utilisateurs…" style={{ ...inputStyle, resize: "vertical" }} />
           </div>
+          <div>
+            <label style={labelStyle}>Pièces jointes (optionnel)</label>
+            <ZoneUpload label="" fichiers={fichiers} onAjouter={setFichiers}
+              onSupprimer={i => setFichiers(fichiers.filter((_, idx) => idx !== i))}
+              accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
+          </div>
           <button onClick={creer} disabled={!titre.trim() || !contenu.trim() || envoi}
             style={{ padding: 10, borderRadius: 8, border: "none", background: (!titre.trim() || !contenu.trim()) ? "#F3F4F6" : "#122131", color: (!titre.trim() || !contenu.trim()) ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: (!titre.trim() || !contenu.trim()) ? "not-allowed" : "pointer" }}>
-            {envoi ? "Publication…" : "Publier le message"}
+            {envoi ? "Publication…" : "Publier l'annonce"}
           </button>
         </div>
       </div>
 
       {/* Liste des annonces */}
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Messages publiés</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Annonces publiées</div>
         {annonces.length === 0 ? (
           <div style={{ fontSize: 13, color: "#9CA3AF", padding: 20, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, textAlign: "center" }}>Aucun message.</div>
         ) : (
@@ -197,6 +219,7 @@ function OngletAnnonces({ profil }) {
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{a.titre}</span>
                     </div>
                     <div style={{ fontSize: 12, color: "#374151", marginTop: 4, whiteSpace: "pre-wrap" }}>{a.contenu}</div>
+                    <PiecesJointes fichiers={a.fichiers} compact />
                     <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6 }}>{formatDateCourt(a.created_at)} · {a.active ? "Actif" : "Masqué"}</div>
                   </div>
                 </div>

@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
 import pkg from "../../package.json";
-import SignalerProbleme from "./SignalerProbleme";
 
-export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMenu, onCloseMobile }) {
+export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
+  const location = useLocation();
+  // Pour les sous-items Gestion qui partagent le pathname /gestion, on compare
+  // aussi le query (?tab=) pour déterminer lequel est actif.
+  const cheminCourant = `${location.pathname}${location.search}`;
 
   const role = profil.role;
   const couleurAccent = role === "dessinateur" ? "#FC6C1B" : "#122131";
@@ -26,17 +29,21 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
       label: role === "dessinateur" ? "Missions archivées" : "Commandes archivées",
       icon: "🗃️",
     },
-    ...(role === "dessinateur"
-      ? [{ to: "/gestion-compte", label: "Gestion de compte", icon: "📁" }]
-      : []),
     { to: "/reglages", label: "Réglages", icon: "⚙️" },
-    { to: "/mon-compte", label: "Mon compte", icon: "👤" },
-    ...(role !== "dessinateur" && profil.is_owner
-      ? [{ to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" }]
-      : []),
-    ...(isAdmin
-      ? [{ to: "/gestion", label: "Gestion", icon: "🎫" }]
-      : []),
+  ];
+
+  // Sous-entrées du menu déroulant "Mon compte" (utilisateurs et dessinateurs)
+  const monCompteSousItems = [
+    { to: "/mon-compte", label: "Profil", icon: "👤" },
+    { to: "/mon-compte?section=reseau", label: role === "dessinateur" ? "Mes clients" : "Mon réseau", icon: "🔗" },
+    { to: "/mon-compte?section=tickets", label: "Mes tickets", icon: "🎫", badge: ticketsNonLus },
+  ];
+
+  // Sous-entrées du menu déroulant "Gestion" (admin uniquement)
+  const gestionSousItems = [
+    { to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" },
+    { to: "/gestion?tab=tickets", label: "Signalements", icon: "🎫", badge: ticketsNonLus },
+    { to: "/gestion?tab=annonces", label: "Annonces", icon: "📢" },
   ];
 
   const initialesAvatar = `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}`;
@@ -101,14 +108,28 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
         </NavLink>
       ))}
 
+      {/* Menu déroulant "Mon compte" (utilisateurs et dessinateurs) */}
+      {!isAdmin && (
+        <GroupeDeroulant
+          icon="👤" label="Mon compte" sousItems={monCompteSousItems}
+          badge={ticketsNonLus} basePath="/mon-compte"
+          cheminCourant={cheminCourant} pathnameCourant={location.pathname}
+          fondActif={fondActif} couleurAccent={couleurAccent} onCloseMobile={onCloseMobile}
+        />
+      )}
+
+      {/* Menu déroulant "Gestion" (admin uniquement) */}
+      {isAdmin && (
+        <GroupeDeroulant
+          icon="🎫" label="Gestion" sousItems={gestionSousItems}
+          badge={ticketsNonLus} basePath="/gestion"
+          cheminCourant={cheminCourant} pathnameCourant={location.pathname}
+          fondActif={fondActif} couleurAccent={couleurAccent} onCloseMobile={onCloseMobile}
+        />
+      )}
+
       {/* Pied de sidebar */}
       <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
-        {/* Signaler un problème — utilisateurs et dessinateurs (pas l'admin) */}
-        {!isAdmin && (
-          <div onClick={onCloseMobile}>
-            <SignalerProbleme profil={profil} />
-          </div>
-        )}
         <div style={{ padding: "4px 12px", fontSize: 10, color: "#9CA3AF", textAlign: "left" }}>
           v{pkg.version}
         </div>
@@ -142,6 +163,53 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
           </div>
         </button>
       </div>
+    </div>
+  );
+}
+
+// Groupe de menu dépliable (parent + sous-items). Réutilisé pour "Mon compte"
+// et "Gestion". S'ouvre automatiquement quand on est sur une de ses pages.
+function GroupeDeroulant({ icon, label, sousItems, badge = 0, basePath, cheminCourant, pathnameCourant, fondActif, couleurAccent, onCloseMobile }) {
+  const surUnePage = pathnameCourant === basePath;
+  const [ouvert, setOuvert] = useState(surUnePage);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOuvert(v => !v)}
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 400, background: "transparent", color: "#6B7280", textAlign: "left", width: "100%" }}
+      >
+        <span>{icon}</span>
+        <span style={{ flex: 1 }}>{label}</span>
+        {!ouvert && badge > 0 && (
+          <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{badge}</span>
+        )}
+        <span style={{ fontSize: 10 }}>{ouvert ? "▼" : "▶"}</span>
+      </button>
+      {ouvert && sousItems.map(sous => {
+        const actif = cheminCourant === sous.to;
+        return (
+          <NavLink
+            key={sous.to}
+            to={sous.to}
+            onClick={onCloseMobile}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 12px 8px 24px", borderRadius: 8, border: "none",
+              cursor: "pointer", fontSize: 13, fontWeight: actif ? 600 : 400,
+              background: actif ? fondActif : "transparent",
+              color: actif ? couleurAccent : "#6B7280",
+              textAlign: "left", width: "100%", boxSizing: "border-box", textDecoration: "none",
+            }}
+          >
+            <span style={{ flexShrink: 0 }}>{sous.icon}</span>
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sous.label}</span>
+            {sous.badge > 0 && (
+              <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{sous.badge}</span>
+            )}
+          </NavLink>
+        );
+      })}
     </div>
   );
 }

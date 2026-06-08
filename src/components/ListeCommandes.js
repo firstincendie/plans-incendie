@@ -495,17 +495,6 @@ export default function ListeCommandes() {
             {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
             {actives.map(c => renderCarteCmdDessinateur(c))}
           </div>
-
-          {/* Archivées — lien vers la page dédiée */}
-          {archivees.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <button
-                onClick={() => navigate("/commandes/archives")}
-                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>
-                {`${archLabel} →`}
-              </button>
-            </div>
-          )}
         </>
       )}
 
