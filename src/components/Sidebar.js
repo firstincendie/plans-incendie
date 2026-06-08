@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { supabase } from "../supabase";
 import pkg from "../../package.json";
+import SignalerProbleme from "./SignalerProbleme";
 
 export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
@@ -10,6 +11,8 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
   const couleurAccent = role === "dessinateur" ? "#FC6C1B" : "#122131";
   const fondActif = role === "dessinateur" ? "#FFF3EE" : "#E8EDF2";
   const logoIcon = role === "dessinateur" ? "✏️" : "🔥";
+  // Admin = propriétaire de compte non-dessinateur (cf. fonction SQL is_admin())
+  const isAdmin = role !== "dessinateur" && profil.is_owner === true;
 
   const items = [
     {
@@ -30,6 +33,9 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
     { to: "/mon-compte", label: "Mon compte", icon: "👤" },
     ...(role !== "dessinateur" && profil.is_owner
       ? [{ to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" }]
+      : []),
+    ...(isAdmin
+      ? [{ to: "/gestion", label: "Gestion", icon: "🎫" }]
       : []),
   ];
 
@@ -95,8 +101,14 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
         </NavLink>
       ))}
 
-      {/* Avatar / pied de sidebar */}
+      {/* Pied de sidebar */}
       <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
+        {/* Signaler un problème — utilisateurs et dessinateurs (pas l'admin) */}
+        {!isAdmin && (
+          <div onClick={onCloseMobile}>
+            <SignalerProbleme profil={profil} />
+          </div>
+        )}
         <div style={{ padding: "4px 12px", fontSize: 10, color: "#9CA3AF", textAlign: "left" }}>
           v{pkg.version}
         </div>

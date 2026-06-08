@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { supabase } from "../supabase";
 import Sidebar from "./Sidebar";
+import AnnoncesModal from "./AnnoncesModal";
 
 export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);
@@ -100,6 +101,9 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
       onClick={() => { showMobileMenu && setShowMobileMenu(false); }}
       style={{ display: "flex", height: "100dvh", fontFamily: "'Segoe UI', system-ui, sans-serif", background: "#F5FAFF", color: "#111827" }}
     >
+      {/* Annonces broadcast — modale affichée à la connexion */}
+      <AnnoncesModal profil={profil} />
+
       {/* Backdrop mobile — reproduit de VueUtilisateur.js:453 et VueDessinateur.js:291 */}
       <div
         className={`sidebar-backdrop${showMobileMenu ? " sidebar-open" : ""}`}
