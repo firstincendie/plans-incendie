@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import { formatDateCourt } from "../helpers";
 import TicketChat from "./TicketChat";
 
 export default function PageGestion() {
   const { profil } = useOutletContext();
-  const [onglet, setOnglet] = useState("tickets"); // "tickets" | "annonces"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const onglet = searchParams.get("tab") === "annonces" ? "annonces" : "tickets";
+  const setOnglet = (id) => setSearchParams({ tab: id }, { replace: true });
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
 
   return (

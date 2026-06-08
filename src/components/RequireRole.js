@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useOutletContext } from "react-router-dom";
 
 /**
  * Route guard that checks role (and optionally is_owner).
@@ -11,6 +11,11 @@ import { Navigate, Outlet } from "react-router-dom";
  * Renders <Outlet /> when access is granted, otherwise redirects to /commandes.
  */
 export default function RequireRole({ profil, roles = [], requireOwner = false }) {
+  // Récupère le contexte du LayoutPrincipal parent pour le re-transmettre aux
+  // routes enfants (sinon useOutletContext() renvoie null dans les pages filles,
+  // ex. PageGestion → page blanche).
+  const parentContext = useOutletContext();
+
   if (!profil) return <Navigate to="/connexion" replace />;
 
   const roleOk = roles.includes(profil.role);
@@ -20,5 +25,5 @@ export default function RequireRole({ profil, roles = [], requireOwner = false }
     return <Navigate to="/commandes" replace />;
   }
 
-  return <Outlet />;
+  return <Outlet context={parentContext} />;
 }

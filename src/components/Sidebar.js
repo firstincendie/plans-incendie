@@ -6,6 +6,7 @@ import SignalerProbleme from "./SignalerProbleme";
 
 export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
+  const [gestionOuvert, setGestionOuvert] = useState(false);
 
   const role = profil.role;
   const couleurAccent = role === "dessinateur" ? "#FC6C1B" : "#122131";
@@ -31,12 +32,13 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
       : []),
     { to: "/reglages", label: "Réglages", icon: "⚙️" },
     { to: "/mon-compte", label: "Mon compte", icon: "👤" },
-    ...(role !== "dessinateur" && profil.is_owner
-      ? [{ to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" }]
-      : []),
-    ...(isAdmin
-      ? [{ to: "/gestion", label: "Gestion", icon: "🎫" }]
-      : []),
+  ];
+
+  // Sous-entrées du menu déroulant "Gestion" (admin uniquement)
+  const gestionSousItems = [
+    { to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" },
+    { to: "/gestion?tab=tickets", label: "Signalements", icon: "🎫" },
+    { to: "/gestion?tab=annonces", label: "Messages", icon: "📢" },
   ];
 
   const initialesAvatar = `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}`;
@@ -100,6 +102,46 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
           )}
         </NavLink>
       ))}
+
+      {/* Menu déroulant "Gestion" (admin uniquement) */}
+      {isAdmin && (
+        <div>
+          <button
+            onClick={() => setGestionOuvert(v => !v)}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 400, background: "transparent", color: "#6B7280", textAlign: "left", width: "100%" }}
+          >
+            <span>🎫</span>
+            <span style={{ flex: 1 }}>Gestion</span>
+            <span style={{ fontSize: 10 }}>{gestionOuvert ? "▼" : "▶"}</span>
+          </button>
+          {gestionOuvert && gestionSousItems.map(sous => (
+            <NavLink
+              key={sous.to}
+              to={sous.to}
+              onClick={onCloseMobile}
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 12px 8px 28px",
+                borderRadius: 8,
+                border: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 400,
+                background: isActive ? fondActif : "transparent",
+                color: isActive ? couleurAccent : "#6B7280",
+                textAlign: "left",
+                width: "100%",
+                textDecoration: "none",
+              })}
+            >
+              <span>{sous.icon}</span>
+              <span style={{ flex: 1 }}>{sous.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
 
       {/* Pied de sidebar */}
       <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
