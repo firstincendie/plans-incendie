@@ -386,7 +386,7 @@ export default function ListeCommandes() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: isDessinateur ? 6 : 6, gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          <span>{isDessinateur ? "Mes missions" : "Commandes"}</span>
+          <span>{isDessinateur ? "Missions en cours" : "Commandes en cours"} ({actives.length})</span>
           {(() => {
             const n = commandesVisibles.filter(c => !c[champArchive] && hasNotif(c)).length;
             return n > 0 ? (

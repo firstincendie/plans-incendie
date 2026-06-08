@@ -354,7 +354,7 @@ export default function ListeArchives() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-          <span>{isDessinateur ? "Missions archivées" : "Archives"}</span>
+          <span>{isDessinateur ? "Missions archivées" : "Commandes archivées"} ({archivees.length})</span>
           {(() => {
             const n = commandesVisibles.filter(c => c[champArchive] === true && hasNotif(c)).length;
             return n > 0 ? (
