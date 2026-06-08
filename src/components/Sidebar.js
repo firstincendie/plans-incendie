@@ -2,7 +2,6 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { supabase } from "../supabase";
 import pkg from "../../package.json";
-import SignalerProbleme from "./SignalerProbleme";
 
 export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
@@ -141,12 +140,6 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
 
       {/* Pied de sidebar */}
       <div style={{ marginTop: "auto", position: "relative", paddingBottom: 12 }}>
-        {/* Signaler un problème — utilisateurs et dessinateurs (pas l'admin) */}
-        {!isAdmin && (
-          <div onClick={onCloseMobile}>
-            <SignalerProbleme profil={profil} />
-          </div>
-        )}
         <div style={{ padding: "4px 12px", fontSize: 10, color: "#9CA3AF", textAlign: "left" }}>
           v{pkg.version}
         </div>
