@@ -7,6 +7,7 @@ import AnnoncesModal from "./AnnoncesModal";
 export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);
   const [sousComptes, setSousComptes] = useState([]);
+  const [tickets, setTickets] = useState([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // auteurNom used in realtime handler and normalizations
@@ -26,6 +27,14 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     ).length;
     return nbNonLus > 0 || c.marque_non_lu;
   }).length;
+
+  // Nombre de tickets avec au moins un message non lu (badge sidebar).
+  // Un message est non lu s'il vient d'un autre auteur et que mon id n'est
+  // pas dans lu_par. Calque du décompte des notifications de commandes.
+  const uid = session?.user?.id;
+  const ticketsNonLus = tickets.filter(t =>
+    (t.messages || []).some(m => m.auteur_id !== uid && !(m.lu_par || []).includes(uid))
+  ).length;
 
   useEffect(() => {
     chargerTout();
@@ -56,7 +65,28 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(canal); };
+    // Canal tickets — INSERT d'un message met à jour le décompte des non-lus.
+    const canalTickets = supabase
+      .channel("ticket-messages-layout")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "ticket_messages" }, (payload) => {
+        const m = payload.new;
+        setTickets(prev => prev.map(t => {
+          if (t.id !== m.ticket_id) return t;
+          if ((t.messages || []).some(x => x.id === m.id)) return t;
+          return { ...t, messages: [...(t.messages || []), { id: m.id, auteur_id: m.auteur_id, lu_par: m.lu_par || [] }] };
+        }));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "ticket_messages" }, (payload) => {
+        const m = payload.new;
+        setTickets(prev => prev.map(t =>
+          t.id === m.ticket_id
+            ? { ...t, messages: (t.messages || []).map(x => x.id === m.id ? { ...x, lu_par: m.lu_par || [] } : x) }
+            : t
+        ));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(canal); supabase.removeChannel(canalTickets); };
   }, [profil.id]); // eslint-disable-line
 
   async function chargerTout() {
@@ -66,7 +96,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     // Requête sous-comptes — les deux Vue* utilisent eq("master_id", profil.id) :
     //   VueUtilisateur.js:109 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
     //   VueDessinateur.js:88 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
-    const [{ data: cmd }, { data: sub }, { data: marques }] = await Promise.all([
+    const [{ data: cmd }, { data: sub }, { data: marques }, { data: tks }] = await Promise.all([
       supabase
         .from("commandes")
         .select("*, messages(*)")
@@ -75,6 +105,12 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         ? supabase.from("profiles").select("id, prenom, nom").eq("master_id", profil.id)
         : Promise.resolve({ data: [] }),
       supabase.from("commande_marquage_non_lu").select("commande_id"),
+      // Tickets + messages (id/auteur/lu_par) pour le décompte des non-lus.
+      // RLS limite déjà : admin voit tout, utilisateur voit ses tickets.
+      supabase
+        .from("tickets")
+        .select("id, statut, ticket_messages(id, auteur_id, lu_par)")
+        .order("updated_at", { ascending: false }),
     ]);
 
     if (cmd) {
@@ -94,6 +130,9 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     }
 
     if (sub) setSousComptes(sub);
+
+    // Normalise tickets : on expose messages = ticket_messages pour le décompte
+    setTickets((tks || []).map(t => ({ ...t, messages: t.ticket_messages || [] })));
   }
 
   return (
@@ -115,6 +154,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         session={session}
         profil={profil}
         totalNonLus={totalNonLus}
+        ticketsNonLus={ticketsNonLus}
         showMobileMenu={showMobileMenu}
         onCloseMobile={() => setShowMobileMenu(false)}
       />
@@ -158,6 +198,8 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
               commandes,
               setCommandes,
               sousComptes,
+              tickets,
+              setTickets,
             }}
           />
         </div>

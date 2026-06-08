@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { supabase } from "../supabase";
 import { MOTIFS_TICKET } from "../constants";
 import TicketChat from "./TicketChat";
@@ -7,6 +8,8 @@ import TicketChat from "./TicketChat";
 // Liste tous les tickets de l'utilisateur, permet d'en créer, et affiche
 // le fil de discussion en inline (pas dans une popup).
 export default function MesTickets({ profil }) {
+  // setTickets (global, LayoutPrincipal) pour rafraîchir les badges quand on lit.
+  const { setTickets: setTicketsGlobal } = useOutletContext();
   const [tickets, setTickets] = useState([]);
   const [selId, setSelId] = useState(null);
   const [creation, setCreation] = useState(false);
@@ -17,6 +20,18 @@ export default function MesTickets({ profil }) {
   const [loading, setLoading] = useState(true);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
+
+  // Met à jour le state global (badges sidebar) quand des messages sont lus.
+  function marquerLuGlobal(ticketId, messageIds) {
+    setTicketsGlobal?.(prev => prev.map(t =>
+      t.id !== ticketId ? t : {
+        ...t,
+        messages: (t.messages || []).map(m =>
+          messageIds.includes(m.id) ? { ...m, lu_par: [...(m.lu_par || []), profil.id] } : m
+        ),
+      }
+    ));
+  }
 
   useEffect(() => { charger(); }, []); // eslint-disable-line
 
@@ -127,6 +142,7 @@ export default function MesTickets({ profil }) {
                     auteurNom={auteurNom}
                     isAdmin={false}
                     onStatutChange={(s) => setTickets(prev => prev.map(x => x.id === t.id ? { ...x, statut: s } : x))}
+                    onLu={marquerLuGlobal}
                   />
                 </div>
               )}

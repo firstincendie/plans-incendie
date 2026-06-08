@@ -8,7 +8,7 @@ import { supabase } from "../supabase";
 //   auteurNom   – nom affiché de l'auteur courant
 //   isAdmin     – l'utilisateur courant est-il admin (peut clôturer / rouvrir)
 //   onStatutChange(nouveauStatut) – callback après clôture / réouverture
-export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatutChange }) {
+export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatutChange, onLu }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -23,9 +23,22 @@ export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatu
       .select("*")
       .eq("ticket_id", ticket.id)
       .order("created_at", { ascending: true })
-      .then(({ data }) => { if (!annule) setMessages(data || []); });
+      .then(async ({ data }) => {
+        if (annule) return;
+        setMessages(data || []);
+        // Marque comme lus les messages des autres auteurs non encore lus.
+        const nonLus = (data || []).filter(m => m.auteur_id !== userId && !(m.lu_par || []).includes(userId));
+        if (nonLus.length > 0) {
+          await Promise.all(nonLus.map(m =>
+            supabase.from("ticket_messages")
+              .update({ lu_par: [...(m.lu_par || []), userId] })
+              .eq("id", m.id)
+          ));
+          onLu?.(ticket.id, nonLus.map(m => m.id));
+        }
+      });
     return () => { annule = true; };
-  }, [ticket.id]);
+  }, [ticket.id]); // eslint-disable-line
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
 

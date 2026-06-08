@@ -5,11 +5,23 @@ import { formatDateCourt } from "../helpers";
 import TicketChat from "./TicketChat";
 
 export default function PageGestion() {
-  const { profil } = useOutletContext();
+  const { profil, setTickets: setTicketsGlobal } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const onglet = searchParams.get("tab") === "annonces" ? "annonces" : "tickets";
   const setOnglet = (id) => setSearchParams({ tab: id }, { replace: true });
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
+
+  // Propage la lecture au state global (badges sidebar).
+  function marquerLuGlobal(ticketId, messageIds) {
+    setTicketsGlobal?.(prev => prev.map(t =>
+      t.id !== ticketId ? t : {
+        ...t,
+        messages: (t.messages || []).map(m =>
+          messageIds.includes(m.id) ? { ...m, lu_par: [...(m.lu_par || []), profil.id] } : m
+        ),
+      }
+    ));
+  }
 
   return (
     <div>
@@ -28,7 +40,7 @@ export default function PageGestion() {
         ))}
       </div>
 
-      {onglet === "tickets" ? <OngletTickets profil={profil} auteurNom={auteurNom} /> : <OngletAnnonces profil={profil} />}
+      {onglet === "tickets" ? <OngletTickets profil={profil} auteurNom={auteurNom} onLu={marquerLuGlobal} /> : <OngletAnnonces profil={profil} />}
     </div>
   );
 }
@@ -36,7 +48,7 @@ export default function PageGestion() {
 // ============================================================
 // ONGLET TICKETS
 // ============================================================
-function OngletTickets({ profil, auteurNom }) {
+function OngletTickets({ profil, auteurNom, onLu }) {
   const [tickets, setTickets] = useState([]);
   const [filtre, setFiltre] = useState("ouvert"); // "ouvert" | "cloture" | "tous"
   const [selId, setSelId] = useState(null);
@@ -101,6 +113,7 @@ function OngletTickets({ profil, auteurNom }) {
                     auteurNom={auteurNom}
                     isAdmin={true}
                     onStatutChange={(s) => setTickets(prev => prev.map(x => x.id === t.id ? { ...x, statut: s } : x))}
+                    onLu={onLu}
                   />
                 </div>
               )}

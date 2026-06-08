@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { supabase } from "../supabase";
 import pkg from "../../package.json";
 
-export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMenu, onCloseMobile }) {
+export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
   const [gestionOuvert, setGestionOuvert] = useState(false);
 
@@ -27,13 +27,14 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
       icon: "🗃️",
     },
     { to: "/reglages", label: "Réglages", icon: "⚙️" },
-    { to: "/mon-compte", label: "Mon compte", icon: "👤" },
+    // Badge tickets non lus sur "Mon compte" pour utilisateurs / dessinateurs
+    { to: "/mon-compte", label: "Mon compte", icon: "👤", badge: isAdmin ? 0 : ticketsNonLus },
   ];
 
   // Sous-entrées du menu déroulant "Gestion" (admin uniquement)
   const gestionSousItems = [
     { to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" },
-    { to: "/gestion?tab=tickets", label: "Signalements", icon: "🎫" },
+    { to: "/gestion?tab=tickets", label: "Signalements", icon: "🎫", badge: ticketsNonLus },
   ];
 
   const initialesAvatar = `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}`;
@@ -107,6 +108,9 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
           >
             <span>🎫</span>
             <span style={{ flex: 1 }}>Gestion</span>
+            {!gestionOuvert && ticketsNonLus > 0 && (
+              <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{ticketsNonLus}</span>
+            )}
             <span style={{ fontSize: 10 }}>{gestionOuvert ? "▼" : "▶"}</span>
           </button>
           {gestionOuvert && gestionSousItems.map(sous => (
@@ -133,6 +137,9 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
             >
               <span>{sous.icon}</span>
               <span style={{ flex: 1 }}>{sous.label}</span>
+              {sous.badge > 0 && (
+                <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{sous.badge}</span>
+              )}
             </NavLink>
           ))}
         </div>
