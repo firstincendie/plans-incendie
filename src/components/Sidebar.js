@@ -38,7 +38,6 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
   const gestionSousItems = [
     { to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" },
     { to: "/gestion?tab=tickets", label: "Signalements", icon: "🎫" },
-    { to: "/gestion?tab=annonces", label: "Messages", icon: "📢" },
   ];
 
   const initialesAvatar = `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}`;
