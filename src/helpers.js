@@ -77,11 +77,16 @@ export function joursRestants(dateStr) {
 
 // Ajoute days jours à baseDateStr (ou à aujourd'hui si baseDateStr est null/vide)
 // et retourne au format ISO court "YYYY-MM-DD" — directement compatible <input type="date" />.
+// NB : on formate en date LOCALE (pas toISOString qui passe en UTC et peut
+// reculer d'un jour selon le fuseau, ex. UTC+2 en heure d'été).
 export function ajouterJours(baseDateStr, days) {
   const d = baseDateStr ? new Date(baseDateStr) : new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + days);
-  return d.toISOString().substring(0, 10);
+  const an = d.getFullYear();
+  const mois = String(d.getMonth() + 1).padStart(2, "0");
+  const jour = String(d.getDate()).padStart(2, "0");
+  return `${an}-${mois}-${jour}`;
 }
 
 // Palette de couleurs pour l'affichage d'un délai en fonction des jours restants :
