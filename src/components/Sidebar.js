@@ -14,9 +14,14 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
   const items = [
     {
       to: "/commandes",
-      label: role === "dessinateur" ? "Mes missions" : "Commandes",
+      label: role === "dessinateur" ? "Missions en cours" : "Commandes en cours",
       icon: "📋",
       badge: totalNonLus,
+    },
+    {
+      to: "/commandes/archives",
+      label: role === "dessinateur" ? "Missions archivées" : "Commandes archivées",
+      icon: "🗃️",
     },
     ...(role === "dessinateur"
       ? [{ to: "/gestion-compte", label: "Gestion de compte", icon: "📁" }]
