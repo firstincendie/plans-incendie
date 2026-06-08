@@ -9,8 +9,9 @@ import ZoneUpload from "./ZoneUpload";
 // Liste tous les tickets de l'utilisateur, permet d'en créer, et affiche
 // le fil de discussion en inline (pas dans une popup).
 export default function MesTickets({ profil }) {
-  // setTickets (global, LayoutPrincipal) pour rafraîchir les badges quand on lit.
-  const { setTickets: setTicketsGlobal } = useOutletContext();
+  // tickets (state global, LayoutPrincipal) : porte les messages avec lu_par,
+  // sert au décompte des non-lus par ticket. setTickets rafraîchit les badges.
+  const { tickets: ticketsGlobal = [], setTickets: setTicketsGlobal } = useOutletContext();
   const [tickets, setTickets] = useState([]);
   const [selId, setSelId] = useState(null);
   const [creation, setCreation] = useState(false);
@@ -33,6 +34,12 @@ export default function MesTickets({ profil }) {
         ),
       }
     ));
+  }
+
+  // Nb de messages non lus d'un ticket (depuis le state global qui porte lu_par).
+  function nonLusDe(ticketId) {
+    const g = ticketsGlobal.find(t => t.id === ticketId);
+    return (g?.messages || []).filter(m => m.auteur_id !== profil.id && !(m.lu_par || []).includes(profil.id)).length;
   }
 
   useEffect(() => { charger(); }, []); // eslint-disable-line
@@ -133,9 +140,14 @@ export default function MesTickets({ profil }) {
             <div key={t.id} style={{ border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden" }}>
               <button onClick={() => setSelId(selId === t.id ? null : t.id)}
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{t.titre}</div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{t.motif}</div>
+                <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{t.titre}</div>
+                    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{t.motif}</div>
+                  </div>
+                  {nonLusDe(t.id) > 0 && (
+                    <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{nonLusDe(t.id)}</span>
+                  )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   <StatutBadge statut={t.statut} />

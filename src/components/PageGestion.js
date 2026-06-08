@@ -7,7 +7,7 @@ import ZoneUpload from "./ZoneUpload";
 import PiecesJointes from "./PiecesJointes";
 
 export default function PageGestion() {
-  const { profil, setTickets: setTicketsGlobal } = useOutletContext();
+  const { profil, tickets: ticketsGlobal = [], setTickets: setTicketsGlobal } = useOutletContext();
   const [searchParams] = useSearchParams();
   const onglet = searchParams.get("tab") === "annonces" ? "annonces" : "tickets";
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
@@ -30,7 +30,7 @@ export default function PageGestion() {
         {onglet === "annonces" ? "Annonces" : "Signalements"}
       </h1>
 
-      {onglet === "tickets" ? <OngletTickets profil={profil} auteurNom={auteurNom} onLu={marquerLuGlobal} /> : <OngletAnnonces profil={profil} />}
+      {onglet === "tickets" ? <OngletTickets profil={profil} auteurNom={auteurNom} onLu={marquerLuGlobal} ticketsGlobal={ticketsGlobal} /> : <OngletAnnonces profil={profil} />}
     </div>
   );
 }
@@ -38,11 +38,17 @@ export default function PageGestion() {
 // ============================================================
 // ONGLET TICKETS
 // ============================================================
-function OngletTickets({ profil, auteurNom, onLu }) {
+function OngletTickets({ profil, auteurNom, onLu, ticketsGlobal = [] }) {
   const [tickets, setTickets] = useState([]);
   const [filtre, setFiltre] = useState("ouvert"); // "ouvert" | "cloture" | "tous"
   const [selId, setSelId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Nb de messages non lus d'un ticket (depuis le state global porteur de lu_par).
+  const nonLusDe = (ticketId) => {
+    const g = ticketsGlobal.find(t => t.id === ticketId);
+    return (g?.messages || []).filter(m => m.auteur_id !== profil.id && !(m.lu_par || []).includes(profil.id)).length;
+  };
 
   useEffect(() => { charger(); }, []); // eslint-disable-line
 
@@ -90,6 +96,9 @@ function OngletTickets({ profil, auteurNom, onLu }) {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {nonLusDe(t.id) > 0 && (
+                    <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{nonLusDe(t.id)}</span>
+                  )}
                   <StatutBadge statut={t.statut} />
                   <span style={{ fontSize: 12, color: "#9CA3AF" }}>{selId === t.id ? "▲" : "▼"}</span>
                 </div>
