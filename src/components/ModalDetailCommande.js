@@ -87,12 +87,12 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   }, [commande?.id, session?.user?.id]); // eslint-disable-line
 
   // Init du champ "nouvelle date" quand on ouvre les modales de demande.
-  // Défaut : délai actuel + 3 jours (ou aujourd'hui + 3 si pas de délai).
+  // Défaut : aujourd'hui + 2 jours.
   useEffect(() => {
-    if (showModifModal) setModifNouvelleDelai(ajouterJours(commande?.delai || null, 3));
+    if (showModifModal) setModifNouvelleDelai(ajouterJours(null, 2));
   }, [showModifModal, commande?.delai]);
   useEffect(() => {
-    if (showDemandeValidationModal) setValidNouvelleDelai(ajouterJours(commande?.delai || null, 3));
+    if (showDemandeValidationModal) setValidNouvelleDelai(ajouterJours(null, 2));
   }, [showDemandeValidationModal, commande?.delai]);
 
   // Auto-clear du marquage "non lue" manuel à l'ouverture de la commande
