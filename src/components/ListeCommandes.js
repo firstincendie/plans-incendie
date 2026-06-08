@@ -372,13 +372,18 @@ export default function ListeCommandes() {
   }
 
   // ============================================================
-  // Shared archivées label text
+  // Titres des sous-sections (en cours / archivées), selon le rôle
   // ============================================================
-  const labelArchivees = profil.role === "dessinateur" ? "mission" : "commande";
-  const labelArchiveesPluriel = profil.role === "dessinateur" ? "missions" : "commandes";
-  const archLabel = archivees.length === 1
-    ? `1 ${labelArchivees} archivée`
-    : `${archivees.length} ${labelArchiveesPluriel} archivées`;
+  const titreEnCours  = isDessinateur ? "Missions en cours" : "Commandes en cours";
+  const titreArchivees = isDessinateur ? "Missions archivées" : "Commandes archivées";
+
+  // Petit titre de sous-section réutilisé desktop + mobile.
+  const SousTitre = ({ children, count }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: "#374151" }}>
+      <span>{children}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF" }}>({count})</span>
+    </div>
+  );
 
   return (
     <div onClick={() => { menuCmdId && setMenuCmdId(null); }}>
@@ -462,8 +467,11 @@ export default function ListeCommandes() {
       {/* ---- UTILISATEUR / ADMIN TABLE ---- */}
       {!isDessinateur && (
         <>
+          {/* ===== Commandes en cours ===== */}
+          <SousTitre count={actives.length}>{titreEnCours}</SousTitre>
+
           {/* Actives — desktop */}
-          <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+          <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 24 }}>
             <div style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {sousComptes.length > 0 && <span>Compte</span>}
               <Th col="nom_plan" label="Plan" />
@@ -479,21 +487,37 @@ export default function ListeCommandes() {
           </div>
 
           {/* Actives — mobile */}
-          <div className="cmd-cards" style={{ marginBottom: 16 }}>
+          <div className="cmd-cards" style={{ marginBottom: 24 }}>
             <MobileSort />
             {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
             {actives.map(c => renderCarteCmdUtilisateur(c))}
           </div>
 
-          {/* Archivées — lien vers la page dédiée */}
+          {/* ===== Commandes archivées ===== */}
           {archivees.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <button
-                onClick={() => navigate("/commandes/archives")}
-                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>
-                {`${archLabel} →`}
-              </button>
-            </div>
+            <>
+              <SousTitre count={archivees.length}>{titreArchivees}</SousTitre>
+
+              {/* Archivées — desktop */}
+              <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: cmdCols, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  {sousComptes.length > 0 && <span>Compte</span>}
+                  <Th col="nom_plan" label="Plan" />
+                  <Th col="dessinateur" label="Dessinateur" />
+                  <Th col="created_at" label="Créé le" />
+                  <span>Plans</span>
+                  <Th col="delai" label="Délai" />
+                  <Th col="statut" label="Statut" />
+                  <span></span>
+                </div>
+                {archivees.map(c => renderLigneCmdUtilisateur(c, true))}
+              </div>
+
+              {/* Archivées — mobile */}
+              <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                {archivees.map(c => renderCarteCmdUtilisateur(c, true))}
+              </div>
+            </>
           )}
         </>
       )}
@@ -501,8 +525,11 @@ export default function ListeCommandes() {
       {/* ---- DESSINATEUR TABLE ---- */}
       {isDessinateur && (
         <>
+          {/* ===== Missions en cours ===== */}
+          <SousTitre count={actives.length}>{titreEnCours}</SousTitre>
+
           {/* Actives — desktop */}
-          <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+          <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 24 }}>
             <div style={{ display: "grid", gridTemplateColumns: cmdColsDessinateur, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
               {sousComptes.length > 0 && <span>Dessinateur</span>}
               <Th col="nom_plan" label="Plan" />
@@ -517,21 +544,36 @@ export default function ListeCommandes() {
           </div>
 
           {/* Actives — mobile */}
-          <div className="cmd-cards" style={{ marginBottom: 16 }}>
+          <div className="cmd-cards" style={{ marginBottom: 24 }}>
             <MobileSort />
             {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
             {actives.map(c => renderCarteCmdDessinateur(c))}
           </div>
 
-          {/* Archivées — lien vers la page dédiée */}
+          {/* ===== Missions archivées ===== */}
           {archivees.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <button
-                onClick={() => navigate("/commandes/archives")}
-                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>
-                {`${archLabel} →`}
-              </button>
-            </div>
+            <>
+              <SousTitre count={archivees.length}>{titreArchivees}</SousTitre>
+
+              {/* Archivées — desktop */}
+              <div className="cmd-table" style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: cmdColsDessinateur, padding: "10px 20px", borderBottom: "1px solid #E5E7EB", fontSize: 11, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>
+                  {sousComptes.length > 0 && <span>Dessinateur</span>}
+                  <Th col="nom_plan" label="Plan" />
+                  <Th col="created_at" label="Créé le" />
+                  <span>Plans</span>
+                  <Th col="delai" label="Délai" />
+                  <Th col="statut" label="Statut" />
+                  <span></span>
+                </div>
+                {archivees.map(c => renderLigneCmdDessinateur(c, true))}
+              </div>
+
+              {/* Archivées — mobile */}
+              <div className="cmd-cards" style={{ marginBottom: 16 }}>
+                {archivees.map(c => renderCarteCmdDessinateur(c, true))}
+              </div>
+            </>
           )}
         </>
       )}
