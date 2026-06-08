@@ -128,8 +128,8 @@ export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLu
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "8px 12px 8px 28px",
+                gap: 8,
+                padding: "8px 12px 8px 24px",
                 borderRadius: 8,
                 border: "none",
                 cursor: "pointer",
@@ -139,13 +139,14 @@ export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLu
                 color: actif ? couleurAccent : "#6B7280",
                 textAlign: "left",
                 width: "100%",
+                boxSizing: "border-box",
                 textDecoration: "none",
               }}
             >
-              <span>{sous.icon}</span>
-              <span style={{ flex: 1 }}>{sous.label}</span>
+              <span style={{ flexShrink: 0 }}>{sous.icon}</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sous.label}</span>
               {sous.badge > 0 && (
-                <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{sous.badge}</span>
+                <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{sous.badge}</span>
               )}
             </NavLink>
             );
