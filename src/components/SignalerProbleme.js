@@ -68,11 +68,10 @@ export default function SignalerProbleme({ profil }) {
 
   return (
     <>
-      {/* Bouton dans la sidebar */}
+      {/* Bouton dans la sidebar — volontairement discret */}
       <button
         onClick={() => setOuvert(true)}
-        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", marginBottom: 4, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#DC2626", textAlign: "left" }}>
-        <span>⚠️</span>
+        style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "4px 12px", marginBottom: 4, background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 400, color: "#DC2626", textAlign: "left" }}>
         <span>Signaler un problème</span>
       </button>
 
