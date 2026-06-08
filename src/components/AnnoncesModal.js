@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase";
+import PiecesJointes from "./PiecesJointes";
 
 // Modale affichée à la connexion : empile les annonces actives non lues.
 // L'utilisateur ferme → marque toutes comme lues.
@@ -52,6 +53,7 @@ export default function AnnoncesModal({ profil }) {
                 <span style={{ fontSize: 14, fontWeight: 700, color: a.type === "warning" ? "#9F1239" : "#1E40AF" }}>{a.titre}</span>
               </div>
               <div style={{ fontSize: 13, color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.contenu}</div>
+              <PiecesJointes fichiers={a.fichiers} compact />
             </div>
           ))}
         </div>

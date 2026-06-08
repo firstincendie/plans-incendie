@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabase";
+import ZoneUpload from "./ZoneUpload";
+import PiecesJointes from "./PiecesJointes";
 
 // Fil de discussion d'un ticket. Réutilisé côté créateur et côté admin.
 // Props :
@@ -11,6 +13,7 @@ import { supabase } from "../supabase";
 export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatutChange, onLu }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [fichiers, setFichiers] = useState([]);
   const [envoi, setEnvoi] = useState(false);
   const bottomRef = useRef();
 
@@ -44,17 +47,19 @@ export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatu
 
   async function envoyer() {
     const texte = input.trim();
-    if (!texte || envoi) return;
+    if ((!texte && fichiers.length === 0) || envoi) return;
     setEnvoi(true);
     const { data, error } = await supabase.from("ticket_messages").insert([{
       ticket_id: ticket.id,
       auteur_id: userId,
       auteur: auteurNom,
       texte,
+      fichiers,
     }]).select().single();
     if (!error && data) {
       setMessages(prev => [...prev, data]);
       setInput("");
+      setFichiers([]);
       // Touch updated_at du ticket (best-effort, ignore si non admin et RLS bloque)
       supabase.from("tickets").update({ updated_at: new Date().toISOString() }).eq("id", ticket.id);
     }
@@ -80,7 +85,8 @@ export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatu
             <div key={m.id} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "85%" }}>
               <div style={{ background: moi ? "#fff" : "#EFF6FF", border: `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`, borderRadius: 8, padding: "8px 10px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: moi ? "#374151" : "#1E40AF" }}>{m.auteur}</div>
-                <div style={{ fontSize: 12, color: "#374151", marginTop: 3, whiteSpace: "pre-wrap" }}>{m.texte}</div>
+                {m.texte && <div style={{ fontSize: 12, color: "#374151", marginTop: 3, whiteSpace: "pre-wrap" }}>{m.texte}</div>}
+                <PiecesJointes fichiers={m.fichiers} compact />
               </div>
             </div>
           );
@@ -101,19 +107,32 @@ export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatu
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") envoyer(); }}
-              placeholder="Votre message…"
-              style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }}
-            />
-            <button onClick={envoyer} disabled={!input.trim() || envoi}
-              style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: !input.trim() ? "#F3F4F6" : "#122131", color: !input.trim() ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: !input.trim() ? "not-allowed" : "pointer" }}>
-              {envoi ? "…" : "Envoyer"}
-            </button>
-          </div>
+          {(() => {
+            const vide = !input.trim() && fichiers.length === 0;
+            return (
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") envoyer(); }}
+                  placeholder="Votre message…"
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }}
+                />
+                <button onClick={envoyer} disabled={vide || envoi}
+                  style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: vide ? "#F3F4F6" : "#122131", color: vide ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: vide ? "not-allowed" : "pointer" }}>
+                  {envoi ? "…" : "Envoyer"}
+                </button>
+              </div>
+            );
+          })()}
+          <ZoneUpload
+            label=""
+            fichiers={fichiers}
+            onAjouter={setFichiers}
+            onSupprimer={i => setFichiers(fichiers.filter((_, idx) => idx !== i))}
+            accept=".png,.jpg,.jpeg,.pdf"
+            maxFichiers={5}
+          />
           {isAdmin && (
             <button onClick={() => changerStatut("cloture")}
               style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 600, color: "#059669", background: "none", border: "none", cursor: "pointer", padding: "2px 0" }}>

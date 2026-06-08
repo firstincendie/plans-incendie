@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { supabase } from "../supabase";
 import { MOTIFS_TICKET } from "../constants";
 import TicketChat from "./TicketChat";
+import ZoneUpload from "./ZoneUpload";
 
 // Section "Mes tickets" de la page Mon compte.
 // Liste tous les tickets de l'utilisateur, permet d'en créer, et affiche
@@ -16,6 +17,7 @@ export default function MesTickets({ profil }) {
   const [motif, setMotif] = useState(MOTIFS_TICKET[0]);
   const [titre, setTitre] = useState("");
   const [commentaire, setCommentaire] = useState("");
+  const [fichiers, setFichiers] = useState([]);
   const [envoi, setEnvoi] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -62,9 +64,10 @@ export default function MesTickets({ profil }) {
         auteur_id: profil.id,
         auteur: auteurNom,
         texte: commentaire.trim(),
+        fichiers,
       }]);
       setTickets(prev => [data, ...prev]);
-      setTitre(""); setCommentaire(""); setMotif(MOTIFS_TICKET[0]);
+      setTitre(""); setCommentaire(""); setMotif(MOTIFS_TICKET[0]); setFichiers([]);
       setCreation(false);
       setSelId(data.id);
     }
@@ -100,6 +103,12 @@ export default function MesTickets({ profil }) {
             <div>
               <label style={labelStyle}>Commentaire</label>
               <textarea value={commentaire} onChange={e => setCommentaire(e.target.value)} rows={4} placeholder="Décrivez le problème en détail…" style={{ ...inputStyle, resize: "vertical" }} />
+            </div>
+            <div>
+              <label style={labelStyle}>Pièces jointes (optionnel)</label>
+              <ZoneUpload label="" fichiers={fichiers} onAjouter={setFichiers}
+                onSupprimer={i => setFichiers(fichiers.filter((_, idx) => idx !== i))}
+                accept=".png,.jpg,.jpeg,.pdf" maxFichiers={5} />
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button onClick={() => setCreation(false)} style={btnSecondaire}>Annuler</button>

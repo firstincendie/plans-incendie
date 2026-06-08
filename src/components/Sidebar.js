@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
 import pkg from "../../package.json";
 
 export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLus = 0, showMobileMenu, onCloseMobile }) {
   const [showMenuProfil, setShowMenuProfil] = useState(false);
   const [gestionOuvert, setGestionOuvert] = useState(false);
+  const location = useLocation();
+  // Pour les sous-items Gestion qui partagent le pathname /gestion, on compare
+  // aussi le query (?tab=) pour déterminer lequel est actif.
+  const cheminCourant = `${location.pathname}${location.search}`;
 
   const role = profil.role;
   const couleurAccent = role === "dessinateur" ? "#FC6C1B" : "#122131";
@@ -35,6 +39,7 @@ export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLu
   const gestionSousItems = [
     { to: "/utilisateurs", label: "Utilisateurs", icon: "🛠️" },
     { to: "/gestion?tab=tickets", label: "Signalements", icon: "🎫", badge: ticketsNonLus },
+    { to: "/gestion?tab=annonces", label: "Annonces", icon: "📢" },
   ];
 
   const initialesAvatar = `${(profil.prenom?.[0] || "").toUpperCase()}${(profil.nom?.[0] || "").toUpperCase()}`;
@@ -113,12 +118,14 @@ export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLu
             )}
             <span style={{ fontSize: 10 }}>{gestionOuvert ? "▼" : "▶"}</span>
           </button>
-          {gestionOuvert && gestionSousItems.map(sous => (
+          {gestionOuvert && gestionSousItems.map(sous => {
+            const actif = cheminCourant === sous.to;
+            return (
             <NavLink
               key={sous.to}
               to={sous.to}
               onClick={onCloseMobile}
-              style={({ isActive }) => ({
+              style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
@@ -127,13 +134,13 @@ export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLu
                 border: "none",
                 cursor: "pointer",
                 fontSize: 13,
-                fontWeight: isActive ? 600 : 400,
-                background: isActive ? fondActif : "transparent",
-                color: isActive ? couleurAccent : "#6B7280",
+                fontWeight: actif ? 600 : 400,
+                background: actif ? fondActif : "transparent",
+                color: actif ? couleurAccent : "#6B7280",
                 textAlign: "left",
                 width: "100%",
                 textDecoration: "none",
-              })}
+              }}
             >
               <span>{sous.icon}</span>
               <span style={{ flex: 1 }}>{sous.label}</span>
@@ -141,7 +148,8 @@ export default function Sidebar({ session, profil, totalNonLus = 0, ticketsNonLu
                 <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{sous.badge}</span>
               )}
             </NavLink>
-          ))}
+            );
+          })}
         </div>
       )}
 
