@@ -1,9 +1,16 @@
 import { useState, useRef, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import { supabase } from "../supabase";
 import MesTickets from "./MesTickets";
 
 export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [], dessinateurAssigne }) {
   const [sectionActive, setSectionActive] = useState("profil"); // "profil" | "reseau" | "tickets"
+  // Tickets (state global du Layout) pour le badge non-lus de la section.
+  const { tickets = [] } = useOutletContext();
+  const uid = session?.user?.id;
+  const ticketsNonLus = tickets.filter(t =>
+    (t.messages || []).some(m => m.auteur_id !== uid && !(m.lu_par || []).includes(uid))
+  ).length;
   const clientsAssignes = role === "dessinateur"
     ? [...new Set(commandes.map(c => c.client).filter(Boolean))].sort()
     : [];
@@ -212,7 +219,7 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
   const sections = [
     { id: "profil", label: "Profil", icon: "👤" },
     { id: "reseau", label: role === "dessinateur" ? "Mes clients" : "Mon réseau", icon: "🔗" },
-    { id: "tickets", label: "Mes tickets", icon: "🎫" },
+    { id: "tickets", label: "Mes tickets", icon: "🎫", badge: ticketsNonLus },
   ];
 
   const navBtn = (s) => ({
@@ -232,7 +239,10 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
         <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 8 }}>
           {sections.map(s => (
             <button key={s.id} onClick={() => setSectionActive(s.id)} style={navBtn(s)}>
-              <span>{s.icon}</span><span>{s.label}</span>
+              <span>{s.icon}</span><span style={{ flex: 1 }}>{s.label}</span>
+              {s.badge > 0 && (
+                <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{s.badge}</span>
+              )}
             </button>
           ))}
         </div>
