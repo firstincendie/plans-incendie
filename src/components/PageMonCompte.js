@@ -1,16 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import MesTickets from "./MesTickets";
 
 export default function PageMonCompte({ profil, session, onProfilUpdate, role, commandes = [], dessinateurAssigne }) {
-  const [sectionActive, setSectionActive] = useState("profil"); // "profil" | "reseau" | "tickets"
-  // Tickets (state global du Layout) pour le badge non-lus de la section.
-  const { tickets = [] } = useOutletContext();
-  const uid = session?.user?.id;
-  const ticketsNonLus = tickets.filter(t =>
-    (t.messages || []).some(m => m.auteur_id !== uid && !(m.lu_par || []).includes(uid))
-  ).length;
+  // Section pilotée par l'URL (?section=), navigation via le menu de la sidebar.
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const sectionActive = ["profil", "reseau", "tickets"].includes(sectionParam) ? sectionParam : "profil";
   const clientsAssignes = role === "dessinateur"
     ? [...new Set(commandes.map(c => c.client).filter(Boolean))].sort()
     : [];
@@ -217,36 +214,18 @@ export default function PageMonCompte({ profil, session, onProfilUpdate, role, c
   const initiales = `${(form.prenom?.[0] || "").toUpperCase()}${(form.nom?.[0] || "").toUpperCase()}`;
 
   const sections = [
-    { id: "profil", label: "Profil", icon: "👤" },
-    { id: "reseau", label: role === "dessinateur" ? "Mes clients" : "Mon réseau", icon: "🔗" },
-    { id: "tickets", label: "Mes tickets", icon: "🎫", badge: ticketsNonLus },
+    { id: "profil", label: "Profil" },
+    { id: "reseau", label: role === "dessinateur" ? "Mes clients" : "Mon réseau" },
+    { id: "tickets", label: "Mes tickets" },
   ];
 
-  const navBtn = (s) => ({
-    display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px",
-    borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13,
-    fontWeight: sectionActive === s.id ? 600 : 400,
-    background: sectionActive === s.id ? "#EEF3F8" : "transparent",
-    color: sectionActive === s.id ? "#122131" : "#6B7280", textAlign: "left",
-  });
+  const titreSection = sections.find(s => s.id === sectionActive)?.label || "Mon compte";
 
   return (
-    <div style={{ maxWidth: 820 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0", color: "#122131" }}>Mon compte</h1>
+    <div style={{ maxWidth: 620 }}>
+      <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 24px 0", color: "#122131" }}>{titreSection}</h1>
 
-      <div className="moncompte-layout" style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 24, alignItems: "start" }}>
-        {/* Menu sections */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 8 }}>
-          {sections.map(s => (
-            <button key={s.id} onClick={() => setSectionActive(s.id)} style={navBtn(s)}>
-              <span>{s.icon}</span><span style={{ flex: 1 }}>{s.label}</span>
-              {s.badge > 0 && (
-                <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{s.badge}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
+      <div>
         {/* Contenu de la section active */}
         <div>
           {sectionActive === "tickets" && <MesTickets profil={profil} />}
