@@ -27,9 +27,6 @@ export default function Sidebar({ session, profil, totalNonLus = 0, showMobileMe
       label: role === "dessinateur" ? "Missions archivées" : "Commandes archivées",
       icon: "🗃️",
     },
-    ...(role === "dessinateur"
-      ? [{ to: "/gestion-compte", label: "Gestion de compte", icon: "📁" }]
-      : []),
     { to: "/reglages", label: "Réglages", icon: "⚙️" },
     { to: "/mon-compte", label: "Mon compte", icon: "👤" },
   ];

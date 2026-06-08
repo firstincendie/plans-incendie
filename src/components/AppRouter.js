@@ -8,7 +8,6 @@ import RequireRole from "./RequireRole";
 import LayoutPrincipal from "./LayoutPrincipal";
 import PageReglages from "./PageReglages";
 import PageMonCompte from "./PageMonCompte";
-import GestionCompteDessinateur from "./GestionCompteDessinateur";
 import GestionUtilisateurs from "./GestionUtilisateurs";
 import ListeCommandes from "./ListeCommandes";
 import ListeArchives from "./ListeArchives";
@@ -41,10 +40,6 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
           <Route path="/reglages" element={<PageReglagesWrapper />} />
           <Route path="/mon-compte" element={<PageMonCompteWrapper />} />
 
-          <Route element={<RequireRole profil={profil} roles={["dessinateur"]} />}>
-            <Route path="/gestion-compte" element={<GestionCompteDessinateurWrapper />} />
-          </Route>
-
           <Route element={<RequireRole profil={profil} roles={["admin", "utilisateur"]} requireOwner />}>
             <Route path="/utilisateurs" element={<GestionUtilisateurs />}>
               <Route path=":uid" element={<ModalDetailUtilisateur />} />
@@ -72,7 +67,3 @@ function PageMonCompteWrapper() {
   return <PageMonCompte profil={profil} session={session} role={roleProp} commandes={commandes} onProfilUpdate={onProfilUpdate} />;
 }
 
-function GestionCompteDessinateurWrapper() {
-  const { profil, sousComptes } = useOutletContext();
-  return <GestionCompteDessinateur profil={profil} sousComptes={sousComptes} />;
-}
