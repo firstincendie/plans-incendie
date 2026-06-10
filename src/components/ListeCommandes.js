@@ -4,6 +4,7 @@ import { supabase } from "../supabase";
 import { formatDateCourt, joursRestants, delaiPalette } from "../helpers";
 import Badge from "./Badge";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
+import Pagination from "./Pagination";
 
 export default function ListeCommandes() {
   const { profil, commandes, setCommandes, sousComptes, session } = useOutletContext();
@@ -12,6 +13,8 @@ export default function ListeCommandes() {
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -165,7 +168,12 @@ export default function ListeCommandes() {
   const cmdFiltrees0 = appliquerFiltresTri(commandesVisibles, filtres, tri);
   const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => hasNotif(c)) : cmdFiltrees0;
   const actives   = cmdFiltrees.filter(c => !c[champArchive]);
-  const archivees = cmdFiltrees.filter(c =>  c[champArchive]);
+
+  // --- Pagination des commandes actives ---
+  const pageCount = Math.max(1, Math.ceil(actives.length / pageSize));
+  const pageCourante = Math.min(page, pageCount);
+  const activesPage = actives.slice((pageCourante - 1) * pageSize, pageCourante * pageSize);
+  const setPageSizeReset = (n) => { setPageSize(n); setPage(1); };
 
   // --- Quick actions: archive/desarchive ---
   async function archiver(id) {
@@ -371,15 +379,6 @@ export default function ListeCommandes() {
     );
   }
 
-  // ============================================================
-  // Shared archivées label text
-  // ============================================================
-  const labelArchivees = profil.role === "dessinateur" ? "mission" : "commande";
-  const labelArchiveesPluriel = profil.role === "dessinateur" ? "missions" : "commandes";
-  const archLabel = archivees.length === 1
-    ? `1 ${labelArchivees} archivée`
-    : `${archivees.length} ${labelArchiveesPluriel} archivées`;
-
   return (
     <div onClick={() => { menuCmdId && setMenuCmdId(null); }}>
 
@@ -448,26 +447,19 @@ export default function ListeCommandes() {
               <span></span>
             </div>
             {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
-            {actives.map(c => renderLigneCmdUtilisateur(c))}
+            {activesPage.map(c => renderLigneCmdUtilisateur(c))}
           </div>
 
           {/* Actives — mobile */}
           <div className="cmd-cards" style={{ marginBottom: 16 }}>
             <MobileSort />
             {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande active.</div>}
-            {actives.map(c => renderCarteCmdUtilisateur(c))}
+            {activesPage.map(c => renderCarteCmdUtilisateur(c))}
           </div>
 
-          {/* Archivées — lien vers la page dédiée */}
-          {archivees.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <button
-                onClick={() => navigate("/commandes/archives")}
-                style={{ fontSize: 12, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>
-                {`${archLabel} →`}
-              </button>
-            </div>
-          )}
+          <Pagination total={actives.length} page={pageCourante} pageSize={pageSize}
+            onPage={setPage} onPageSize={setPageSizeReset} couleur={couleurAccent} />
+
         </>
       )}
 
@@ -486,21 +478,24 @@ export default function ListeCommandes() {
               <span></span>
             </div>
             {actives.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
-            {actives.map(c => renderLigneCmdDessinateur(c))}
+            {activesPage.map(c => renderLigneCmdDessinateur(c))}
           </div>
 
           {/* Actives — mobile */}
           <div className="cmd-cards" style={{ marginBottom: 16 }}>
             <MobileSort />
             {actives.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission active.</div>}
-            {actives.map(c => renderCarteCmdDessinateur(c))}
+            {activesPage.map(c => renderCarteCmdDessinateur(c))}
           </div>
+
+          <Pagination total={actives.length} page={pageCourante} pageSize={pageSize}
+            onPage={setPage} onPageSize={setPageSizeReset} couleur={couleurAccent} />
         </>
       )}
 
       {/* Outlet — for Task 12 modal. commandesOrdonnees = liste active dans
           l'ordre/filtre affiché, pour la navigation clavier ←/→ du détail. */}
-      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session, commandesOrdonnees: actives }} />
+      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session, commandesOrdonnees: activesPage }} />
 
       {/* ---- DROPDOWN ··· (position fixed, escapes overflow:hidden) ---- */}
       {menuCmdId && menuRect && (() => {
