@@ -4,6 +4,7 @@ import { supabase } from "../supabase";
 import { formatDateCourt, joursRestants, delaiPalette } from "../helpers";
 import Badge from "./Badge";
 import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
+import Pagination from "./Pagination";
 
 export default function ListeArchives() {
   const { profil, commandes, setCommandes, sousComptes, session } = useOutletContext();
@@ -12,6 +13,8 @@ export default function ListeArchives() {
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -158,6 +161,12 @@ export default function ListeArchives() {
   const cmdFiltrees0 = appliquerFiltresTri(commandesVisibles, filtres, tri);
   const cmdFiltrees  = filtres.nonlus ? cmdFiltrees0.filter(c => hasNotif(c)) : cmdFiltrees0;
   const archivees = cmdFiltrees.filter(c => c[champArchive] === true);
+
+  // --- Pagination des commandes archivées ---
+  const pageCount = Math.max(1, Math.ceil(archivees.length / pageSize));
+  const pageCourante = Math.min(page, pageCount);
+  const archiveesPage = archivees.slice((pageCourante - 1) * pageSize, pageCourante * pageSize);
+  const setPageSizeReset = (n) => { setPageSize(n); setPage(1); };
 
   // --- Quick actions: desarchive ---
   async function desarchiver(id) {
@@ -408,15 +417,18 @@ export default function ListeArchives() {
               <span></span>
             </div>
             {archivees.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande archivée.</div>}
-            {archivees.map(c => renderLigneCmdUtilisateur(c))}
+            {archiveesPage.map(c => renderLigneCmdUtilisateur(c))}
           </div>
 
           {/* Archivées — mobile */}
           <div className="cmd-cards" style={{ marginBottom: 16 }}>
             <MobileSort />
             {archivees.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune commande archivée.</div>}
-            {archivees.map(c => renderCarteCmdUtilisateur(c))}
+            {archiveesPage.map(c => renderCarteCmdUtilisateur(c))}
           </div>
+
+          <Pagination total={archivees.length} page={pageCourante} pageSize={pageSize}
+            onPage={setPage} onPageSize={setPageSizeReset} couleur={couleurAccent} />
         </>
       )}
 
@@ -435,21 +447,24 @@ export default function ListeArchives() {
               <span></span>
             </div>
             {archivees.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission archivée.</div>}
-            {archivees.map(c => renderLigneCmdDessinateur(c))}
+            {archiveesPage.map(c => renderLigneCmdDessinateur(c))}
           </div>
 
           {/* Archivées — mobile */}
           <div className="cmd-cards" style={{ marginBottom: 16 }}>
             <MobileSort />
             {archivees.length === 0 && <div style={{ padding: 12, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucune mission archivée.</div>}
-            {archivees.map(c => renderCarteCmdDessinateur(c))}
+            {archiveesPage.map(c => renderCarteCmdDessinateur(c))}
           </div>
+
+          <Pagination total={archivees.length} page={pageCourante} pageSize={pageSize}
+            onPage={setPage} onPageSize={setPageSizeReset} couleur={couleurAccent} />
         </>
       )}
 
-      {/* Outlet — for modal detail. commandesOrdonnees = liste archivée dans
-          l'ordre/filtre affiché, pour la navigation clavier ←/→ du détail. */}
-      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session, commandesOrdonnees: archivees }} />
+      {/* Outlet — for modal detail. commandesOrdonnees = liste archivée (page courante)
+          pour la navigation clavier ←/→ du détail. */}
+      <Outlet context={{ commandes, setCommandes, sousComptes, profil, session, commandesOrdonnees: archiveesPage }} />
 
       {/* ---- DROPDOWN ··· (position fixed, escapes overflow:hidden) ---- */}
       {menuCmdId && menuRect && (() => {
