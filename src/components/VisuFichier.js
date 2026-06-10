@@ -4,6 +4,9 @@ export default function VisuFichier({ fichier, onClose }) {
   if (!fichier) return null;
   const isPdf   = fichier.type === "application/pdf" || fichier.nom?.toLowerCase().endsWith(".pdf");
   const isImage = fichier.type && fichier.type.startsWith("image/");
+  // `?download=` force le téléchargement Supabase (l'attribut download HTML est
+  // ignoré pour les URLs cross-origin).
+  const urlTelecharger = `${fichier.url}${fichier.url.includes("?") ? "&" : "?"}download=${encodeURIComponent(fichier.nom || "")}`;
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: isPdf ? "85vw" : "auto", height: isPdf ? "88vh" : "auto", display: "flex", flexDirection: "column", borderRadius: 10, overflow: "hidden", background: "#1E293B" }}>
@@ -13,7 +16,7 @@ export default function VisuFichier({ fichier, onClose }) {
             {isPdf ? "📄" : "🖼️"} {fichier.nom}
           </span>
           <div style={{ display: "flex", gap: 8 }}>
-            <a href={fichier.url} download={fichier.nom}
+            <a href={urlTelecharger} download={fichier.nom}
               style={{ padding: "5px 14px", borderRadius: 6, background: "#122131", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
               ⬇ Télécharger
             </a>
@@ -31,7 +34,7 @@ export default function VisuFichier({ fichier, onClose }) {
         {!isPdf && !isImage && (
           <div style={{ padding: 32, color: "#94A3B8", fontSize: 14, textAlign: "center" }}>
             Aperçu non disponible pour ce type de fichier.<br />
-            <a href={fichier.url} download={fichier.nom} style={{ color: "#60A5FA", marginTop: 12, display: "inline-block" }}>⬇ Télécharger directement</a>
+            <a href={urlTelecharger} download={fichier.nom} style={{ color: "#60A5FA", marginTop: 12, display: "inline-block" }}>⬇ Télécharger directement</a>
           </div>
         )}
       </div>
