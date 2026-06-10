@@ -5,12 +5,34 @@ import BlocAdresse from "./BlocAdresse";
 import BlocContact from "./BlocContact";
 import Messagerie from "./Messagerie";
 import TableauPlans from "./TableauPlans";
+import VisuFichier from "./VisuFichier";
 
 function SectionTitle({ children }) {
   return (
     <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 8, paddingBottom: 6, borderBottom: "2px solid #E5E7EB" }}>
       {children}
     </div>
+  );
+}
+
+// Petit bouton télécharger (icône seule), à placer à côté d'un bouton "Voir".
+function BoutonTelecharger({ fichier }) {
+  if (!fichier?.url) return null;
+  return (
+    <a href={fichier.url} download={fichier.nom} title="Télécharger"
+      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 5, border: "1px solid #E5E7EB", background: "#fff", color: "#6B7280", fontSize: 13, textDecoration: "none", lineHeight: 1 }}>
+      ⬇
+    </a>
+  );
+}
+
+// Bouton "Voir" : ouvre le fichier dans le visualiseur intégré (PDF/image).
+function BoutonVoir({ fichier, onVoir }) {
+  return (
+    <button onClick={() => onVoir(fichier)}
+      style={{ flexShrink: 0, fontSize: 11, color: "#2563EB", fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+      👁 Voir
+    </button>
   );
 }
 
@@ -35,7 +57,7 @@ function Accordeon({ label, children, couleur = "gris" }) {
   );
 }
 
-function LigneFichier({ fichier }) {
+function LigneFichier({ fichier, onVoir }) {
   const isImg = fichier.type && fichier.type.startsWith("image/");
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", border: "1px solid #E5E7EB", borderRadius: 6, background: "#fff" }}>
@@ -44,7 +66,8 @@ function LigneFichier({ fichier }) {
         <div style={{ fontSize: 12, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fichier.nom}</div>
         <div style={{ fontSize: 10, color: "#9CA3AF" }}>{fichier.taille}</div>
       </div>
-      <a href={fichier.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}>Ouvrir</a>
+      <BoutonVoir fichier={fichier} onVoir={onVoir} />
+      <BoutonTelecharger fichier={fichier} />
     </div>
   );
 }
@@ -55,6 +78,8 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
   const couleurDelai = palette.text;
   const bgDelai = palette.bg;
   const borderDelai = palette.border;
+  // Fichier ouvert dans le visualiseur intégré (PDF/image plein écran).
+  const [visuFichier, setVisuFichier] = useState(null);
 
   // Fichiers de toutes les versions
   const fichiersVersions = versionsSelected.flatMap(v =>
@@ -63,6 +88,9 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
 
   return (
     <div>
+      {/* Visualiseur intégré (PDF/image) */}
+      {visuFichier && <VisuFichier fichier={visuFichier} onClose={() => setVisuFichier(null)} />}
+
       {/* Informations */}
       <SectionTitle>Informations</SectionTitle>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
@@ -131,10 +159,13 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.matiere || "—"}</td>
                       <td style={{ padding: "9px 12px", color: "#111827" }}>
                         {fichierFinal
-                          ? <a href={fichierFinal.url} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>
-                              📐 {fichierFinal.nom}
-                            </a>
+                          ? <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <button onClick={() => setVisuFichier(fichierFinal)}
+                                style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+                                📐 {fichierFinal.nom}
+                              </button>
+                              <BoutonTelecharger fichier={fichierFinal} />
+                            </div>
                           : <span style={{ color: "#9CA3AF", fontSize: 11 }}>—</span>
                         }
                       </td>
@@ -159,7 +190,10 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
                     <div style={{ fontSize: 12, color: "#374151", marginBottom: 4 }}>{p.emplacement}</div>
                   )}
                   {fichierFinal
-                    ? <a href={fichierFinal.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>📐 {fichierFinal.nom}</a>
+                    ? <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={() => setVisuFichier(fichierFinal)} style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>📐 {fichierFinal.nom}</button>
+                        <BoutonTelecharger fichier={fichierFinal} />
+                      </div>
                     : null
                   }
                 </div>
@@ -172,7 +206,7 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
       {/* Fichiers du plan */}
       {selected.fichiersPlan?.length > 0 && (
         <Accordeon label={`📄 Fichiers du plan (${selected.fichiersPlan.length})`}>
-          {selected.fichiersPlan.map((f, i) => <LigneFichier key={i} fichier={f} />)}
+          {selected.fichiersPlan.map((f, i) => <LigneFichier key={i} fichier={f} onVoir={setVisuFichier} />)}
         </Accordeon>
       )}
 
@@ -186,7 +220,8 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</div>
                 <div style={{ fontSize: 10, color: "#9CA3AF" }}>{formatDateBulle(f.versionDate)}</div>
               </div>
-              <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}>Ouvrir</a>
+              <BoutonVoir fichier={f} onVoir={setVisuFichier} />
+              <BoutonTelecharger fichier={f} />
             </div>
           ))}
         </Accordeon>
