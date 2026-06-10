@@ -14,6 +14,17 @@ function SectionTitle({ children }) {
   );
 }
 
+// Petit bouton télécharger (icône seule), à placer à côté d'un lien "Ouvrir".
+function BoutonTelecharger({ fichier }) {
+  if (!fichier?.url) return null;
+  return (
+    <a href={fichier.url} download={fichier.nom} title="Télécharger"
+      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 5, border: "1px solid #E5E7EB", background: "#fff", color: "#6B7280", fontSize: 13, textDecoration: "none", lineHeight: 1 }}>
+      ⬇
+    </a>
+  );
+}
+
 function Accordeon({ label, children, couleur = "gris" }) {
   const [ouvert, setOuvert] = useState(false);
   const estBleu = couleur === "bleu";
@@ -45,6 +56,7 @@ function LigneFichier({ fichier }) {
         <div style={{ fontSize: 10, color: "#9CA3AF" }}>{fichier.taille}</div>
       </div>
       <a href={fichier.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}>Ouvrir</a>
+      <BoutonTelecharger fichier={fichier} />
     </div>
   );
 }
@@ -131,10 +143,13 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
                       <td style={{ padding: "9px 12px", borderRight: "1px solid #E5E7EB", color: "#111827" }}>{p.matiere || "—"}</td>
                       <td style={{ padding: "9px 12px", color: "#111827" }}>
                         {fichierFinal
-                          ? <a href={fichierFinal.url} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>
-                              📐 {fichierFinal.nom}
-                            </a>
+                          ? <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <a href={fichierFinal.url} target="_blank" rel="noreferrer"
+                                style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>
+                                📐 {fichierFinal.nom}
+                              </a>
+                              <BoutonTelecharger fichier={fichierFinal} />
+                            </div>
                           : <span style={{ color: "#9CA3AF", fontSize: 11 }}>—</span>
                         }
                       </td>
@@ -159,7 +174,10 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
                     <div style={{ fontSize: 12, color: "#374151", marginBottom: 4 }}>{p.emplacement}</div>
                   )}
                   {fichierFinal
-                    ? <a href={fichierFinal.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>📐 {fichierFinal.nom}</a>
+                    ? <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <a href={fichierFinal.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none" }}>📐 {fichierFinal.nom}</a>
+                        <BoutonTelecharger fichier={fichierFinal} />
+                      </div>
                     : null
                   }
                 </div>
@@ -187,6 +205,7 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
                 <div style={{ fontSize: 10, color: "#9CA3AF" }}>{formatDateBulle(f.versionDate)}</div>
               </div>
               <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", fontWeight: 500, textDecoration: "none", flexShrink: 0 }}>Ouvrir</a>
+              <BoutonTelecharger fichier={f} />
             </div>
           ))}
         </Accordeon>
