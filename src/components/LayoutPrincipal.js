@@ -7,8 +7,13 @@ import AnnoncesModal from "./AnnoncesModal";
 export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);
   const [sousComptes, setSousComptes] = useState([]);
+  // Utilisateurs supervisables par l'admin (filtre "par utilisateur" dans Commandes).
+  // Compatible avec un futur système de compte parent (children via master_id).
+  const [utilisateursSupervises, setUtilisateursSupervises] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  const isAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
 
   // auteurNom used in realtime handler and normalizations
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
@@ -96,7 +101,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     // Requête sous-comptes — les deux Vue* utilisent eq("master_id", profil.id) :
     //   VueUtilisateur.js:109 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
     //   VueDessinateur.js:88 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
-    const [{ data: cmd }, { data: sub }, { data: marques }, { data: tks }] = await Promise.all([
+    const [{ data: cmd }, { data: sub }, { data: marques }, { data: tks }, { data: superv }] = await Promise.all([
       supabase
         .from("commandes")
         .select("*, messages(*)")
@@ -111,6 +116,10 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         .from("tickets")
         .select("id, statut, ticket_messages(id, auteur_id, lu_par)")
         .order("updated_at", { ascending: false }),
+      // Admin : liste des utilisateurs (clients) pour le filtre "par utilisateur".
+      isAdmin
+        ? supabase.from("profiles").select("id, prenom, nom").eq("role", "utilisateur").neq("id", profil.id)
+        : Promise.resolve({ data: [] }),
     ]);
 
     if (cmd) {
@@ -130,6 +139,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     }
 
     if (sub) setSousComptes(sub);
+    setUtilisateursSupervises(superv || []);
 
     // Normalise tickets : on expose messages = ticket_messages pour le décompte
     setTickets((tks || []).map(t => ({ ...t, messages: t.ticket_messages || [] })));
@@ -198,6 +208,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
               commandes,
               setCommandes,
               sousComptes,
+              utilisateursSupervises,
               tickets,
               setTickets,
             }}

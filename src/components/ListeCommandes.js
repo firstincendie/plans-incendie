@@ -7,9 +7,14 @@ import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 import Pagination from "./Pagination";
 
 export default function ListeCommandes() {
-  const { profil, commandes, setCommandes, sousComptes, session } = useOutletContext();
+  const { profil, commandes, setCommandes, sousComptes, utilisateursSupervises = [], session } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [userFilter, setUserFilter] = useState(null);
+  // Admin = propriétaire non-dessinateur ; il peut filtrer par utilisateur.
+  const isAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
+  // Comptes filtrables : tous les utilisateurs pour l'admin, sinon les sous-comptes.
+  const comptesFiltrables = isAdmin ? utilisateursSupervises : sousComptes;
+  // Filtre par défaut : l'admin se voit lui-même (puis peut switcher).
+  const [userFilter, setUserFilter] = useState(isAdmin ? profil.id : null);
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
@@ -417,15 +422,15 @@ export default function ListeCommandes() {
       />
 
       {/* Sélecteur sous-compte */}
-      {sousComptes.length > 0 && (
+      {comptesFiltrables.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <select
             value={userFilter ?? ""}
             onChange={e => setUserFilter(e.target.value || null)}
             style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>
-            <option value="">{isDessinateur ? "Toutes les missions" : "Tous les comptes"}</option>
+            <option value="">{isDessinateur ? "Toutes les missions" : isAdmin ? "Tous les utilisateurs" : "Tous les comptes"}</option>
             <option value={profil.id}>{isDessinateur ? "Mes missions" : `${profil.prenom} ${profil.nom} (moi)`}</option>
-            {sousComptes.map(s => (
+            {comptesFiltrables.map(s => (
               <option key={s.id} value={s.id}>{s.prenom} {s.nom}</option>
             ))}
           </select>

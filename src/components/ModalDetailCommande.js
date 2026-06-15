@@ -53,6 +53,9 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
+  // Admin (propriétaire non-dessinateur) : ses messages sont marqués pour
+  // l'affichage en rouge (auteur_admin) côté messagerie.
+  const isAdmin = !isDessinateur && profil.is_owner === true;
 
   // Navigate away if commande not found (after data is loaded)
   useEffect(() => {
@@ -139,6 +142,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       fichiers,
       date: formatDateMsg(),
       visible_par: options.visible_par ?? null,
+      auteur_admin: isAdmin,
     }]).select().single();
     if (!error && data) {
       setCommandes(prev =>
