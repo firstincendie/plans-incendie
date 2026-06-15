@@ -92,27 +92,32 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
         {messagesAfficher.map((m, i) => {
           const moi = m.auteur === auteurActif;
           const estNotePrivee = !!(m.visible_par && m.visible_par.includes(auteurActif));
+          // Côté d'affichage : pour l'admin (qui n'est ni l'un ni l'autre),
+          // les messages du dessinateur restent à gauche (bleu), ceux de
+          // l'utilisateur passent à droite (blanc). Sinon, mes messages à droite.
+          const estDuDessinateur = !m.auteur_admin && selected.dessinateur && m.auteur === selected.dessinateur;
+          const aDroite = estAdmin ? !estDuDessinateur : moi;
           // L'admin peut supprimer ses propres messages à tout moment (même lus).
           const peutSupprimer = moi && onSupprimer && (estAdmin || estNotePrivee || (m.lu_par || []).length === 0);
           // Étiquette de portée : /note (auteur + admin) ou note privée historique
-          const labelPortee = m.portee === "note" ? "🔒 Note (admin)"
+          const labelPortee = m.portee === "note" ? "🔒 Note"
             : estNotePrivee ? "🔒 Note privée" : null;
           return (
-            <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+            <div key={i} style={{ alignSelf: aDroite ? "flex-end" : "flex-start", maxWidth: "80%" }}>
               {labelPortee && (
-                <div style={{ fontSize: 10, color: "#92400E", textAlign: moi ? "right" : "left", marginBottom: 2, paddingInline: 2 }}>
+                <div style={{ fontSize: 10, color: "#92400E", textAlign: aDroite ? "right" : "left", marginBottom: 2, paddingInline: 2 }}>
                   {labelPortee}
                 </div>
               )}
               <div style={{
-                background: estNotePrivee ? "#FFFBEB" : moi ? "#fff" : "#EFF6FF",
+                background: estNotePrivee ? "#FFFBEB" : aDroite ? "#fff" : "#EFF6FF",
                 border: estNotePrivee ? "1.5px dashed #FCD34D"
-                  : m.portee === "note" ? `1.5px dashed ${moi ? "#9CA3AF" : "#93C5FD"}`
-                  : `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`,
+                  : m.portee === "note" ? `1.5px dashed ${aDroite ? "#9CA3AF" : "#93C5FD"}`
+                  : `1px solid ${aDroite ? "#E5E7EB" : "#BFDBFE"}`,
                 borderRadius: 8,
                 padding: "10px 12px",
               }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: m.auteur_admin ? "#DC2626" : moi ? "#374151" : "#1E40AF" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: m.auteur_admin ? "#DC2626" : aDroite ? "#374151" : "#1E40AF" }}>
                   {m.auteur}{m.auteur_admin ? " · Support" : ""}
                 </div>
                 <div style={{ fontSize: 12, color: m.auteur_admin ? "#DC2626" : "#111827", marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
@@ -130,12 +135,12 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
               <div style={{
                 fontSize: 10,
                 color: (!estNotePrivee && (m.lu_par || []).length > 0 && moi) ? "#2563EB" : "#9CA3AF",
-                textAlign: moi ? "right" : "left",
+                textAlign: aDroite ? "right" : "left",
                 marginTop: 3,
                 paddingInline: 2,
                 display: "flex",
                 gap: 6,
-                justifyContent: moi ? "flex-end" : "flex-start",
+                justifyContent: aDroite ? "flex-end" : "flex-start",
                 alignItems: "center",
               }}>
                 <span>{formatDateBulle(m.created_at)}{!estNotePrivee && moi ? ` ${(m.lu_par || []).length > 0 ? "✓✓ Lu" : "✓✓"}` : ""}</span>
