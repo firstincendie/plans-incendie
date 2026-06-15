@@ -7,9 +7,14 @@ import BarreFiltres, { appliquerFiltresTri } from "./BarreFiltres";
 import Pagination from "./Pagination";
 
 export default function ListeCommandes() {
-  const { profil, commandes, setCommandes, sousComptes, session } = useOutletContext();
+  const { profil, commandes, setCommandes, sousComptes, utilisateursSupervises = [], session } = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [userFilter, setUserFilter] = useState(null);
+  // Admin = propriétaire non-dessinateur ; il peut filtrer par utilisateur.
+  const isAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
+  // Comptes filtrables : tous les utilisateurs pour l'admin, sinon les sous-comptes.
+  const comptesFiltrables = isAdmin ? utilisateursSupervises : sousComptes;
+  // Filtre par défaut : l'admin se voit lui-même (puis peut switcher).
+  const [userFilter, setUserFilter] = useState(isAdmin ? profil.id : null);
   const [menuCmdId, setMenuCmdId] = useState(null);
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
@@ -75,12 +80,16 @@ export default function ListeCommandes() {
 
   // --- Unread count helper ---
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
-  const nonLusDe = c => c.messages
+  // Notifications uniquement sur SES propres commandes (proprietaire ou
+  // dessinateur assigne) — pas en supervision admin.
+  const estMaCommande = c => c.utilisateur_id === profil.id || c.dessinateur_id === profil.id;
+  const nonLusDe = c => (estMaCommande(c) && c.messages)
     ? c.messages.filter(m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)).length
     : 0;
 
   // Badge notification (chiffre si messages non lus naturels, sinon point orange si manuellement marquée)
   const NotifBadge = ({ c }) => {
+    if (!estMaCommande(c)) return null;
     const n = nonLusDe(c);
     if (n > 0) return <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{n}</span>;
     if (c.marque_non_lu) return <span title="Marquée comme non lue" style={{ display: "inline-block", width: 14, height: 14, borderRadius: "50%", background: "#FC6C1B", flexShrink: 0 }} />;
@@ -131,7 +140,7 @@ export default function ListeCommandes() {
   }
 
   // L'une OU l'autre selon l'état actuel de la commande
-  const hasNotif = (c) => nonLusDe(c) > 0 || !!c.marque_non_lu;
+  const hasNotif = (c) => estMaCommande(c) && (nonLusDe(c) > 0 || !!c.marque_non_lu);
 
   // En-tête de colonne cliquable pour tri (desktop tables)
   const Th = ({ col, label }) => (
@@ -417,15 +426,15 @@ export default function ListeCommandes() {
       />
 
       {/* Sélecteur sous-compte */}
-      {sousComptes.length > 0 && (
+      {comptesFiltrables.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <select
             value={userFilter ?? ""}
             onChange={e => setUserFilter(e.target.value || null)}
             style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>
-            <option value="">{isDessinateur ? "Toutes les missions" : "Tous les comptes"}</option>
+            <option value="">{isDessinateur ? "Toutes les missions" : isAdmin ? "Tous les utilisateurs" : "Tous les comptes"}</option>
             <option value={profil.id}>{isDessinateur ? "Mes missions" : `${profil.prenom} ${profil.nom} (moi)`}</option>
-            {sousComptes.map(s => (
+            {comptesFiltrables.map(s => (
               <option key={s.id} value={s.id}>{s.prenom} {s.nom}</option>
             ))}
           </select>

@@ -7,8 +7,13 @@ import AnnoncesModal from "./AnnoncesModal";
 export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const [commandes, setCommandes] = useState([]);
   const [sousComptes, setSousComptes] = useState([]);
+  // Utilisateurs supervisables par l'admin (filtre "par utilisateur" dans Commandes).
+  // Compatible avec un futur système de compte parent (children via master_id).
+  const [utilisateursSupervises, setUtilisateursSupervises] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  const isAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
 
   // auteurNom used in realtime handler and normalizations
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
@@ -16,10 +21,26 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const auteurNomRef = useRef(auteurNom);
   auteurNomRef.current = auteurNom;
 
+  // Visibilité d'un message selon le rôle (notes privées historiques + portée).
+  // Ref pour rester accessible dans le handler realtime.
+  const peutVoirMessageRef = useRef();
+  peutVoirMessageRef.current = (m, nom) => {
+    if (m.auteur === nom) return true; // l'auteur voit toujours son propre message
+    if (m.visible_par && !m.visible_par.includes(nom)) return false;
+    // /note : visible par l'auteur (ci-dessus) + l'admin (ou parent, à venir)
+    const estAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
+    if ((m.portee || "public") === "note" && !estAdmin) return false;
+    return true;
+  };
+
   // Nombre de commandes actives avec notification (messages non lus OU marquage manuel)
   // — même décompte que la pastille a cote du titre de la page Commandes.
   const role = profil.role;
+  // Notifications uniquement sur SES propres commandes (proprietaire ou
+  // dessinateur assigne) — pas en supervision admin.
+  const estMaCommande = (c) => c.utilisateur_id === profil.id || c.dessinateur_id === profil.id;
   const totalNonLus = commandes.filter(c => {
+    if (!estMaCommande(c)) return false;
     const archived = role === "dessinateur" ? c.is_archived_dessinateur : c.is_archived;
     if (archived) return false;
     const nbNonLus = (c.messages || []).filter(
@@ -46,8 +67,8 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         const msg = payload.new;
         const nom = auteurNomRef.current;
-        // Ne pas stocker les notes privées d'autrui dans le state local
-        if (msg.visible_par?.length && !msg.visible_par.includes(nom)) return;
+        // Ne pas stocker les messages non visibles pour ce rôle (notes privées / portée)
+        if (!peutVoirMessageRef.current(msg, nom)) return;
         setCommandes(prev => prev.map(c => {
           if (c.id !== msg.commande_id) return c;
           if (msg.auteur === nom) return c;
@@ -96,7 +117,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
     // Requête sous-comptes — les deux Vue* utilisent eq("master_id", profil.id) :
     //   VueUtilisateur.js:109 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
     //   VueDessinateur.js:88 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
-    const [{ data: cmd }, { data: sub }, { data: marques }, { data: tks }] = await Promise.all([
+    const [{ data: cmd }, { data: sub }, { data: marques }, { data: tks }, { data: superv }] = await Promise.all([
       supabase
         .from("commandes")
         .select("*, messages(*)")
@@ -111,6 +132,10 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         .from("tickets")
         .select("id, statut, ticket_messages(id, auteur_id, lu_par)")
         .order("updated_at", { ascending: false }),
+      // Admin : liste des utilisateurs (clients) pour le filtre "par utilisateur".
+      isAdmin
+        ? supabase.from("profiles").select("id, prenom, nom").eq("role", "utilisateur").neq("id", profil.id)
+        : Promise.resolve({ data: [] }),
     ]);
 
     if (cmd) {
@@ -124,12 +149,13 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         plansFinalises: c.plans_finalises || [],
         marque_non_lu: marquesSet.has(c.id),
         messages: (c.messages || [])
-          .filter(m => !m.visible_par || m.visible_par.includes(nom))
+          .filter(m => peutVoirMessageRef.current(m, nom))
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
       })));
     }
 
     if (sub) setSousComptes(sub);
+    setUtilisateursSupervises(superv || []);
 
     // Normalise tickets : on expose messages = ticket_messages pour le décompte
     setTickets((tks || []).map(t => ({ ...t, messages: t.ticket_messages || [] })));
@@ -198,6 +224,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
               commandes,
               setCommandes,
               sousComptes,
+              utilisateursSupervises,
               tickets,
               setTickets,
             }}

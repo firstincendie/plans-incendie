@@ -1,6 +1,6 @@
 {
   "name": "plans-incendie",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",

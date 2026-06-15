@@ -442,6 +442,7 @@ export default function DetailCommandeModal({
   onArchiver, onDesarchiver, onSupprimer, onDupliquer, showContacts, hideClientName,
   actionButtons,
   msgInput, setMsgInput, onEnvoyer, onSupprimerMessage, auteurNom,
+  estAdmin, estDessinateur,
   onMarquerLu,
   note, setNote, onSaveNote, noteSaveError,
   onModifierCommande, canModifier,
@@ -559,6 +560,7 @@ export default function DetailCommandeModal({
   const chatContent = (
     <Messagerie selected={selected} msgInput={msgInput} setMsgInput={setMsgInput}
       onEnvoyer={onEnvoyer} onSupprimer={onSupprimerMessage} auteurActif={auteurNom} allowFichier
+      estAdmin={estAdmin} estDessinateur={estDessinateur}
       readOnly={selected.statut === "Validé"}
       instructions={selected.instructions || null} />
   );

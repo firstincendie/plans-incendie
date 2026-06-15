@@ -53,6 +53,9 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
+  // Admin (propriétaire non-dessinateur) : ses messages sont marqués pour
+  // l'affichage en rouge (auteur_admin) côté messagerie.
+  const isAdmin = !isDessinateur && profil.is_owner === true;
 
   // Navigate away if commande not found (after data is loaded)
   useEffect(() => {
@@ -132,6 +135,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   }
 
   async function envoyerMessage(commandeId, auteur, texte, fichiers = [], options = {}) {
+    const portee = options.portee ?? "public";
     const { data, error } = await supabase.from("messages").insert([{
       commande_id: commandeId,
       auteur,
@@ -139,12 +143,15 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       fichiers,
       date: formatDateMsg(),
       visible_par: options.visible_par ?? null,
+      portee,
+      auteur_admin: isAdmin,
     }]).select().single();
     if (!error && data) {
       setCommandes(prev =>
         prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c)
       );
-      if (!options.visible_par?.length) {
+      // Notification email seulement pour les messages publics (ni note privée, ni portée restreinte)
+      if (!options.visible_par?.length && portee === "public") {
         supabase.functions.invoke("notify-message", {
           body: {
             commande_id: commandeId,
@@ -176,6 +183,9 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     if (!commandeId) return;
     const cmd = commandes.find(c => c.id === commandeId);
     if (!cmd) return;
+    // Ne pas marquer "lu" en supervision : seul le proprietaire de la commande
+    // ou le dessinateur assigne fait passer les messages en statut vu.
+    if (cmd.utilisateur_id !== profil.id && cmd.dessinateur_id !== profil.id) return;
     const nonLus = cmd.messages.filter(m =>
       m.auteur !== auteurNom &&
       !m.visible_par &&
@@ -500,6 +510,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         onEnvoyer={envoyerMessageHandler}
         onSupprimerMessage={supprimerMessage}
         auteurNom={auteurNom}
+        estAdmin={isAdmin}
+        estDessinateur={isDessinateur}
         onMarquerLu={() => marquerMessagesLus(commande.id)}
         note={note}
         setNote={setNote}
