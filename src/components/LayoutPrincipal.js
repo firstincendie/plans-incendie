@@ -27,9 +27,9 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   peutVoirMessageRef.current = (m, nom) => {
     if (m.auteur === nom) return true; // l'auteur voit toujours son propre message
     if (m.visible_par && !m.visible_par.includes(nom)) return false;
-    const portee = m.portee || "public";
-    if (portee === "sans_dessinateur" && profil.role === "dessinateur") return false;
-    if (portee === "admin" && !(profil.role !== "dessinateur" && profil.is_owner === true)) return false;
+    // /note : visible par l'auteur (ci-dessus) + l'admin (ou parent, à venir)
+    const estAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
+    if ((m.portee || "public") === "note" && !estAdmin) return false;
     return true;
   };
 

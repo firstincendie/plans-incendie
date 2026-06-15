@@ -3,7 +3,7 @@ import { supabase } from "../supabase";
 import { analyserMessage, fichierAvecDate, formatDateBulle } from "../helpers";
 import VisuFichier from "./VisuFichier";
 
-export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, onSupprimer, auteurActif, estAdmin = false, estDessinateur = false, allowFichier = false, readOnly = false, instructions = null, onMarquerLu }) {
+export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, onSupprimer, auteurActif, estAdmin = false, allowFichier = false, readOnly = false, instructions = null, onMarquerLu }) {
   const [fichierMsg, setFichierMsg]     = useState([]);
   const [alerte, setAlerte]             = useState(null);
   const [visuFichier, setVisuFichier]   = useState(null);
@@ -41,19 +41,16 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
 
     setAlerte(null);
 
-    // Commandes slash : /note (hors dessinateur) et /prive (admin seulement).
-    // Elles priment sur le mode du sélecteur.
+    // Commande slash : /note (visible par l'auteur + l'admin/parent).
     const trimmed = msgInput.trimStart();
     const lower = trimmed.toLowerCase();
     let portee = mode;
     let texte = msgInput;
-    if (lower === "/note" || lower === "/prive") {
-      setAlerte("Syntaxe : /note [texte] ou /prive [texte]");
+    if (lower === "/note") {
+      setAlerte("Syntaxe : /note [votre texte]");
       return;
-    } else if (lower.startsWith("/prive ")) {
-      portee = "admin"; texte = trimmed.slice(7);
     } else if (lower.startsWith("/note ")) {
-      portee = "sans_dessinateur"; texte = trimmed.slice(6);
+      portee = "note"; texte = trimmed.slice(6);
     }
 
     if (!texte.trim() && fichierMsg.length === 0) return;
@@ -71,10 +68,8 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
     if (m.auteur === auteurActif) return true; // l'auteur voit toujours son message
     // Notes privées historiques (visible_par, par nom)
     if (m.visible_par && !m.visible_par.includes(auteurActif)) return false;
-    // Portée par rôle (filtrage côté client, cohérent avec le modèle existant)
-    const portee = m.portee || "public";
-    if (portee === "sans_dessinateur" && estDessinateur) return false;
-    if (portee === "admin" && !estAdmin) return false;
+    // /note : visible par l'auteur (déjà géré) + l'admin (ou parent, à venir)
+    if ((m.portee || "public") === "note" && !estAdmin) return false;
     return true;
   });
 
@@ -99,9 +94,8 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
           const estNotePrivee = !!(m.visible_par && m.visible_par.includes(auteurActif));
           // L'admin peut supprimer ses propres messages à tout moment (même lus).
           const peutSupprimer = moi && onSupprimer && (estAdmin || estNotePrivee || (m.lu_par || []).length === 0);
-          // Étiquette de portée (note hors dessinateur / note admin)
-          const labelPortee = m.portee === "sans_dessinateur" ? "🔒 Note (hors dessinateur)"
-            : m.portee === "admin" ? "🛡️ Note admin"
+          // Étiquette de portée : /note (auteur + admin) ou note privée historique
+          const labelPortee = m.portee === "note" ? "🔒 Note (admin)"
             : estNotePrivee ? "🔒 Note privée" : null;
           return (
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
@@ -203,10 +197,8 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
         )}
         {(() => {
           const estNote = mode !== "public";
-          const placeholder = mode === "admin" ? "🛡️ Note admin (visible par l'admin uniquement)..."
-            : mode === "sans_dessinateur" ? "🔒 Note (visible par tous sauf le dessinateur)..."
-            : "Écrire un message...";
-          const icone = mode === "admin" ? "🛡️" : mode === "sans_dessinateur" ? "🔒" : "💬";
+          const placeholder = estNote ? "🔒 Note (visible par vous et l'admin)..." : "Écrire un message...";
+          const icone = estNote ? "🔒" : "💬";
           const optionBtn = (val, label) => (
             <button type="button"
               onClick={() => { setMode(val); setModeOuvert(false); }}
@@ -235,8 +227,7 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
                     <div onClick={e => e.stopPropagation()}
                       style={{ position: "absolute", bottom: "calc(100% + 4px)", right: 0, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 51, minWidth: 240, overflow: "hidden" }}>
                       {optionBtn("public", "💬 Message")}
-                      {optionBtn("sans_dessinateur", "🔒 Note (hors dessinateur)")}
-                      {estAdmin && optionBtn("admin", "🛡️ Note admin (privée)")}
+                      {optionBtn("note", "🔒 Note (vous + admin)")}
                     </div>
                   </>
                 )}
