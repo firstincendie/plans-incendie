@@ -78,9 +78,7 @@ function LigneFichier({ fichier, onVoir }) {
 }
 
 function InfosContent({ selected, versionsSelected, showContacts, adresseComplete }) {
-  // La date est masquée quand la commande est validée.
-  const delaiAff = selected.statut === "Validé" ? null : selected.delai;
-  const jours = joursRestants(delaiAff);
+  const jours = joursRestants(selected.delai);
   const palette = delaiPalette(jours);
   const couleurDelai = palette.text;
   const bgDelai = palette.bg;
@@ -111,7 +109,7 @@ function InfosContent({ selected, versionsSelected, showContacts, adresseComplet
         </div>
         <div style={{ background: bgDelai, borderRadius: 8, padding: "10px 12px", border: `1px solid ${borderDelai}` }}>
           <div style={{ fontSize: 10, color: couleurDelai, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Délai</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: couleurDelai }}>{delaiAff ? formatDateCourt(delaiAff) : "—"}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: couleurDelai }}>{selected.delai ? formatDateCourt(selected.delai) : "—"}</div>
           {jours !== null && (
             <div style={{ fontSize: 11, color: couleurDelai, marginTop: 2, fontWeight: 600 }}>
               {jours === 0 ? "Aujourd'hui" : jours < 0 ? `${Math.abs(jours)}j dépassé` : `${jours} jour${jours > 1 ? "s" : ""} restant${jours > 1 ? "s" : ""}`}
