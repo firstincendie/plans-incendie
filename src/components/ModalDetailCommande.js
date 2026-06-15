@@ -382,7 +382,11 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     if (validant) return;
     setValidant(true);
     setShowValiderCommandeModal(false);
-    await changerStatut(commande.id, "Validé");
+    // La validation efface le délai (plus pertinent une fois la commande validée).
+    const { error } = await supabase.from("commandes").update({ statut: "Validé", delai: null }).eq("id", commande.id);
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === commande.id ? { ...c, statut: "Validé", delai: null } : c));
+    }
     await envoyerMessage(commande.id, auteurNom, "✅ Commande validée.");
     supabase.functions.invoke("notify-statut", {
       body: { commande_id: commande.id, event: "termine" },
