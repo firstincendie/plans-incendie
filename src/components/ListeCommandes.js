@@ -229,7 +229,9 @@ export default function ListeCommandes() {
       : (c.utilisateur_id === profil.id
           ? `${profil.prenom} ${profil.nom}`
           : `${c.client_prenom ?? ""} ${c.client_nom ?? ""}`.trim());
-    const j = joursRestants(c.delai);
+    // La date est masquée quand la commande est validée.
+    const delaiAff = c.statut === "Validé" ? null : c.delai;
+    const j = joursRestants(delaiAff);
     const d = delaiPalette(j);
     return (
       <div key={c.id} onClick={() => ouvrirDetail(c)}
@@ -248,9 +250,9 @@ export default function ListeCommandes() {
         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
         <div>
-          {c.delai ? (
+          {delaiAff ? (
             <>
-              <div style={{ fontSize: 12, color: d.text }}>{formatDateCourt(c.delai)}</div>
+              <div style={{ fontSize: 12, color: d.text }}>{formatDateCourt(delaiAff)}</div>
               {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: d.accent ? d.text : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
             </>
           ) : <span style={{ fontSize: 12, color: "#D1D5DB" }}>—</span>}
@@ -268,7 +270,8 @@ export default function ListeCommandes() {
   }
 
   function renderCarteCmdUtilisateur(c, dim = false) {
-    const j = joursRestants(c.delai);
+    const delaiAff = c.statut === "Validé" ? null : c.delai;
+    const j = joursRestants(delaiAff);
     const d = delaiPalette(j);
     const owner = sousComptes.find(s => s.id === c.utilisateur_id);
     const ownerLabel = owner ? `${owner.prenom} ${owner.nom}` : null;
@@ -294,9 +297,9 @@ export default function ListeCommandes() {
             </div>
           </div>
         </div>
-        {c.delai && (
+        {delaiAff && (
           <div style={{ marginTop: 6, fontSize: 11, color: d.accent ? d.text : "#9CA3AF", fontWeight: d.accent ? 600 : 400 }}>
-            {formatDateCourt(c.delai)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
+            {formatDateCourt(delaiAff)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
           </div>
         )}
       </div>
@@ -312,7 +315,8 @@ export default function ListeCommandes() {
 
   function renderLigneCmdDessinateur(c, dim = false) {
     const sousD = sousComptes.find(s => s.id === c.dessinateur_id);
-    const j = joursRestants(c.delai);
+    const delaiAff = c.statut === "Validé" ? null : c.delai;
+    const j = joursRestants(delaiAff);
     const d = delaiPalette(j);
     return (
       <div key={c.id} onClick={() => ouvrirDetail(c)}
@@ -330,7 +334,7 @@ export default function ListeCommandes() {
         <div style={{ fontSize: 12, color: "#6B7280" }}>{formatDateCourt(c.created_at)}</div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{c.plans?.length ?? 0}</div>
         <div>
-          <div style={{ fontSize: 12, color: d.text }}>{c.delai ? formatDateCourt(c.delai) : "—"}</div>
+          <div style={{ fontSize: 12, color: d.text }}>{delaiAff ? formatDateCourt(delaiAff) : "—"}</div>
           {j !== null && <div style={{ fontSize: 10, fontWeight: 600, color: d.accent ? d.text : "#9CA3AF" }}>{j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}</div>}
         </div>
         <Badge statut={c.statut} />
@@ -346,7 +350,8 @@ export default function ListeCommandes() {
   }
 
   function renderCarteCmdDessinateur(c, dim = false) {
-    const j = joursRestants(c.delai);
+    const delaiAff = c.statut === "Validé" ? null : c.delai;
+    const j = joursRestants(delaiAff);
     const d = delaiPalette(j);
     return (
       <div key={c.id} onClick={() => ouvrirDetail(c)}
@@ -370,9 +375,9 @@ export default function ListeCommandes() {
             </div>
           </div>
         </div>
-        {c.delai && (
+        {delaiAff && (
           <div style={{ marginTop: 6, fontSize: 11, color: d.accent ? d.text : "#9CA3AF", fontWeight: d.accent ? 600 : 400 }}>
-            {formatDateCourt(c.delai)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
+            {formatDateCourt(delaiAff)}{j !== null ? ` · ${j === 0 ? "Aujourd'hui" : j < 0 ? `${Math.abs(j)}j dépassé` : `${j}j restant${j > 1 ? "s" : ""}`}` : ""}
           </div>
         )}
       </div>
