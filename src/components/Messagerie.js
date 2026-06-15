@@ -104,7 +104,10 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
             : estNotePrivee ? "🔒 Note privée" : null;
           // Code couleur par rôle de l'auteur ; ses propres messages = blanc/noir.
           let bgBulle, cTitre, cTexte, cBord;
-          if (moi) {
+          if (m.portee === "note") {
+            // Notes : grisé pour tout le monde (auteur inclus)
+            bgBulle = "#F3F4F6"; cTitre = "#374151"; cTexte = "#374151"; cBord = "#9CA3AF";
+          } else if (moi) {
             bgBulle = "#fff"; cTitre = "#374151"; cTexte = "#111827"; cBord = "#E5E7EB";
           } else if (m.auteur_admin) {
             bgBulle = "#FEF2F2"; cTitre = "#DC2626"; cTexte = "#DC2626"; cBord = "#FECACA";
