@@ -102,6 +102,17 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
           // Étiquette de portée : /note (auteur + admin) ou note privée historique
           const labelPortee = m.portee === "note" ? "🔒 Note"
             : estNotePrivee ? "🔒 Note privée" : null;
+          // Code couleur par rôle de l'auteur ; ses propres messages = blanc/noir.
+          let bgBulle, cTitre, cTexte, cBord;
+          if (moi) {
+            bgBulle = "#fff"; cTitre = "#374151"; cTexte = "#111827"; cBord = "#E5E7EB";
+          } else if (m.auteur_admin) {
+            bgBulle = "#FEF2F2"; cTitre = "#DC2626"; cTexte = "#DC2626"; cBord = "#FECACA";
+          } else if (estDuDessinateur) {
+            bgBulle = "#FFF7ED"; cTitre = "#C2410C"; cTexte = "#111827"; cBord = "#FED7AA";
+          } else {
+            bgBulle = "#EFF6FF"; cTitre = "#1E40AF"; cTexte = "#111827"; cBord = "#BFDBFE";
+          }
           return (
             <div key={i} style={{ alignSelf: aDroite ? "flex-end" : "flex-start", maxWidth: "80%" }}>
               {labelPortee && (
@@ -110,17 +121,17 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
                 </div>
               )}
               <div style={{
-                background: estNotePrivee ? "#FFFBEB" : aDroite ? "#fff" : "#EFF6FF",
+                background: estNotePrivee ? "#FFFBEB" : bgBulle,
                 border: estNotePrivee ? "1.5px dashed #FCD34D"
-                  : m.portee === "note" ? `1.5px dashed ${aDroite ? "#9CA3AF" : "#93C5FD"}`
-                  : `1px solid ${aDroite ? "#E5E7EB" : "#BFDBFE"}`,
+                  : m.portee === "note" ? `1.5px dashed ${cBord}`
+                  : `1px solid ${cBord}`,
                 borderRadius: 8,
                 padding: "10px 12px",
               }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: m.auteur_admin ? "#DC2626" : aDroite ? "#374151" : "#1E40AF" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: cTitre }}>
                   {m.auteur}{m.auteur_admin ? " · Support" : ""}
                 </div>
-                <div style={{ fontSize: 12, color: m.auteur_admin ? "#DC2626" : "#111827", marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
+                <div style={{ fontSize: 12, color: cTexte, marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
                 {m.fichiers && m.fichiers.length > 0 && (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {m.fichiers.map((f, j) => (
