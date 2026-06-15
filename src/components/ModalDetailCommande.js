@@ -135,6 +135,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   }
 
   async function envoyerMessage(commandeId, auteur, texte, fichiers = [], options = {}) {
+    const portee = options.portee ?? "public";
     const { data, error } = await supabase.from("messages").insert([{
       commande_id: commandeId,
       auteur,
@@ -142,13 +143,15 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       fichiers,
       date: formatDateMsg(),
       visible_par: options.visible_par ?? null,
+      portee,
       auteur_admin: isAdmin,
     }]).select().single();
     if (!error && data) {
       setCommandes(prev =>
         prev.map(c => c.id === commandeId ? { ...c, messages: [...c.messages, data] } : c)
       );
-      if (!options.visible_par?.length) {
+      // Notification email seulement pour les messages publics (ni note privée, ni portée restreinte)
+      if (!options.visible_par?.length && portee === "public") {
         supabase.functions.invoke("notify-message", {
           body: {
             commande_id: commandeId,
@@ -504,6 +507,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         onEnvoyer={envoyerMessageHandler}
         onSupprimerMessage={supprimerMessage}
         auteurNom={auteurNom}
+        estAdmin={isAdmin}
+        estDessinateur={isDessinateur}
         onMarquerLu={() => marquerMessagesLus(commande.id)}
         note={note}
         setNote={setNote}

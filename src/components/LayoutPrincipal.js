@@ -21,6 +21,18 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const auteurNomRef = useRef(auteurNom);
   auteurNomRef.current = auteurNom;
 
+  // Visibilité d'un message selon le rôle (notes privées historiques + portée).
+  // Ref pour rester accessible dans le handler realtime.
+  const peutVoirMessageRef = useRef();
+  peutVoirMessageRef.current = (m, nom) => {
+    if (m.auteur === nom) return true; // l'auteur voit toujours son propre message
+    if (m.visible_par && !m.visible_par.includes(nom)) return false;
+    const portee = m.portee || "public";
+    if (portee === "sans_dessinateur" && profil.role === "dessinateur") return false;
+    if (portee === "admin" && !(profil.role !== "dessinateur" && profil.is_owner === true)) return false;
+    return true;
+  };
+
   // Nombre de commandes actives avec notification (messages non lus OU marquage manuel)
   // — même décompte que la pastille a cote du titre de la page Commandes.
   const role = profil.role;
@@ -51,8 +63,8 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         const msg = payload.new;
         const nom = auteurNomRef.current;
-        // Ne pas stocker les notes privées d'autrui dans le state local
-        if (msg.visible_par?.length && !msg.visible_par.includes(nom)) return;
+        // Ne pas stocker les messages non visibles pour ce rôle (notes privées / portée)
+        if (!peutVoirMessageRef.current(msg, nom)) return;
         setCommandes(prev => prev.map(c => {
           if (c.id !== msg.commande_id) return c;
           if (msg.auteur === nom) return c;
@@ -133,7 +145,7 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
         plansFinalises: c.plans_finalises || [],
         marque_non_lu: marquesSet.has(c.id),
         messages: (c.messages || [])
-          .filter(m => !m.visible_par || m.visible_par.includes(nom))
+          .filter(m => peutVoirMessageRef.current(m, nom))
           .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
       })));
     }

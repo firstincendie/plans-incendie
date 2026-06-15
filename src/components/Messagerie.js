@@ -3,12 +3,13 @@ import { supabase } from "../supabase";
 import { analyserMessage, fichierAvecDate, formatDateBulle } from "../helpers";
 import VisuFichier from "./VisuFichier";
 
-export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, onSupprimer, auteurActif, allowFichier = false, readOnly = false, instructions = null, onMarquerLu }) {
+export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer, onSupprimer, auteurActif, estAdmin = false, estDessinateur = false, allowFichier = false, readOnly = false, instructions = null, onMarquerLu }) {
   const [fichierMsg, setFichierMsg]     = useState([]);
   const [alerte, setAlerte]             = useState(null);
   const [visuFichier, setVisuFichier]   = useState(null);
   const [instrOuvert, setInstrOuvert]   = useState(false);
-  const [modeNote, setModeNote]         = useState(false); // false = message public, true = note privée
+  // Portée du message : "public" | "sans_dessinateur" (/note) | "admin" (/prive)
+  const [mode, setMode]                 = useState("public");
   const [modeOuvert, setModeOuvert]     = useState(false); // dropdown du mode
   const [confirmSupprId, setConfirmSupprId] = useState(null);
   const inputRef  = useRef();
@@ -40,36 +41,42 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
 
     setAlerte(null);
 
-    // Le toggle UI prime ; backward-compat /note conservée.
-    if (modeNote && auteurActif) {
-      await onEnvoyer(msgInput.trim(), fichierMsg, { visible_par: [auteurActif] });
-      setMsgInput("");
-      setFichierMsg([]);
+    // Commandes slash : /note (hors dessinateur) et /prive (admin seulement).
+    // Elles priment sur le mode du sélecteur.
+    const trimmed = msgInput.trimStart();
+    const lower = trimmed.toLowerCase();
+    let portee = mode;
+    let texte = msgInput;
+    if (lower === "/note" || lower === "/prive") {
+      setAlerte("Syntaxe : /note [texte] ou /prive [texte]");
       return;
+    } else if (lower.startsWith("/prive ")) {
+      portee = "admin"; texte = trimmed.slice(7);
+    } else if (lower.startsWith("/note ")) {
+      portee = "sans_dessinateur"; texte = trimmed.slice(6);
     }
 
-    const trimmed = msgInput.trimStart();
-    if (trimmed.toLowerCase().startsWith("/note") && auteurActif) {
-      const afterCmd = trimmed.slice(5);
-      if (!afterCmd.startsWith(" ")) {
-        setAlerte("Syntaxe : /note [votre texte]");
-        return;
-      }
-      const texteReel = afterCmd.slice(1).trim();
-      if (!texteReel && fichierMsg.length === 0) return;
-      await onEnvoyer(texteReel, fichierMsg, { visible_par: [auteurActif] });
-    } else {
-      await onEnvoyer(msgInput, fichierMsg, {});
-    }
+    if (!texte.trim() && fichierMsg.length === 0) return;
+    await onEnvoyer(texte.trim(), fichierMsg, portee === "public" ? {} : { portee });
 
     setMsgInput("");
     setFichierMsg([]);
+    setMode("public");
   }
 
   const messagesAfficher = (instructions
     ? selected.messages.filter((m, i) => i !== 0 || m.texte !== instructions)
     : selected.messages
-  ).filter(m => !m.visible_par || m.visible_par.includes(auteurActif));
+  ).filter(m => {
+    if (m.auteur === auteurActif) return true; // l'auteur voit toujours son message
+    // Notes privées historiques (visible_par, par nom)
+    if (m.visible_par && !m.visible_par.includes(auteurActif)) return false;
+    // Portée par rôle (filtrage côté client, cohérent avec le modèle existant)
+    const portee = m.portee || "public";
+    if (portee === "sans_dessinateur" && estDessinateur) return false;
+    if (portee === "admin" && !estAdmin) return false;
+    return true;
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -90,24 +97,29 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
         {messagesAfficher.map((m, i) => {
           const moi = m.auteur === auteurActif;
           const estNotePrivee = !!(m.visible_par && m.visible_par.includes(auteurActif));
-          const peutSupprimer = moi && onSupprimer && (estNotePrivee || (m.lu_par || []).length === 0);
+          // L'admin peut supprimer ses propres messages à tout moment (même lus).
+          const peutSupprimer = moi && onSupprimer && (estAdmin || estNotePrivee || (m.lu_par || []).length === 0);
+          // Étiquette de portée (note hors dessinateur / note admin)
+          const labelPortee = m.portee === "sans_dessinateur" ? "🔒 Note (hors dessinateur)"
+            : m.portee === "admin" ? "🛡️ Note admin"
+            : estNotePrivee ? "🔒 Note privée" : null;
           return (
             <div key={i} style={{ alignSelf: moi ? "flex-end" : "flex-start", maxWidth: "80%" }}>
-              {estNotePrivee && (
+              {labelPortee && (
                 <div style={{ fontSize: 10, color: "#92400E", textAlign: moi ? "right" : "left", marginBottom: 2, paddingInline: 2 }}>
-                  🔒 Note privée
+                  {labelPortee}
                 </div>
               )}
               <div style={{
-                background: m.auteur_admin ? "#FECACA" : estNotePrivee ? "#FFFBEB" : moi ? "#fff" : "#EFF6FF",
-                border: m.auteur_admin ? "1px solid #F87171" : estNotePrivee ? "1.5px dashed #FCD34D" : `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`,
+                background: estNotePrivee ? "#FFFBEB" : moi ? "#fff" : "#EFF6FF",
+                border: estNotePrivee ? "1.5px dashed #FCD34D" : `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`,
                 borderRadius: 8,
                 padding: "10px 12px",
               }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: m.auteur_admin ? "#111827" : moi ? "#374151" : "#1E40AF" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: m.auteur_admin ? "#DC2626" : moi ? "#374151" : "#1E40AF" }}>
                   {m.auteur}{m.auteur_admin ? " · Support" : ""}
                 </div>
-                <div style={{ fontSize: 12, color: "#111827", marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
+                <div style={{ fontSize: 12, color: m.auteur_admin ? "#DC2626" : "#111827", marginTop: 4, whiteSpace: "pre-wrap" }}>{m.texte}</div>
                 {m.fichiers && m.fichiers.length > 0 && (
                   <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {m.fichiers.map((f, j) => (
@@ -189,43 +201,53 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
               }} />
           </>
         )}
-        <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleEnvoyer()}
-          placeholder={modeNote ? "🔒 Note privée pour moi..." : "Écrire un message..."}
-          style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${modeNote ? "#FCD34D" : "#E5E7EB"}`, background: modeNote ? "#FFFBEB" : "#fff", fontSize: 13, outline: "none" }} />
-        {/* Sélecteur de mode (compact, à gauche du Envoyer) */}
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <button type="button"
-            onClick={(e) => { e.stopPropagation(); setModeOuvert(v => !v); }}
-            title={modeNote ? "Mode : Note privée" : "Mode : Message"}
-            style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${modeNote ? "#FCD34D" : "#E5E7EB"}`, background: modeNote ? "#FFFBEB" : "#fff", fontSize: 13, cursor: "pointer", color: "#374151", display: "flex", alignItems: "center", gap: 4 }}>
-            {modeNote ? "🔒" : "💬"}<span style={{ fontSize: 10, color: "#9CA3AF" }}>▾</span>
-          </button>
-          {modeOuvert && (
+        {(() => {
+          const estNote = mode !== "public";
+          const placeholder = mode === "admin" ? "🛡️ Note admin (visible par l'admin uniquement)..."
+            : mode === "sans_dessinateur" ? "🔒 Note (visible par tous sauf le dessinateur)..."
+            : "Écrire un message...";
+          const icone = mode === "admin" ? "🛡️" : mode === "sans_dessinateur" ? "🔒" : "💬";
+          const optionBtn = (val, label) => (
+            <button type="button"
+              onClick={() => { setMode(val); setModeOuvert(false); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 14px", background: mode === val ? "#FFFBEB" : "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}>
+              {label}
+              {mode === val && <span style={{ marginLeft: "auto", color: "#059669" }}>✓</span>}
+            </button>
+          );
+          return (
             <>
-              <div onClick={() => setModeOuvert(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-              <div onClick={e => e.stopPropagation()}
-                style={{ position: "absolute", bottom: "calc(100% + 4px)", right: 0, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 51, minWidth: 180, overflow: "hidden" }}>
+              <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleEnvoyer()}
+                placeholder={placeholder}
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${estNote ? "#FCD34D" : "#E5E7EB"}`, background: estNote ? "#FFFBEB" : "#fff", fontSize: 13, outline: "none" }} />
+              {/* Sélecteur de mode (compact, à gauche du Envoyer) */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
                 <button type="button"
-                  onClick={() => { setModeNote(false); setModeOuvert(false); }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 14px", background: modeNote ? "none" : "#F9FAFB", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}>
-                  💬 Message
-                  {!modeNote && <span style={{ marginLeft: "auto", color: "#059669" }}>✓</span>}
+                  onClick={(e) => { e.stopPropagation(); setModeOuvert(v => !v); }}
+                  title="Mode du message"
+                  style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${estNote ? "#FCD34D" : "#E5E7EB"}`, background: estNote ? "#FFFBEB" : "#fff", fontSize: 13, cursor: "pointer", color: "#374151", display: "flex", alignItems: "center", gap: 4 }}>
+                  {icone}<span style={{ fontSize: 10, color: "#9CA3AF" }}>▾</span>
                 </button>
-                <button type="button"
-                  onClick={() => { setModeNote(true); setModeOuvert(false); }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 14px", background: modeNote ? "#FFFBEB" : "none", border: "none", cursor: "pointer", fontSize: 13, color: "#374151", textAlign: "left" }}>
-                  🔒 Note privée
-                  {modeNote && <span style={{ marginLeft: "auto", color: "#059669" }}>✓</span>}
-                </button>
+                {modeOuvert && (
+                  <>
+                    <div onClick={() => setModeOuvert(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+                    <div onClick={e => e.stopPropagation()}
+                      style={{ position: "absolute", bottom: "calc(100% + 4px)", right: 0, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 51, minWidth: 240, overflow: "hidden" }}>
+                      {optionBtn("public", "💬 Message")}
+                      {optionBtn("sans_dessinateur", "🔒 Note (hors dessinateur)")}
+                      {estAdmin && optionBtn("admin", "🛡️ Note admin (privée)")}
+                    </div>
+                  </>
+                )}
               </div>
+              <button onClick={handleEnvoyer}
+                style={{ background: estNote ? "#D97706" : (auteurActif === "Simon" ? "#122131" : "#FC6C1B"), color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+                {estNote ? "Enregistrer" : "Envoyer"}
+              </button>
             </>
-          )}
-        </div>
-        <button onClick={handleEnvoyer}
-          style={{ background: modeNote ? "#D97706" : (auteurActif === "Simon" ? "#122131" : "#FC6C1B"), color: "white", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-          {modeNote ? "Enregistrer" : "Envoyer"}
-        </button>
+          );
+        })()}
       </div>}
     </div>
   );
