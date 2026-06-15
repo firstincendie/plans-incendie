@@ -14,7 +14,8 @@ export default function ListeArchives() {
   const [menuRect, setMenuRect] = useState(null);
   const [showConfirmSupprimer, setShowConfirmSupprimer] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  // Taille de page par défaut : préférence utilisateur (Réglages), sinon 20.
+  const [pageSize, setPageSize] = useState([20, 50, 100].includes(profil?.pref_page_size) ? profil.pref_page_size : 20);
   const navigate = useNavigate();
   const location = useLocation();
 

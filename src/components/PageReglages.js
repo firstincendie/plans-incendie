@@ -21,12 +21,33 @@ export default function PageReglages({ profil, onProfilUpdate }) {
     ] : []),
   ] : [];
 
+  const pageSize = [20, 50, 100].includes(profil?.pref_page_size) ? profil.pref_page_size : 20;
+
   return (
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Réglages</h1>
-      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 48, textAlign: "center" }}>
-        <div style={{ fontSize: 36, marginBottom: 12 }}>⚙️</div>
-        <div style={{ fontSize: 14, color: "#94A3B8" }}>Aucun réglage disponible pour le moment.</div>
+
+      {/* Section Affichage */}
+      <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 24 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Affichage</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Commandes par page</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF" }}>Nombre de commandes affichées par page dans les listes</div>
+          </div>
+          <select
+            value={pageSize}
+            onChange={async (e) => {
+              const newValue = Number(e.target.value);
+              const old = pageSize;
+              onProfilUpdate({ pref_page_size: newValue });
+              const { error } = await supabase.from("profiles").update({ pref_page_size: newValue }).eq("id", profil.id);
+              if (error) onProfilUpdate({ pref_page_size: old });
+            }}
+            style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13, background: "#fff", color: "#374151", cursor: "pointer" }}>
+            {[20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Section Notifications */}
