@@ -106,7 +106,9 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
               )}
               <div style={{
                 background: estNotePrivee ? "#FFFBEB" : moi ? "#fff" : "#EFF6FF",
-                border: estNotePrivee ? "1.5px dashed #FCD34D" : `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`,
+                border: estNotePrivee ? "1.5px dashed #FCD34D"
+                  : m.portee === "note" ? `1.5px dashed ${moi ? "#9CA3AF" : "#93C5FD"}`
+                  : `1px solid ${moi ? "#E5E7EB" : "#BFDBFE"}`,
                 borderRadius: 8,
                 padding: "10px 12px",
               }}>
