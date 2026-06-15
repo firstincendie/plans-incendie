@@ -36,7 +36,11 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   // Nombre de commandes actives avec notification (messages non lus OU marquage manuel)
   // — même décompte que la pastille a cote du titre de la page Commandes.
   const role = profil.role;
+  // Notifications uniquement sur SES propres commandes (proprietaire ou
+  // dessinateur assigne) — pas en supervision admin.
+  const estMaCommande = (c) => c.utilisateur_id === profil.id || c.dessinateur_id === profil.id;
   const totalNonLus = commandes.filter(c => {
+    if (!estMaCommande(c)) return false;
     const archived = role === "dessinateur" ? c.is_archived_dessinateur : c.is_archived;
     if (archived) return false;
     const nbNonLus = (c.messages || []).filter(

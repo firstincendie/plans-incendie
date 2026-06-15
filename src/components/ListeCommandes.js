@@ -80,12 +80,16 @@ export default function ListeCommandes() {
 
   // --- Unread count helper ---
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
-  const nonLusDe = c => c.messages
+  // Notifications uniquement sur SES propres commandes (proprietaire ou
+  // dessinateur assigne) — pas en supervision admin.
+  const estMaCommande = c => c.utilisateur_id === profil.id || c.dessinateur_id === profil.id;
+  const nonLusDe = c => (estMaCommande(c) && c.messages)
     ? c.messages.filter(m => m.auteur !== auteurNom && !(m.lu_par || []).includes(auteurNom)).length
     : 0;
 
   // Badge notification (chiffre si messages non lus naturels, sinon point orange si manuellement marquée)
   const NotifBadge = ({ c }) => {
+    if (!estMaCommande(c)) return null;
     const n = nonLusDe(c);
     if (n > 0) return <span style={{ background: "#FC6C1B", color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{n}</span>;
     if (c.marque_non_lu) return <span title="Marquée comme non lue" style={{ display: "inline-block", width: 14, height: 14, borderRadius: "50%", background: "#FC6C1B", flexShrink: 0 }} />;
@@ -136,7 +140,7 @@ export default function ListeCommandes() {
   }
 
   // L'une OU l'autre selon l'état actuel de la commande
-  const hasNotif = (c) => nonLusDe(c) > 0 || !!c.marque_non_lu;
+  const hasNotif = (c) => estMaCommande(c) && (nonLusDe(c) > 0 || !!c.marque_non_lu);
 
   // En-tête de colonne cliquable pour tri (desktop tables)
   const Th = ({ col, label }) => (

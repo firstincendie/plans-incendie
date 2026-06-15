@@ -183,6 +183,9 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     if (!commandeId) return;
     const cmd = commandes.find(c => c.id === commandeId);
     if (!cmd) return;
+    // Ne pas marquer "lu" en supervision : seul le proprietaire de la commande
+    // ou le dessinateur assigne fait passer les messages en statut vu.
+    if (cmd.utilisateur_id !== profil.id && cmd.dessinateur_id !== profil.id) return;
     const nonLus = cmd.messages.filter(m =>
       m.auteur !== auteurNom &&
       !m.visible_par &&
