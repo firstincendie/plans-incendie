@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { formatDateCourt, formatDateBulle, joursRestants, delaiPalette } from "../helpers";
+import { formatDateCourt, formatDateBulle, joursRestants, delaiPalette, telechargerFichier } from "../helpers";
 import Badge from "./Badge";
 import BlocAdresse from "./BlocAdresse";
 import BlocContact from "./BlocContact";
@@ -16,18 +16,14 @@ function SectionTitle({ children }) {
 }
 
 // Petit bouton télécharger (icône seule), à placer à côté d'un bouton "Voir".
-// L'attribut `download` est ignoré pour les URLs cross-origin (stockage Supabase
-// sur un autre domaine) : on ajoute le paramètre `?download=` qui force le
-// header Content-Disposition: attachment côté Supabase Storage.
+// Utilise telechargerFichier (fetch + blob) pour un téléchargement fiable.
 function BoutonTelecharger({ fichier }) {
   if (!fichier?.url) return null;
-  const sep = fichier.url.includes("?") ? "&" : "?";
-  const href = `${fichier.url}${sep}download=${encodeURIComponent(fichier.nom || "")}`;
   return (
-    <a href={href} download={fichier.nom} title="Télécharger"
-      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 5, border: "1px solid #E5E7EB", background: "#fff", color: "#6B7280", fontSize: 13, textDecoration: "none", lineHeight: 1 }}>
+    <button onClick={() => telechargerFichier(fichier)} title="Télécharger"
+      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 5, border: "1px solid #E5E7EB", background: "#fff", color: "#6B7280", fontSize: 13, cursor: "pointer", lineHeight: 1 }}>
       ⬇
-    </a>
+    </button>
   );
 }
 
