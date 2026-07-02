@@ -1,5 +1,30 @@
 import { PATTERNS_CONTACTS } from "./constants";
 
+// Télécharge un fichier de façon fiable : on récupère les octets bruts via
+// fetch (le stockage Supabase autorise le CORS) puis on sauvegarde le blob.
+// Évite toute corruption liée au param ?download / Content-Disposition et
+// garantit un fichier identique à l'original.
+export async function telechargerFichier(fichier) {
+  if (!fichier?.url) return;
+  try {
+    const res = await fetch(fichier.url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl;
+    a.download = fichier.nom || "fichier";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1500);
+  } catch (e) {
+    console.error("Téléchargement:", e);
+    // Repli : ouvrir dans un nouvel onglet
+    window.open(fichier.url, "_blank", "noopener");
+  }
+}
+
 export function formatDateBulle(iso) {
   if (!iso) return "";
   const d = new Date(iso);
