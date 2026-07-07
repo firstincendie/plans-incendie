@@ -12,6 +12,9 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   const [utilisateursSupervises, setUtilisateursSupervises] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  // Anti-concurrence + horodatage du dernier chargement réussi (throttle focus).
+  const chargementRef = useRef(false);
+  const dernierChargementRef = useRef(0);
 
   const isAdmin = profil.role !== "dessinateur" && profil.is_owner === true;
 
@@ -58,7 +61,20 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
   ).length;
 
   useEffect(() => {
-    chargerTout();
+    chargerToutAvecReprise();
+
+    // Recharge quand l'onglet redevient visible / au focus / retour réseau :
+    // le token peut avoir expiré en arrière-plan et laisser un état vide.
+    const recharger = () => {
+      // Throttle : au retour sur l'onglet, on ne recharge que si > 15 s depuis
+      // le dernier chargement réussi (évite de refaire le gros payload trop souvent).
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - dernierChargementRef.current < 15000) return;
+      chargerToutAvecReprise();
+    };
+    document.addEventListener("visibilitychange", recharger);
+    window.addEventListener("focus", recharger);
+    window.addEventListener("online", recharger);
 
     // Realtime channel — reproduit le canal de VueUtilisateur.js:68-101
     // et VueDessinateur.js:47-81 (patterns identiques, seul le nom du canal diffère).
@@ -107,58 +123,75 @@ export default function LayoutPrincipal({ session, profil, onProfilUpdate }) {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(canal); supabase.removeChannel(canalTickets); };
+    return () => {
+      supabase.removeChannel(canal);
+      supabase.removeChannel(canalTickets);
+      document.removeEventListener("visibilitychange", recharger);
+      window.removeEventListener("focus", recharger);
+      window.removeEventListener("online", recharger);
+    };
   }, [profil.id]); // eslint-disable-line
+
+  // Chargement avec reprise : rejoue en cas d'échec transitoire (payload lourd,
+  // token expiré...) au lieu de laisser une liste vide définitive.
+  async function chargerToutAvecReprise() {
+    if (chargementRef.current) return;
+    chargementRef.current = true;
+    try {
+      for (let i = 0; i < 4; i++) {
+        try { await chargerTout(); dernierChargementRef.current = Date.now(); return; }
+        catch (e) {
+          console.warn("chargerTout: échec, tentative", i + 1, e);
+          // Après le 1er échec, tente de rafraîchir la session (token périmé).
+          if (i === 0) { try { await supabase.auth.refreshSession(); } catch { /* ignore */ } }
+          await new Promise(r => setTimeout(r, 500 * (i + 1)));
+        }
+      }
+      console.error("chargerTout: échec après plusieurs tentatives");
+    } finally {
+      chargementRef.current = false;
+    }
+  }
 
   async function chargerTout() {
     const nom = auteurNomRef.current;
 
-    // Requête commandes — reproduit VueUtilisateur.js:107 et VueDessinateur.js:86
-    // Requête sous-comptes — les deux Vue* utilisent eq("master_id", profil.id) :
-    //   VueUtilisateur.js:109 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
-    //   VueDessinateur.js:88 : profiles.select("id, prenom, nom").eq("master_id", profil.id)
-    const [{ data: cmd }, { data: sub }, { data: marques }, { data: tks }, { data: superv }] = await Promise.all([
-      supabase
-        .from("commandes")
-        .select("*, messages(*)")
-        .order("created_at", { ascending: false }),
+    // Chaque requête ne rejette jamais (erreur réseau -> {data:null, error}) :
+    // ainsi une requête secondaire en échec ne fait pas tomber tout le chargement.
+    const [cmdRes, subRes, marquesRes, tksRes, supervRes] = await Promise.all([
+      supabase.from("commandes").select("*, messages(*)").order("created_at", { ascending: false }),
       profil.is_owner
         ? supabase.from("profiles").select("id, prenom, nom").eq("master_id", profil.id)
         : Promise.resolve({ data: [] }),
       supabase.from("commande_marquage_non_lu").select("commande_id"),
-      // Tickets + messages (id/auteur/lu_par) pour le décompte des non-lus.
-      // RLS limite déjà : admin voit tout, utilisateur voit ses tickets.
-      supabase
-        .from("tickets")
-        .select("id, statut, ticket_messages(id, auteur_id, lu_par)")
-        .order("updated_at", { ascending: false }),
-      // Admin : liste des utilisateurs (clients) pour le filtre "par utilisateur".
+      supabase.from("tickets").select("id, statut, ticket_messages(id, auteur_id, lu_par)").order("updated_at", { ascending: false }),
       isAdmin
         ? supabase.from("profiles").select("id, prenom, nom").eq("role", "utilisateur").neq("id", profil.id)
         : Promise.resolve({ data: [] }),
-    ]);
+    ].map(p => Promise.resolve(p).catch(e => ({ data: null, error: e }))));
 
-    if (cmd) {
-      const marquesSet = new Set((marques || []).map(m => m.commande_id));
-      // Normalisation reproduite de VueUtilisateur.js:115-124 et VueDessinateur.js:90-99
-      setCommandes(cmd.map(c => ({
-        ...c,
-        plans: c.plans || [],
-        fichiersPlan: c.fichiers_plan || [],
-        logoClient: c.logo_client || [],
-        plansFinalises: c.plans_finalises || [],
-        marque_non_lu: marquesSet.has(c.id),
-        messages: (c.messages || [])
-          .filter(m => peutVoirMessageRef.current(m, nom))
-          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
-      })));
+    // Commandes = requête critique. En cas d'erreur (réseau, token, timeout),
+    // on remonte pour laisser la reprise rejouer, SANS écraser l'existant.
+    if (cmdRes.error || cmdRes.data == null) {
+      throw cmdRes.error || new Error("Chargement des commandes échoué");
     }
+    const cmd = cmdRes.data;
+    const marquesSet = new Set((marquesRes.data || []).map(m => m.commande_id));
+    setCommandes(cmd.map(c => ({
+      ...c,
+      plans: c.plans || [],
+      fichiersPlan: c.fichiers_plan || [],
+      logoClient: c.logo_client || [],
+      plansFinalises: c.plans_finalises || [],
+      marque_non_lu: marquesSet.has(c.id),
+      messages: (c.messages || [])
+        .filter(m => peutVoirMessageRef.current(m, nom))
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+    })));
 
-    if (sub) setSousComptes(sub);
-    setUtilisateursSupervises(superv || []);
-
-    // Normalise tickets : on expose messages = ticket_messages pour le décompte
-    setTickets((tks || []).map(t => ({ ...t, messages: t.ticket_messages || [] })));
+    if (subRes.data) setSousComptes(subRes.data);
+    setUtilisateursSupervises(supervRes.data || []);
+    setTickets((tksRes.data || []).map(t => ({ ...t, messages: t.ticket_messages || [] })));
   }
 
   return (

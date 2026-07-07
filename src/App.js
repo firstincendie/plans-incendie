@@ -48,13 +48,20 @@ export default function App() {
     };
   }, [session]); // eslint-disable-line
 
-  async function chargerProfil(uid) {
-    const { data } = await supabase
+  async function chargerProfil(uid, tentative = 0) {
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", uid)
       .single();
-    setProfil(data);
+    if (error && tentative < 3) {
+      // Échec transitoire (réseau / token) : on retente avec backoff au lieu de
+      // rester bloqué sur "Chargement du profil...".
+      if (tentative === 0) { try { await supabase.auth.refreshSession(); } catch { /* ignore */ } }
+      setTimeout(() => chargerProfil(uid, tentative + 1), 600 * (tentative + 1));
+      return;
+    }
+    if (data) setProfil(data);
   }
 
   const handleProfilUpdate = (updates) => setProfil(prev => ({ ...prev, ...updates }));
