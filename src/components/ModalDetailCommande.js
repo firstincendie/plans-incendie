@@ -263,6 +263,21 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     navigate("/commandes/nouvelle", { state: { dupliquerDe: c } });
   }
 
+  // "Marquer en non lue" depuis la vue ouverte : on quitte le détail PUIS on
+  // persiste la marque. Le navigate d'abord démonte la modale, ce qui évite que
+  // l'effet d'auto-clear d'ouverture (ci-dessus) ne réannule aussitôt la marque.
+  async function marquerNonLueEtFermer() {
+    navigate(retourAvecParams);
+    if (!session?.user?.id) return;
+    const cid = commande.id;
+    const { error } = await supabase
+      .from("commande_marquage_non_lu")
+      .upsert({ commande_id: cid, user_id: session.user.id });
+    if (!error) {
+      setCommandes(prev => prev.map(c => c.id === cid ? { ...c, marque_non_lu: true } : c));
+    }
+  }
+
   // ---- Dessinateur workflow handlers ----
 
   async function commencer(id) {
@@ -519,6 +534,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         noteSaveError={noteSaveError}
         onModifierCommande={modifierCommande}
         canModifier={canModifier}
+        onMarquerNonLu={marquerNonLueEtFermer}
         startInEditMode={canModifier && !!location.state?.editer}
         adresseComplete={isDessinateur}
         onNaviguerPrec={() => naviguerVers(-1)}
