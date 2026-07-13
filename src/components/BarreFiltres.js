@@ -12,13 +12,21 @@ export default function BarreFiltres({ commandes, filtres, setFiltres, showDessi
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
       {/* Recherche */}
-      <input
-        type="text"
-        value={filtres.q || ""}
-        onChange={e => setFiltres({ ...filtres, q: e.target.value })}
-        placeholder="🔍 Rechercher (plan, client, email, ref)"
-        style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", minWidth: 180, flex: "1 1 220px", boxSizing: "border-box" }}
-      />
+      <div style={{ position: "relative", minWidth: 180, flex: "1 1 220px", display: "flex" }}>
+        <input
+          type="text"
+          value={filtres.q || ""}
+          onChange={e => setFiltres({ ...filtres, q: e.target.value })}
+          placeholder="🔍 Rechercher (plan, client, email, ref)"
+          style={{ padding: "6px 28px 6px 10px", borderRadius: 7, border: "1px solid #E5E7EB", fontSize: 12, background: "#fff", color: "#374151", width: "100%", boxSizing: "border-box" }}
+        />
+        {filtres.q && (
+          <button type="button" onClick={() => setFiltres({ ...filtres, q: "" })} title="Effacer la recherche"
+            style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 20, height: 20, borderRadius: "50%", border: "none", background: "#E5E7EB", color: "#6B7280", fontSize: 12, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            ✕
+          </button>
+        )}
+      </div>
 
       {/* Toggle notifications */}
       <button
