@@ -54,6 +54,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [lienUrl, setLienUrl] = useState(null);
   const [genLien, setGenLien] = useState(false);
   const [lienCopie, setLienCopie] = useState(false);
+  const [validationEtat, setValidationEtat] = useState(null);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
@@ -116,6 +117,21 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         if (!error) setCommandes(prev => prev.map(c => c.id === cid ? { ...c, marque_non_lu: false } : c));
       });
   }, [commande?.id, commande?.marque_non_lu, session?.user?.id]); // eslint-disable-line
+
+  // État du hub de validation client (dernier lien généré + dernière réponse)
+  useEffect(() => {
+    if (!commande?.id || !isAdmin) { setValidationEtat(null); return; }
+    let cancel = false;
+    const cid = commande.id;
+    Promise.all([
+      supabase.from("validation_liens").select("cree_le, actif").eq("commande_id", cid).order("cree_le", { ascending: false }).limit(1),
+      supabase.from("validation_tours").select("numero, statut, soumis_le").eq("commande_id", cid).order("numero", { ascending: false }).limit(1),
+    ]).then(([liens, tours]) => {
+      if (cancel) return;
+      setValidationEtat({ lien: liens.data?.[0] || null, tour: tours.data?.[0] || null });
+    });
+    return () => { cancel = true; };
+  }, [commande?.id, isAdmin]); // eslint-disable-line
 
   if (!commande) return null;
 
@@ -462,6 +478,22 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
 
   const peutDeposer = ["Commencé", "Modification dessinateur"].includes(commande.statut);
 
+  // Bandeau : état du hub de validation client (admin uniquement)
+  const vTour = validationEtat?.tour;
+  const vLien = validationEtat?.lien;
+  const validationBanner = (isAdmin && (vTour || (vLien && vLien.actif))) ? (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "9px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 600,
+      ...(vTour?.statut === "valide" ? { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#065F46" }
+        : vTour?.statut === "modifs" ? { background: "#FFF7ED", border: "1px solid #FED7AA", color: "#92400E" }
+        : { background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E40AF" }),
+    }}>
+      {vTour?.statut === "valide" ? `✅ Validé par le client${vTour.soumis_le ? " le " + formatDateCourt(vTour.soumis_le) : ""}`
+        : vTour?.statut === "modifs" ? `✍️ Modifications demandées par le client${vTour.soumis_le ? " le " + formatDateCourt(vTour.soumis_le) : ""}`
+        : `🔗 Lien de validation envoyé${vLien?.cree_le ? " le " + formatDateCourt(vLien.cree_le) : ""} — en attente de réponse`}
+    </div>
+  ) : null;
+
   const actionButtons = isDessinateur ? (
     <>
       {commande.statut === "En attente" && (
@@ -496,14 +528,22 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     </>
   ) : (
     // admin / utilisateur
-    commande.statut === "Ébauche déposée" ? (
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+    <>
+    {validationBanner}
+    {commande.statut === "Ébauche déposée" ? (
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        {isAdmin && (
+          <button onClick={genererLienValidation} disabled={genLien}
+            style={{ flex: "1 1 150px", padding: 10, borderRadius: 8, border: "1px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", fontSize: 13, fontWeight: 600, cursor: genLien ? "wait" : "pointer" }}>
+            {genLien ? "Génération…" : "📤 Envoyer au client"}
+          </button>
+        )}
         <button onClick={() => setShowModifModal(true)}
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          style={{ flex: "1 1 150px", padding: 10, borderRadius: 8, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#92400E", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           ✏️ Demander une modification
         </button>
         <button onClick={() => setShowDemandeValidationModal(true)} disabled={demandantValidation}
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: demandantValidation ? "not-allowed" : "pointer" }}>
+          style={{ flex: "1 1 150px", padding: 10, borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", color: "#065F46", fontSize: 13, fontWeight: 600, cursor: demandantValidation ? "not-allowed" : "pointer" }}>
           📋 Demander la validation
         </button>
       </div>
@@ -523,7 +563,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "10px 16px", fontSize: 13, color: "#065F46" }}>
         ✅ Commande validée — messagerie fermée
       </div>
-    ) : null
+    ) : null}
+    </>
   );
 
   return (
@@ -554,7 +595,6 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         onModifierCommande={modifierCommande}
         canModifier={canModifier}
         onMarquerNonLu={marquerNonLueEtFermer}
-        onGenererLien={isAdmin ? genererLienValidation : undefined}
         startInEditMode={canModifier && !!location.state?.editer}
         adresseComplete={isDessinateur}
         onNaviguerPrec={() => naviguerVers(-1)}
@@ -729,7 +769,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.5 }}>
               À envoyer au client : il pourra valider le plan (ou signaler des modifications) <b>sans créer de compte</b>. Ce lien remplace tout lien précédent et expire dans 30 jours.
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input readOnly value={lienUrl} onFocus={(e) => e.target.select()}
                 style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 12, color: "#374151", background: "#F9FAFB" }} />
               <button onClick={() => { navigator.clipboard?.writeText(lienUrl); setLienCopie(true); }}
@@ -737,10 +777,14 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
                 {lienCopie ? "✓ Copié" : "Copier"}
               </button>
             </div>
+            <a href={lienUrl} target="_blank" rel="noopener noreferrer"
+              style={{ display: "block", textAlign: "center", padding: 12, borderRadius: 10, background: "#FC6C1B", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none", marginBottom: 12 }}>
+              ↗ Ouvrir le lien de validation
+            </a>
             <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
               <a href={`mailto:${commande.client_email || ""}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}`}
-                style={{ fontSize: 13, fontWeight: 600, color: "#FC6C1B", textDecoration: "none" }}>
-                ✉️ Envoyer par email
+                style={{ fontSize: 13, fontWeight: 600, color: "#6B7280", textDecoration: "none" }}>
+                ✉️ Ou envoyer par email
               </a>
               <button onClick={() => setLienUrl(null)}
                 style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Fermer</button>

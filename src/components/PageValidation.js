@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../supabase";
 import PlanPdf from "./validation/PlanPdf";
@@ -42,6 +42,11 @@ export default function PageValidation() {
   const [com3, setCom3] = useState("");
   const [ok2, setOk2] = useState(false);
   const [ok3, setOk3] = useState(false);
+  // Images du plan annoté (capturées en quittant l'étape, envoyées dans le chat)
+  const plan2Ref = useRef();
+  const plan3Ref = useRef();
+  const [snap2, setSnap2] = useState(null);
+  const [snap3, setSnap3] = useState(null);
 
   // Chargement initial via le jeton
   useEffect(() => {
@@ -89,6 +94,19 @@ export default function PageValidation() {
     return f?.url || null;
   }, [data]);
 
+  // Upload d'une image annotée (dataURL PNG) dans fichiers/validation/** → renvoie le descripteur fichier
+  async function uploadSnap(dataUrl, label, commandeId) {
+    if (!dataUrl) return null;
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `validation/${commandeId}/${Date.now()}-${label === "Pièces" ? "pieces" : "equipements"}.png`;
+      const { error } = await supabase.storage.from("fichiers").upload(path, blob, { contentType: "image/png", upsert: true });
+      if (error) { console.error("upload plan annoté:", error); return null; }
+      const { data: pub } = supabase.storage.from("fichiers").getPublicUrl(path);
+      return { nom: `Plan annoté — ${label}`, url: pub.publicUrl, type: "image/png", taille: Math.round(blob.size / 1024) + " Ko" };
+    } catch (e) { console.error(e); return null; }
+  }
+
   const previewLogo = useCallback((input) => {
     const f = input.files && input.files[0];
     if (!f) return;
@@ -112,7 +130,14 @@ export default function PageValidation() {
       ...pins2.map((p, i) => ({ etape: "pieces", numero: i + 1, page: 1, x: p.x, y: p.y, texte: p.texte })),
       ...pins3.map((p, i) => ({ etape: "equipements", numero: i + 1, page: 1, x: p.x, y: p.y, texte: p.texte })),
     ];
-    const { data: res, error } = await supabase.rpc("validation_soumettre", { p_token: token, p_reponses: reponses, p_epingles: epingles });
+    // Upload des plans annotés (avec épingles) → joints au message côté admin/dessinateur
+    const fichiers = [];
+    const up = await uploadSnap(snap2, "Pièces", c.id);
+    if (up) fichiers.push(up);
+    const up3 = await uploadSnap(snap3, "Équipements", c.id);
+    if (up3) fichiers.push(up3);
+
+    const { data: res, error } = await supabase.rpc("validation_soumettre", { p_token: token, p_reponses: reponses, p_epingles: epingles, p_fichiers: fichiers });
     if (error || res?.error) { setEcran("recap"); alert("Échec de l'envoi. Merci de réessayer."); return; }
     setEnvoye(res);
     setEcran("done");
@@ -204,7 +229,7 @@ export default function PageValidation() {
                 <h2 className="pv-steptitle">Cloisons et noms des pièces</h2>
                 <p className="pv-stephint">Un détail à changer ? Cliquez l'endroit exact sur le plan pour y poser une épingle.</p>
                 <div className="pv-cols">
-                  <div className="pv-colmain"><PlanPdf url={planUrl} pins={pins2} onTapPlan={tapPlan(setPins2)} /></div>
+                  <div className="pv-colmain"><PlanPdf ref={plan2Ref} url={planUrl} pins={pins2} onTapPlan={tapPlan(setPins2)} /></div>
                   <div className="pv-colside">
                     {pins2.length === 0 && <div className="pv-bubble">💡 Ajoutez une remarque en cliquant simplement sur le plan.</div>}
                     <PinList pins={pins2} setPins={setPins2} />
@@ -212,7 +237,7 @@ export default function PageValidation() {
                       <div className="pv-comlabel">Autre remarque ? (optionnel)</div>
                       <textarea className="pv-note" value={com2} onChange={(e) => setCom2(e.target.value)} placeholder="Un commentaire général sur cette étape…" />
                       <Gate has={chg2} ok={ok2} setOk={setOk2} societe={emetSociete} incomplet={pins2Incomplet} />
-                      <button className="pv-cta" disabled={!cta2Ok} onClick={() => setEcran("step3")}>Continuer</button>
+                      <button className="pv-cta" disabled={!cta2Ok} onClick={() => { setSnap2(pins2.length ? (plan2Ref.current?.snapshot() || null) : null); setEcran("step3"); }}>Continuer</button>
                     </div>
                   </div>
                 </div>
@@ -224,7 +249,7 @@ export default function PageValidation() {
                 <h2 className="pv-steptitle">Emplacement des équipements</h2>
                 <p className="pv-stephint">Extincteurs, issues de secours, alarmes… Cliquez le plan pour signaler un déplacement.</p>
                 <div className="pv-cols">
-                  <div className="pv-colmain"><PlanPdf url={planUrl} pins={pins3} onTapPlan={tapPlan(setPins3)} /></div>
+                  <div className="pv-colmain"><PlanPdf ref={plan3Ref} url={planUrl} pins={pins3} onTapPlan={tapPlan(setPins3)} /></div>
                   <div className="pv-colside">
                     {pins3.length === 0 && <div className="pv-bubble">💡 Ajoutez une remarque en cliquant simplement sur le plan.</div>}
                     <PinList pins={pins3} setPins={setPins3} />
@@ -232,7 +257,7 @@ export default function PageValidation() {
                       <div className="pv-comlabel">Autre remarque ? (optionnel)</div>
                       <textarea className="pv-note" value={com3} onChange={(e) => setCom3(e.target.value)} placeholder="Un commentaire général sur cette étape…" />
                       <Gate has={chg3} ok={ok3} setOk={setOk3} societe={emetSociete} incomplet={pins3Incomplet} />
-                      <button className="pv-cta" disabled={!cta3Ok} onClick={() => setEcran("recap")}>Voir le récapitulatif</button>
+                      <button className="pv-cta" disabled={!cta3Ok} onClick={() => { setSnap3(pins3.length ? (plan3Ref.current?.snapshot() || null) : null); setEcran("recap"); }}>Voir le récapitulatif</button>
                     </div>
                   </div>
                 </div>

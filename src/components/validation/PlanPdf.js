@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 
 // Worker servi depuis public/ (copié depuis pdfjs-dist) — évite tout CDN externe.
@@ -8,11 +8,41 @@ const ZOOM = [1, 1.5, 2, 3];
 
 // Affiche la 1re page d'un PDF sur un canvas et laisse poser des épingles dessus.
 // Les coordonnées des épingles sont en % (indépendantes du zoom).
-export default function PlanPdf({ url, pins = [], onTapPlan }) {
+// Expose snapshot() via ref : renvoie un dataURL PNG du plan AVEC les épingles.
+const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan }, ref) {
   const canvasRef = useRef();
   const viewportRef = useRef();
   const [zi, setZi] = useState(0);
   const [etat, setEtat] = useState("load"); // load | ok | erreur
+
+  useImperativeHandle(ref, () => ({
+    // Compose le canvas du plan + les épingles numérotées en une image PNG.
+    snapshot() {
+      const src = canvasRef.current;
+      if (!src || etat !== "ok") return null;
+      const out = document.createElement("canvas");
+      out.width = src.width; out.height = src.height;
+      const ctx = out.getContext("2d");
+      ctx.drawImage(src, 0, 0);
+      const r = Math.max(16, out.width * 0.014);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = `bold ${Math.round(r * 1.1)}px 'Segoe UI', sans-serif`;
+      pins.forEach((p, i) => {
+        const x = (p.x / 100) * out.width;
+        const y = (p.y / 100) * out.height;
+        const cy = y - r * 1.3;
+        // pointe
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - r * 0.6, cy); ctx.lineTo(x + r * 0.6, cy);
+        ctx.closePath(); ctx.fillStyle = "#E4560A"; ctx.fill();
+        // pastille
+        ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#FC6C1B"; ctx.fill();
+        ctx.lineWidth = Math.max(2, r * 0.14); ctx.strokeStyle = "#fff"; ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.fillText(String(i + 1), x, cy);
+      });
+      return out.toDataURL("image/png");
+    },
+  }), [pins, etat]);
 
   useEffect(() => {
     let cancel = false;
@@ -90,4 +120,6 @@ export default function PlanPdf({ url, pins = [], onTapPlan }) {
       </div>
     </div>
   );
-}
+});
+
+export default PlanPdf;
