@@ -94,16 +94,17 @@ export default function PageValidation() {
     return f?.url || null;
   }, [data]);
 
-  // Upload d'une image annotée (dataURL PNG) dans fichiers/validation/** → renvoie le descripteur fichier
-  async function uploadSnap(dataUrl, label, commandeId) {
+  // Upload d'une image (dataURL) dans fichiers/validation/** → renvoie le descripteur fichier
+  async function uploadImage(dataUrl, slug, commandeId, nom) {
     if (!dataUrl) return null;
     try {
       const blob = await (await fetch(dataUrl)).blob();
-      const path = `validation/${commandeId}/${Date.now()}-${label === "Pièces" ? "pieces" : "equipements"}.png`;
-      const { error } = await supabase.storage.from("fichiers").upload(path, blob, { contentType: "image/png", upsert: true });
-      if (error) { console.error("upload plan annoté:", error); return null; }
+      const ext = (blob.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "") || "png";
+      const path = `validation/${commandeId}/${slug}.${ext}`;
+      const { error } = await supabase.storage.from("fichiers").upload(path, blob, { contentType: blob.type || "image/png", upsert: true });
+      if (error) { console.error("upload:", error); return null; }
       const { data: pub } = supabase.storage.from("fichiers").getPublicUrl(path);
-      return { nom: `Plan annoté — ${label}`, url: pub.publicUrl, type: "image/png", taille: Math.round(blob.size / 1024) + " Ko" };
+      return { nom, url: pub.publicUrl, type: blob.type || "image/png", taille: Math.round(blob.size / 1024) + " Ko" };
     } catch (e) { console.error(e); return null; }
   }
 
@@ -130,11 +131,12 @@ export default function PageValidation() {
       ...pins2.map((p, i) => ({ etape: "pieces", numero: i + 1, page: 1, x: p.x, y: p.y, texte: p.texte })),
       ...pins3.map((p, i) => ({ etape: "equipements", numero: i + 1, page: 1, x: p.x, y: p.y, texte: p.texte })),
     ];
-    // Upload des plans annotés (avec épingles) → joints au message côté admin/dessinateur
+    // Fichiers joints au message : logo client + plans annotés (avec épingles)
     const fichiers = [];
-    const up = await uploadSnap(snap2, "Pièces", c.id);
+    if (logo?.url) { const lf = await uploadImage(logo.url, `logo-${Date.now()}`, c.id, `Logo client${logo.nom ? " — " + logo.nom : ""}`); if (lf) fichiers.push(lf); }
+    const up = await uploadImage(snap2, `${Date.now()}-pieces`, c.id, "Plan annoté — Pièces");
     if (up) fichiers.push(up);
-    const up3 = await uploadSnap(snap3, "Équipements", c.id);
+    const up3 = await uploadImage(snap3, `${Date.now()}-equipements`, c.id, "Plan annoté — Équipements");
     if (up3) fichiers.push(up3);
 
     const { data: res, error } = await supabase.rpc("validation_soumettre", { p_token: token, p_reponses: reponses, p_epingles: epingles, p_fichiers: fichiers });
@@ -307,6 +309,13 @@ export default function PageValidation() {
             </div>
           </div>
         )}
+
+        {/* Toujours en bas : signalement d'un problème (email pré-rempli avec le n° de plan) */}
+        <div className="pv-probleme">
+          <a href={`mailto:${emet.email || ""}?subject=${encodeURIComponent("Problème — " + (c.ref || c.nom_plan || "plan"))}`}>
+            Un problème ? Contactez-nous
+          </a>
+        </div>
       </div>
     </div>
   );

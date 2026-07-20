@@ -148,3 +148,6 @@ body.pv-ctrl .pv-pinlayer{cursor:grab}
 .pv-cclines a:hover{color:#fff;text-decoration:underline}
 
 .pv-full{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--sub);font-size:14px;flex-direction:column;gap:10px}
+.pv-probleme{text-align:center;padding:22px 0 10px}
+.pv-probleme a{font-size:11px;color:#DC2626;text-decoration:none}
+.pv-probleme a:hover{text-decoration:underline}

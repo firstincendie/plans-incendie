@@ -283,17 +283,13 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     navigate("/commandes/nouvelle", { state: { dupliquerDe: c } });
   }
 
-  // Génère (ou régénère) le lien de validation client pour cette commande.
-  async function genererLienValidation() {
+  // Récupère le lien de validation (stable) — ou le régénère à la demande.
+  async function ouvrirLienValidation(regenerer = false) {
     if (genLien) return;
     setGenLien(true);
-    const { data, error } = await supabase.rpc("validation_generer_lien", {
-      p_commande: commande.id,
-      p_prenom: commande.client_prenom || null,
-      p_email: commande.client_email || null,
-    });
+    const { data, error } = await supabase.rpc("validation_lien", { p_commande: commande.id, p_regenerer: regenerer });
     setGenLien(false);
-    if (error || !data) { alert("Échec de la génération du lien de validation."); return; }
+    if (error || !data) { alert("Échec de la récupération du lien de validation."); return; }
     setLienCopie(false);
     setLienUrl(`${window.location.origin}/validation/${data}`);
   }
@@ -533,9 +529,9 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     {commande.statut === "Ébauche déposée" ? (
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         {isAdmin && (
-          <button onClick={genererLienValidation} disabled={genLien}
+          <button onClick={() => ouvrirLienValidation(false)} disabled={genLien}
             style={{ flex: "1 1 150px", padding: 10, borderRadius: 8, border: "1px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", fontSize: 13, fontWeight: 600, cursor: genLien ? "wait" : "pointer" }}>
-            {genLien ? "Génération…" : "📤 Envoyer au client"}
+            {genLien ? "…" : "📤 Envoyer au client"}
           </button>
         )}
         <button onClick={() => setShowModifModal(true)}
@@ -767,25 +763,27 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 520, maxWidth: "92vw" }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>🔗 Lien de validation client</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.5 }}>
-              À envoyer au client : il pourra valider le plan (ou signaler des modifications) <b>sans créer de compte</b>. Ce lien remplace tout lien précédent et expire dans 30 jours.
+              À envoyer au client : il pourra valider le plan (ou signaler des modifications) <b>sans créer de compte</b>. Ce lien est <b>permanent</b> (valable 30 jours) — vous pouvez le renvoyer autant de fois que nécessaire.
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               <input readOnly value={lienUrl} onFocus={(e) => e.target.select()}
-                style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 12, color: "#374151", background: "#F9FAFB" }} />
+                style={{ flex: 1, padding: "11px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 12, color: "#374151", background: "#F9FAFB" }} />
               <button onClick={() => { navigator.clipboard?.writeText(lienUrl); setLienCopie(true); }}
-                style={{ padding: "0 16px", borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                {lienCopie ? "✓ Copié" : "Copier"}
+                style={{ padding: "0 18px", borderRadius: 8, border: "none", background: lienCopie ? "#047857" : "#122131", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {lienCopie ? "✓ Copié" : "📋 Copier"}
               </button>
             </div>
-            <a href={lienUrl} target="_blank" rel="noopener noreferrer"
-              style={{ display: "block", textAlign: "center", padding: 12, borderRadius: 10, background: "#FC6C1B", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none", marginBottom: 12 }}>
-              ↗ Ouvrir le lien de validation
-            </a>
-            <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
-              <a href={`mailto:${commande.client_email || ""}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}`}
-                style={{ fontSize: 13, fontWeight: 600, color: "#6B7280", textDecoration: "none" }}>
-                ✉️ Ou envoyer par email
-              </a>
+            <div style={{ display: "flex", gap: 14, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                <a href={`mailto:${commande.client_email || ""}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}`}
+                  style={{ fontSize: 13, fontWeight: 600, color: "#FC6C1B", textDecoration: "none" }}>
+                  ✉️ Envoyer par email
+                </a>
+                <button onClick={() => { if (window.confirm("Générer un NOUVEAU lien ? L'ancien cessera immédiatement de fonctionner.")) ouvrirLienValidation(true); }}
+                  style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, fontWeight: 600, color: "#6B7280", cursor: "pointer" }}>
+                  🔄 Régénérer
+                </button>
+              </div>
               <button onClick={() => setLienUrl(null)}
                 style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Fermer</button>
             </div>
