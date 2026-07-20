@@ -50,6 +50,10 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [validNouvelleDelai, setValidNouvelleDelai] = useState("");
   const [showValiderCommandeModal, setShowValiderCommandeModal] = useState(false);
   const [validant, setValidant] = useState(false);
+  // Lien de validation client (hub)
+  const [lienUrl, setLienUrl] = useState(null);
+  const [genLien, setGenLien] = useState(false);
+  const [lienCopie, setLienCopie] = useState(false);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
@@ -261,6 +265,21 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   // pour permettre une modification avant création (cf. NouvelleCommandeModal).
   function dupliquer(c) {
     navigate("/commandes/nouvelle", { state: { dupliquerDe: c } });
+  }
+
+  // Génère (ou régénère) le lien de validation client pour cette commande.
+  async function genererLienValidation() {
+    if (genLien) return;
+    setGenLien(true);
+    const { data, error } = await supabase.rpc("validation_generer_lien", {
+      p_commande: commande.id,
+      p_prenom: commande.client_prenom || null,
+      p_email: commande.client_email || null,
+    });
+    setGenLien(false);
+    if (error || !data) { alert("Échec de la génération du lien de validation."); return; }
+    setLienCopie(false);
+    setLienUrl(`${window.location.origin}/validation/${data}`);
   }
 
   // "Marquer en non lue" depuis la vue ouverte : on quitte le détail PUIS on
@@ -535,6 +554,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         onModifierCommande={modifierCommande}
         canModifier={canModifier}
         onMarquerNonLu={marquerNonLueEtFermer}
+        onGenererLien={isAdmin ? genererLienValidation : undefined}
         startInEditMode={canModifier && !!location.state?.editer}
         adresseComplete={isDessinateur}
         onNaviguerPrec={() => naviguerVers(-1)}
@@ -697,6 +717,34 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Modale : lien de validation client (hub) */}
+      {lienUrl && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 520, maxWidth: "92vw" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>🔗 Lien de validation client</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.5 }}>
+              À envoyer au client : il pourra valider le plan (ou signaler des modifications) <b>sans créer de compte</b>. Ce lien remplace tout lien précédent et expire dans 30 jours.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <input readOnly value={lienUrl} onFocus={(e) => e.target.select()}
+                style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 12, color: "#374151", background: "#F9FAFB" }} />
+              <button onClick={() => { navigator.clipboard?.writeText(lienUrl); setLienCopie(true); }}
+                style={{ padding: "0 16px", borderRadius: 8, border: "none", background: "#122131", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {lienCopie ? "✓ Copié" : "Copier"}
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
+              <a href={`mailto:${commande.client_email || ""}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}`}
+                style={{ fontSize: 13, fontWeight: 600, color: "#FC6C1B", textDecoration: "none" }}>
+                ✉️ Envoyer par email
+              </a>
+              <button onClick={() => setLienUrl(null)}
+                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Fermer</button>
+            </div>
           </div>
         </div>
       )}

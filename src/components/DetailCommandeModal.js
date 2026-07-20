@@ -368,7 +368,7 @@ function EditContent({ editForm, setEditForm }) {
   );
 }
 
-function DropdownMenu({ onArchiver, onDesarchiver, onSupprimer, onDupliquer, onModifier, onMarquerNonLu }) {
+function DropdownMenu({ onArchiver, onDesarchiver, onSupprimer, onDupliquer, onModifier, onMarquerNonLu, onGenererLien }) {
   const [ouvert, setOuvert] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef();
@@ -390,6 +390,14 @@ function DropdownMenu({ onArchiver, onDesarchiver, onSupprimer, onDupliquer, onM
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 1999 }} onClick={() => setOuvert(false)} />
           <div style={{ position: "fixed", top: pos.top, right: pos.right, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 2000, minWidth: 200, overflow: "hidden" }}>
+            {onGenererLien && (
+              <>
+                <button onClick={() => { onGenererLien(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
+                  🔗 Lien de validation client
+                </button>
+                {(onMarquerNonLu || onArchiver || onDesarchiver) && <div style={{ height: 1, background: "#E5E7EB", margin: "2px 0" }} />}
+              </>
+            )}
             {onMarquerNonLu && (
               <>
                 <button onClick={() => { onMarquerNonLu(); setOuvert(false); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13, color: "#374151", cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left", fontWeight: 500 }}>
@@ -450,7 +458,7 @@ export default function DetailCommandeModal({
   onMarquerLu,
   note, setNote, onSaveNote, noteSaveError,
   onModifierCommande, canModifier,
-  onMarquerNonLu,
+  onMarquerNonLu, onGenererLien,
   startInEditMode,
   adresseComplete,
   onNaviguerPrec, onNaviguerSuiv, canNaviguerPrec = false, canNaviguerSuiv = false, clavierActif = true,
@@ -592,7 +600,7 @@ export default function DetailCommandeModal({
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Badge statut={selected.statut} />
-            {(onMarquerNonLu || onArchiver || onDesarchiver || onDupliquer || canModifier) && !editMode && (
+            {(onGenererLien || onMarquerNonLu || onArchiver || onDesarchiver || onDupliquer || canModifier) && !editMode && (
               <DropdownMenu
                 onArchiver={onArchiver}
                 onDesarchiver={onDesarchiver}
@@ -600,6 +608,7 @@ export default function DetailCommandeModal({
                 onDupliquer={onDupliquer}
                 onModifier={canModifier ? enterEditMode : undefined}
                 onMarquerNonLu={onMarquerNonLu}
+                onGenererLien={onGenererLien}
               />
             )}
             <button style={HEADER_BTN} onClick={onClose}>✕</button>

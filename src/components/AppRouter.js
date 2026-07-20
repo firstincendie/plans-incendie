@@ -15,6 +15,7 @@ import PageGestion from "./PageGestion";
 import ModalDetailCommande from "./ModalDetailCommande";
 import NouvelleCommandeModal from "./NouvelleCommandeModal";
 import ModalDetailUtilisateur from "./ModalDetailUtilisateur";
+import PageValidation from "./PageValidation";
 import Page404 from "./Page404";
 
 export default function AppRouter({ session, profil, sessionLoading, profilLoading, onProfilUpdate }) {
@@ -26,6 +27,9 @@ export default function AppRouter({ session, profil, sessionLoading, profilLoadi
       <Route path="/inscription" element={dejaConnecte ? <Navigate to="/commandes" replace /> : <PageInscription />} />
       <Route path="/mot-de-passe-oublie" element={dejaConnecte ? <Navigate to="/commandes" replace /> : <PageMotDePasseOublie />} />
       <Route path="/reset-mot-de-passe" element={<PageResetMotDePasse />} />
+
+      {/* Page publique de validation client — accès par jeton, hors authentification */}
+      <Route path="/validation/:token" element={<PageValidation />} />
 
       <Route element={<RequireAuth session={session} profil={profil} sessionLoading={sessionLoading} profilLoading={profilLoading} />}>
         <Route element={<LayoutPrincipal session={session} profil={profil} onProfilUpdate={onProfilUpdate} />}>
