@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import { supabase } from "../../supabase";
 
 // Worker servi depuis public/ (copié depuis pdfjs-dist) — évite tout CDN externe.
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
@@ -67,24 +68,53 @@ const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan, onMoveP
   }), [pins, etat]);
 
   useEffect(() => {
+    if (!url) { setEtat("erreur"); return; }
     let cancel = false;
     setEtat("load");
     (async () => {
       try {
-        const pdf = await pdfjsLib.getDocument(url).promise;
-        const page = await pdf.getPage(1);
+        // On télécharge le fichier via le client Supabase (CORS OK) plutôt que de
+        // laisser pdf.js le chercher lui-même (requêtes "range" mal supportées).
+        let blob = null;
+        const marker = "/storage/v1/object/public/fichiers/";
+        const i = url.indexOf(marker);
+        if (i >= 0) {
+          const path = decodeURIComponent(url.slice(i + marker.length).split("?")[0]);
+          const res = await supabase.storage.from("fichiers").download(path);
+          if (res.error) throw res.error;
+          blob = res.data;
+        } else {
+          blob = await (await fetch(url)).blob();
+        }
         if (cancel) return;
-        const base = page.getViewport({ scale: 1 });
-        const scale = 1500 / base.width; // rendu net, redimensionné en CSS ensuite
-        const vp = page.getViewport({ scale });
         const canvas = canvasRef.current;
         if (!canvas) return;
-        canvas.width = vp.width;
-        canvas.height = vp.height;
-        await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+        const isPdf = (blob.type || "").includes("pdf") || /\.pdf(\?|$)/i.test(url);
+
+        if (isPdf) {
+          const buf = await blob.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+          const page = await pdf.getPage(1);
+          if (cancel) return;
+          const base = page.getViewport({ scale: 1 });
+          const vp = page.getViewport({ scale: 1500 / base.width });
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+        } else {
+          // Image : on la dessine sur le canvas (objectURL local → pas de canvas "taint")
+          const objUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = objUrl; });
+          if (cancel) { URL.revokeObjectURL(objUrl); return; }
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          canvas.getContext("2d").drawImage(img, 0, 0);
+          URL.revokeObjectURL(objUrl);
+        }
         if (!cancel) setEtat("ok");
       } catch (e) {
-        console.error("PDF:", e);
+        console.error("Plan:", e);
         if (!cancel) setEtat("erreur");
       }
     })();
@@ -139,7 +169,11 @@ const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan, onMoveP
             </div>
           ))}
           {etat !== "ok" && (
-            <div className="pv-planmsg">{etat === "load" ? "Chargement du plan…" : "Impossible d'afficher le plan."}</div>
+            <div className="pv-planmsg">
+              {etat === "load" ? "Chargement du plan…" : (
+                <span>Impossible d'afficher le plan.{url ? <> <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "#2563EB", fontWeight: 700 }}>Ouvrir le fichier</a></> : null}</span>
+              )}
+            </div>
           )}
         </div>
       </div>
