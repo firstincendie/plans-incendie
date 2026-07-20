@@ -9,11 +9,33 @@ const ZOOM = [1, 1.5, 2, 3];
 // Affiche la 1re page d'un PDF sur un canvas et laisse poser des épingles dessus.
 // Les coordonnées des épingles sont en % (indépendantes du zoom).
 // Expose snapshot() via ref : renvoie un dataURL PNG du plan AVEC les épingles.
-const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan }, ref) {
+const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan, onMovePin }, ref) {
   const canvasRef = useRef();
   const viewportRef = useRef();
+  const pinLayerRef = useRef();
+  const dragRef = useRef(null);   // index de l'épingle déplacée
+  const movedRef = useRef(false); // vrai si un glissement vient d'avoir lieu
   const [zi, setZi] = useState(0);
   const [etat, setEtat] = useState("load"); // load | ok | erreur
+
+  // Déplacement d'une épingle par glisser (souris + tactile via Pointer Events)
+  useEffect(() => {
+    function move(e) {
+      if (dragRef.current == null) return;
+      const layer = pinLayerRef.current; if (!layer) return;
+      const r = layer.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+      const y = Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100));
+      movedRef.current = true;
+      onMovePin?.(dragRef.current, x, y);
+    }
+    function up() {
+      if (dragRef.current != null) { dragRef.current = null; document.body.style.cursor = ""; setTimeout(() => { movedRef.current = false; }, 0); }
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+  }, [onMovePin]);
 
   useImperativeHandle(ref, () => ({
     // Compose le canvas du plan + les épingles numérotées en une image PNG.
@@ -71,6 +93,7 @@ const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan }, ref) 
 
   const tap = useCallback((e) => {
     if (e.ctrlKey) return; // Ctrl = déplacement, pas d'épingle
+    if (movedRef.current) { movedRef.current = false; return; } // on vient de glisser une épingle
     const r = e.currentTarget.getBoundingClientRect();
     onTapPlan?.(((e.clientX - r.left) / r.width) * 100, ((e.clientY - r.top) / r.height) * 100);
   }, [onTapPlan]);
@@ -106,9 +129,11 @@ const PlanPdf = forwardRef(function PlanPdf({ url, pins = [], onTapPlan }, ref) 
       <div className="pv-viewport" ref={viewportRef} title="Ctrl + molette : zoom · Ctrl + glisser : déplacer">
         <div className="pv-plan" style={{ width: w + "%" }}>
           <canvas ref={canvasRef} className="pv-canvas" />
-          <div className="pv-pinlayer" onClick={tap} />
+          <div className="pv-pinlayer" ref={pinLayerRef} onClick={tap} />
           {pins.map((p, i) => (
-            <div key={i} className="pv-pin" style={{ left: p.x + "%", top: p.y + "%" }}>
+            <div key={i} className="pv-pin" style={{ left: p.x + "%", top: p.y + "%" }}
+              title="Glissez pour déplacer"
+              onPointerDown={(e) => { if (e.ctrlKey) return; e.stopPropagation(); dragRef.current = i; movedRef.current = false; document.body.style.cursor = "grabbing"; }}>
               <svg viewBox="0 0 24 24"><path fill="#FC6C1B" d="M12 0C6.5 0 2 4.4 2 9.9 2 17 12 24 12 24s10-7 10-14.1C22 4.4 17.5 0 12 0z" /></svg>
               <span>{i + 1}</span>
             </div>

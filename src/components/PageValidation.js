@@ -88,6 +88,7 @@ export default function PageValidation() {
   const cta3Ok = pins3Incomplet === 0 && (chg3 || ok3);
 
   const tapPlan = (setter) => (x, y) => setter((prev) => [...prev, { x, y, texte: "" }]);
+  const movePin = (setter) => (i, x, y) => setter((prev) => prev.map((p, idx) => idx === i ? { ...p, x, y } : p));
 
   const planUrl = useMemo(() => {
     const f = (data?.planFiles || []).find((x) => (x.type || "").includes("pdf") || (x.nom || "").toLowerCase().endsWith(".pdf")) || (data?.planFiles || [])[0];
@@ -140,6 +141,12 @@ export default function PageValidation() {
     if (up3) fichiers.push(up3);
 
     const { data: res, error } = await supabase.rpc("validation_soumettre", { p_token: token, p_reponses: reponses, p_epingles: epingles, p_fichiers: fichiers });
+    if (res?.error === "deja_repondu") {
+      alert("Vous avez déjà répondu à cette demande de validation.");
+      setData((d) => ({ ...d, ouvert: false }));
+      setEcran("home");
+      return;
+    }
     if (error || res?.error) { setEcran("recap"); alert("Échec de l'envoi. Merci de réessayer."); return; }
     setEnvoye(res);
     setEcran("done");
@@ -198,7 +205,32 @@ export default function PageValidation() {
             </div>
             <p className="pv-cmdnote">Tous les emplacements (extincteurs, issues de secours, alarmes…) figurent sur le plan que vous allez valider.</p>
 
-            <button className="pv-cta center" onClick={() => setEcran("step1")}>Commencer la validation →</button>
+            {(data.tours || []).length > 0 && (
+              <>
+                <div className="pv-seclabel">Historique de validation</div>
+                <div className="pv-histo">
+                  {data.tours.map((t, i) => (
+                    <div className="pv-histrow" key={i}>
+                      <span className={"pv-histico " + (t.statut === "valide" ? "ok" : "mod")}>{t.statut === "valide" ? "✅" : "✍️"}</span>
+                      <div style={{ flex: 1 }}>
+                        <div className="pv-histt">Tour {t.numero} — {t.statut === "valide" ? "Plan validé" : "Modifications demandées"}</div>
+                        <div className="pv-hists">{t.soumis_le ? fmtDate(t.soumis_le) : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {data.ouvert ? (
+              <button className="pv-cta center" onClick={() => setEcran("step1")}>Commencer la validation →</button>
+            ) : (
+              <div className="pv-closed">
+                {(data.tours || []).slice(-1)[0]?.statut === "valide"
+                  ? "✅ Vous avez déjà validé ce plan. Merci ! Si besoin, contactez votre société de sécurité incendie."
+                  : "✍️ Vos remarques ont bien été transmises. Vous recevrez un nouveau lien dès qu'une version corrigée sera prête à valider."}
+              </div>
+            )}
 
             <ContactCard emet={emet} nom={emetNom} societe={emetSociete} />
           </div>
@@ -231,7 +263,7 @@ export default function PageValidation() {
                 <h2 className="pv-steptitle">Cloisons et noms des pièces</h2>
                 <p className="pv-stephint">Un détail à changer ? Cliquez l'endroit exact sur le plan pour y poser une épingle.</p>
                 <div className="pv-cols">
-                  <div className="pv-colmain"><PlanPdf ref={plan2Ref} url={planUrl} pins={pins2} onTapPlan={tapPlan(setPins2)} /></div>
+                  <div className="pv-colmain"><PlanPdf ref={plan2Ref} url={planUrl} pins={pins2} onTapPlan={tapPlan(setPins2)} onMovePin={movePin(setPins2)} /></div>
                   <div className="pv-colside">
                     {pins2.length === 0 && <div className="pv-bubble">💡 Ajoutez une remarque en cliquant simplement sur le plan.</div>}
                     <PinList pins={pins2} setPins={setPins2} />
@@ -251,7 +283,7 @@ export default function PageValidation() {
                 <h2 className="pv-steptitle">Emplacement des équipements</h2>
                 <p className="pv-stephint">Extincteurs, issues de secours, alarmes… Cliquez le plan pour signaler un déplacement.</p>
                 <div className="pv-cols">
-                  <div className="pv-colmain"><PlanPdf ref={plan3Ref} url={planUrl} pins={pins3} onTapPlan={tapPlan(setPins3)} /></div>
+                  <div className="pv-colmain"><PlanPdf ref={plan3Ref} url={planUrl} pins={pins3} onTapPlan={tapPlan(setPins3)} onMovePin={movePin(setPins3)} /></div>
                   <div className="pv-colside">
                     {pins3.length === 0 && <div className="pv-bubble">💡 Ajoutez une remarque en cliquant simplement sur le plan.</div>}
                     <PinList pins={pins3} setPins={setPins3} />
@@ -323,6 +355,12 @@ export default function PageValidation() {
 
 function back(ecran) {
   return { step1: "home", step2: "step1", step3: "step2", recap: "step3" }[ecran] || "home";
+}
+
+function fmtDate(s) {
+  try {
+    return new Date(s).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  } catch { return ""; }
 }
 
 function Progress({ index }) {

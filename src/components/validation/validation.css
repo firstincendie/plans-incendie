@@ -86,7 +86,8 @@ textarea.pv-inp{resize:vertical;min-height:54px;line-height:1.4}
 .pv-plan{position:relative}
 .pv-canvas{display:block;width:100%;height:auto}
 .pv-pinlayer{position:absolute;inset:0;cursor:crosshair}
-.pv-pin{position:absolute;transform:translate(-50%,-100%);width:24px;height:24px;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(18,33,49,.4))}
+.pv-pin{position:absolute;transform:translate(-50%,-100%);width:24px;height:24px;pointer-events:auto;cursor:grab;touch-action:none;filter:drop-shadow(0 3px 4px rgba(18,33,49,.4))}
+.pv-pin:active{cursor:grabbing}
 .pv-pin span{position:absolute;top:2px;left:0;width:24px;text-align:center;color:#fff;font-size:11px;font-weight:800}
 .pv-planmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;font-weight:600;background:var(--blueprint-bg)}
 body.pv-ctrl .pv-pinlayer{cursor:grab}
@@ -148,6 +149,12 @@ body.pv-ctrl .pv-pinlayer{cursor:grab}
 .pv-cclines a:hover{color:#fff;text-decoration:underline}
 
 .pv-full{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--sub);font-size:14px;flex-direction:column;gap:10px}
+.pv-histo{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.pv-histrow{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+.pv-histico{font-size:16px}
+.pv-histt{font-size:13px;font-weight:700;color:var(--ink)}
+.pv-hists{font-size:11.5px;color:var(--sub);margin-top:1px}
+.pv-closed{background:#F3F7FC;border:1px solid var(--line);border-radius:14px;padding:16px 18px;font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.5;text-align:center;margin-top:20px}
 .pv-probleme{text-align:center;padding:22px 0 10px}
 .pv-probleme a{font-size:11px;color:#DC2626;text-decoration:none}
 .pv-probleme a:hover{text-decoration:underline}
