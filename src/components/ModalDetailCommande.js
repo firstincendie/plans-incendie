@@ -58,7 +58,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [destMode, setDestMode] = useState("client"); // client | autre
   const [emailDest, setEmailDest] = useState("");
   const [envois, setEnvois] = useState([]); // historique des envois {email, envoye_le}
-  const [showSug, setShowSug] = useState(false);
+  const [histoTours, setHistoTours] = useState([]); // historique des validations
+  const [histoOuvert, setHistoOuvert] = useState(false);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
@@ -298,9 +299,13 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     setDestMode("client");
     setEmailDest(commande.client_email || "");
     setLienUrl(`${window.location.origin}/validation/${data}`);
+    setHistoOuvert(false);
     supabase.from("validation_envois").select("email, envoye_le")
-      .eq("commande_id", commande.id).order("envoye_le", { ascending: false }).limit(20)
+      .eq("commande_id", commande.id).order("envoye_le", { ascending: false }).limit(50)
       .then(({ data: e }) => setEnvois(e || []));
+    supabase.from("validation_tours").select("numero, statut, soumis_le, repondant_prenom, repondant_nom, repondant_email")
+      .eq("commande_id", commande.id).order("soumis_le", { ascending: false })
+      .then(({ data: t }) => setHistoTours(t || []));
   }
 
   // Enregistre un envoi (adresse + date) pour l'historique.
@@ -792,36 +797,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
                 </button>
               ))}
             </div>
-            {(() => {
-              const vus = new Set();
-              const suggestions = [];
-              if (commande.client_email) { suggestions.push({ email: commande.client_email, label: "client" }); vus.add(commande.client_email); }
-              envois.forEach((e) => { if (!vus.has(e.email)) { suggestions.push({ email: e.email, date: e.envoye_le }); vus.add(e.email); } });
-              return (
-                <div style={{ position: "relative", marginBottom: destMode === "autre" ? 6 : 14 }}>
-                  <input type="email" value={emailDest} onChange={(e) => setEmailDest(e.target.value)} placeholder="adresse@email.fr" autoComplete="off"
-                    style={{ width: "100%", padding: "10px 40px 10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
-                  {suggestions.length > 0 && (
-                    <button type="button" onClick={() => setShowSug((v) => !v)} title="Adresses déjà utilisées"
-                      style={{ position: "absolute", right: 2, top: 2, bottom: 2, width: 34, border: "none", background: "none", cursor: "pointer", color: "#6B7280", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>▾</button>
-                  )}
-                  {showSug && suggestions.length > 0 && (
-                    <>
-                      <div style={{ position: "fixed", inset: 0, zIndex: 5 }} onClick={() => setShowSug(false)} />
-                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 10, maxHeight: 200, overflowY: "auto" }}>
-                        {suggestions.map((s, i) => (
-                          <button key={i} onClick={() => { setEmailDest(s.email); setShowSug(false); }}
-                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", border: "none", borderBottom: i < suggestions.length - 1 ? "1px solid #F3F4F6" : "none", background: "none", cursor: "pointer", fontSize: 12.5, color: "#374151", textAlign: "left", fontFamily: "inherit" }}>
-                            <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email}</span>
-                            <span style={{ color: "#9CA3AF", flexShrink: 0 }}>{s.label || (s.date ? formatDateCourt(s.date) : "")}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
+            <input type="email" value={emailDest} onChange={(e) => setEmailDest(e.target.value)} placeholder="adresse@email.fr" autoComplete="off"
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box", marginBottom: destMode === "autre" ? 6 : 14 }} />
             {destMode === "autre" && (
               <div style={{ fontSize: 11.5, color: "#6B7280", marginBottom: 14, lineHeight: 1.4 }}>
                 Ex. le technicien qui était sur place, pour une vérification avant l'envoi au client.
@@ -837,6 +814,39 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
                 {lienCopie ? "✓ Copié" : "📋 Copier"}
               </button>
             </div>
+
+            {/* Accordéon : historique des envois + validations */}
+            {(() => {
+              const histo = [
+                ...envois.map((e) => ({ kind: "envoi", date: e.envoye_le, email: e.email })),
+                ...histoTours.map((t) => ({ kind: "tour", date: t.soumis_le, statut: t.statut, nom: [t.repondant_prenom, t.repondant_nom].filter(Boolean).join(" ") || "Client" })),
+              ].filter((x) => x.date).sort((a, b) => new Date(b.date) - new Date(a.date));
+              const rowStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 12.5, color: "#374151", padding: "7px 10px", background: "#F9FBFD", border: "1px solid #EEF2F7", borderRadius: 7 };
+              return (
+                <div style={{ borderTop: "1px solid #F0F0F0", marginBottom: 14 }}>
+                  <button onClick={() => setHistoOuvert((v) => !v)}
+                    style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 2px 10px", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#374151", fontFamily: "inherit" }}>
+                    <span>🕓 Historique{histo.length > 0 ? ` (${histo.length})` : ""}</span>
+                    <span style={{ color: "#9CA3AF", fontSize: 11 }}>{histoOuvert ? "▲" : "▼"}</span>
+                  </button>
+                  {histoOuvert && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5, paddingBottom: 6, maxHeight: 230, overflowY: "auto" }}>
+                      {histo.length === 0 && <div style={{ fontSize: 12, color: "#9CA3AF", padding: "2px 2px 8px" }}>Aucun envoi ni validation pour l'instant.</div>}
+                      {histo.map((h, i) => (
+                        <div key={i} style={rowStyle}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {h.kind === "envoi"
+                              ? <>📤 Envoyé à <b>{h.email}</b></>
+                              : <>{h.statut === "valide" ? "✅ Validé" : "✍️ Modifs demandées"} par <b>{h.nom}</b></>}
+                          </span>
+                          <span style={{ color: "#9CA3AF", flexShrink: 0 }}>{formatDateCourt(h.date)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
               <button onClick={() => { if (window.confirm("Générer un NOUVEAU lien ? L'ancien cessera immédiatement de fonctionner.")) ouvrirLienValidation(true); }}
