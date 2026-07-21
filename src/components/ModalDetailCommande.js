@@ -58,6 +58,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [destMode, setDestMode] = useState("client"); // client | autre
   const [emailDest, setEmailDest] = useState("");
   const [envois, setEnvois] = useState([]); // historique des envois {email, envoye_le}
+  const [showSug, setShowSug] = useState(false);
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
@@ -791,31 +792,39 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
                 </button>
               ))}
             </div>
-            <input type="email" value={emailDest} onChange={(e) => setEmailDest(e.target.value)} placeholder="adresse@email.fr"
-              list="hist-emails" autoComplete="off"
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box", marginBottom: destMode === "autre" ? 6 : 14 }} />
-            <datalist id="hist-emails">
-              {[...new Set([commande.client_email, ...envois.map(e => e.email)].filter(Boolean))].map((e) => <option key={e} value={e} />)}
-            </datalist>
+            {(() => {
+              const vus = new Set();
+              const suggestions = [];
+              if (commande.client_email) { suggestions.push({ email: commande.client_email, label: "client" }); vus.add(commande.client_email); }
+              envois.forEach((e) => { if (!vus.has(e.email)) { suggestions.push({ email: e.email, date: e.envoye_le }); vus.add(e.email); } });
+              return (
+                <div style={{ position: "relative", marginBottom: destMode === "autre" ? 6 : 14 }}>
+                  <input type="email" value={emailDest} onChange={(e) => setEmailDest(e.target.value)} placeholder="adresse@email.fr" autoComplete="off"
+                    style={{ width: "100%", padding: "10px 40px 10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }} />
+                  {suggestions.length > 0 && (
+                    <button type="button" onClick={() => setShowSug((v) => !v)} title="Adresses déjà utilisées"
+                      style={{ position: "absolute", right: 2, top: 2, bottom: 2, width: 34, border: "none", background: "none", cursor: "pointer", color: "#6B7280", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>▾</button>
+                  )}
+                  {showSug && suggestions.length > 0 && (
+                    <>
+                      <div style={{ position: "fixed", inset: 0, zIndex: 5 }} onClick={() => setShowSug(false)} />
+                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,.15)", zIndex: 10, maxHeight: 200, overflowY: "auto" }}>
+                        {suggestions.map((s, i) => (
+                          <button key={i} onClick={() => { setEmailDest(s.email); setShowSug(false); }}
+                            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", border: "none", borderBottom: i < suggestions.length - 1 ? "1px solid #F3F4F6" : "none", background: "none", cursor: "pointer", fontSize: 12.5, color: "#374151", textAlign: "left", fontFamily: "inherit" }}>
+                            <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email}</span>
+                            <span style={{ color: "#9CA3AF", flexShrink: 0 }}>{s.label || (s.date ? formatDateCourt(s.date) : "")}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
             {destMode === "autre" && (
               <div style={{ fontSize: 11.5, color: "#6B7280", marginBottom: 14, lineHeight: 1.4 }}>
                 Ex. le technicien qui était sur place, pour une vérification avant l'envoi au client.
-              </div>
-            )}
-
-            {/* Historique des envois */}
-            {envois.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "#9CA3AF", marginBottom: 6 }}>Envois précédents</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 108, overflowY: "auto" }}>
-                  {envois.map((e, i) => (
-                    <button key={i} onClick={() => setEmailDest(e.email)} title="Réutiliser cette adresse"
-                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 7, border: "1px solid #EEF2F7", background: "#F9FBFD", fontSize: 12, color: "#374151", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                      <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.email}</span>
-                      <span style={{ color: "#9CA3AF", flexShrink: 0 }}>{formatDateCourt(e.envoye_le)}</span>
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 
