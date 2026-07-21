@@ -55,6 +55,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [genLien, setGenLien] = useState(false);
   const [lienCopie, setLienCopie] = useState(false);
   const [validationEtat, setValidationEtat] = useState(null);
+  const [destMode, setDestMode] = useState("client"); // client | autre
+  const [emailDest, setEmailDest] = useState("");
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
@@ -291,6 +293,8 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     setGenLien(false);
     if (error || !data) { alert("Échec de la récupération du lien de validation."); return; }
     setLienCopie(false);
+    setDestMode("client");
+    setEmailDest(commande.client_email || "");
     setLienUrl(`${window.location.origin}/validation/${data}`);
   }
 
@@ -531,7 +535,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
         {isAdmin && (
           <button onClick={() => ouvrirLienValidation(false)} disabled={genLien}
             style={{ flex: "1 1 150px", padding: 10, borderRadius: 8, border: "1px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", fontSize: 13, fontWeight: 600, cursor: genLien ? "wait" : "pointer" }}>
-            {genLien ? "…" : "📤 Envoyer au client"}
+            {genLien ? "…" : "✉️ Envoyer par email"}
           </button>
         )}
         <button onClick={() => setShowModifModal(true)}
@@ -761,31 +765,53 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
       {lienUrl && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 520, maxWidth: "92vw" }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>🔗 Lien de validation client</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>✉️ Envoyer le lien de validation</div>
             <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.5 }}>
-              À envoyer au client : il pourra valider le plan (ou signaler des modifications) <b>sans créer de compte</b>. Ce lien est <b>permanent</b> (valable 30 jours) — vous pouvez le renvoyer autant de fois que nécessaire.
+              Le destinataire pourra valider le plan (ou signaler des modifications) <b>sans créer de compte</b>. Ce lien est <b>permanent</b> (valable 30 jours) — renvoyez-le autant de fois que nécessaire.
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+
+            {/* Destinataire */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {[["client", "👤 Au client"], ["autre", "✉️ À une autre personne"]].map(([m, label]) => (
+                <button key={m} onClick={() => { setDestMode(m); setEmailDest(m === "client" ? (commande.client_email || "") : ""); }}
+                  style={{ flex: 1, padding: "9px 8px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                    border: "1.5px solid " + (destMode === m ? "#FC6C1B" : "#E5E7EB"), background: destMode === m ? "#FFF2E9" : "#fff", color: destMode === m ? "#C2410C" : "#374151" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <input type="email" value={emailDest} onChange={(e) => setEmailDest(e.target.value)} placeholder="adresse@email.fr"
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box", marginBottom: destMode === "autre" ? 6 : 14 }} />
+            {destMode === "autre" && (
+              <div style={{ fontSize: 11.5, color: "#6B7280", marginBottom: 14, lineHeight: 1.4 }}>
+                Ex. le technicien qui était sur place, pour une vérification avant l'envoi au client.
+              </div>
+            )}
+
+            {/* Lien copiable */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <input readOnly value={lienUrl} onFocus={(e) => e.target.select()}
-                style={{ flex: 1, padding: "11px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 12, color: "#374151", background: "#F9FAFB" }} />
+                style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 12, color: "#374151", background: "#F9FAFB" }} />
               <button onClick={() => { navigator.clipboard?.writeText(lienUrl); setLienCopie(true); }}
-                style={{ padding: "0 18px", borderRadius: 8, border: "none", background: lienCopie ? "#047857" : "#122131", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                style={{ padding: "0 16px", borderRadius: 8, border: "none", background: lienCopie ? "#047857" : "#122131", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                 {lienCopie ? "✓ Copié" : "📋 Copier"}
               </button>
             </div>
-            <div style={{ display: "flex", gap: 14, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                <a href={`mailto:${commande.client_email || ""}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}`}
-                  style={{ fontSize: 13, fontWeight: 600, color: "#FC6C1B", textDecoration: "none" }}>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+              <button onClick={() => { if (window.confirm("Générer un NOUVEAU lien ? L'ancien cessera immédiatement de fonctionner.")) ouvrirLienValidation(true); }}
+                style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, fontWeight: 600, color: "#6B7280", cursor: "pointer" }}>
+                🔄 Régénérer le lien
+              </button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setLienUrl(null)}
+                  style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Fermer</button>
+                <a href={emailDest ? `mailto:${emailDest}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}` : undefined}
+                  onClick={(e) => { if (!emailDest) { e.preventDefault(); alert("Renseignez une adresse email."); } }}
+                  style={{ padding: "10px 18px", borderRadius: 8, background: emailDest ? "#FC6C1B" : "#F3F4F6", color: emailDest ? "#fff" : "#9CA3AF", fontSize: 13, fontWeight: 700, textDecoration: "none", cursor: emailDest ? "pointer" : "not-allowed" }}>
                   ✉️ Envoyer par email
                 </a>
-                <button onClick={() => { if (window.confirm("Générer un NOUVEAU lien ? L'ancien cessera immédiatement de fonctionner.")) ouvrirLienValidation(true); }}
-                  style={{ background: "none", border: "none", padding: 0, fontSize: 12.5, fontWeight: 600, color: "#6B7280", cursor: "pointer" }}>
-                  🔄 Régénérer
-                </button>
               </div>
-              <button onClick={() => setLienUrl(null)}
-                style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Fermer</button>
             </div>
           </div>
         </div>

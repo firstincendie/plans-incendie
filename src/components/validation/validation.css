@@ -149,6 +149,12 @@ body.pv-ctrl .pv-pinlayer{cursor:grab}
 .pv-cclines a:hover{color:#fff;text-decoration:underline}
 
 .pv-full{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--sub);font-size:14px;flex-direction:column;gap:10px}
+.pv-idform{display:flex;flex-direction:column;gap:14px;margin-bottom:6px}
+.pv-idrow{display:flex;gap:12px}
+.pv-idform label{flex:1;display:flex;flex-direction:column;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.pv-idform input{border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--card);outline:none;text-transform:none;letter-spacing:normal;font-weight:500}
+.pv-idform input:focus{border-color:var(--accent)}
+@media(max-width:520px){.pv-idrow{flex-direction:column}}
 .pv-histo{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
 .pv-histrow{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
 .pv-histico{font-size:16px}

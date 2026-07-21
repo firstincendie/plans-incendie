@@ -48,6 +48,13 @@ export default function PageValidation() {
   const [snap2, setSnap2] = useState(null);
   const [snap3, setSnap3] = useState(null);
 
+  // --- Identité du répondant (client ou technicien qui vérifie) ---
+  const [idPrenom, setIdPrenom] = useState("");
+  const [idNom, setIdNom] = useState("");
+  const [idEmail, setIdEmail] = useState("");
+  const [idTel, setIdTel] = useState("");
+  const identiteOk = idPrenom.trim() && idNom.trim() && /\S+@\S+\.\S+/.test(idEmail);
+
   // Chargement initial via le jeton
   useEffect(() => {
     let cancel = false;
@@ -140,7 +147,8 @@ export default function PageValidation() {
     const up3 = await uploadImage(snap3, `${Date.now()}-equipements`, c.id, "Plan annoté — Équipements");
     if (up3) fichiers.push(up3);
 
-    const { data: res, error } = await supabase.rpc("validation_soumettre", { p_token: token, p_reponses: reponses, p_epingles: epingles, p_fichiers: fichiers });
+    const identite = { prenom: idPrenom.trim(), nom: idNom.trim(), email: idEmail.trim(), tel: idTel.trim() };
+    const { data: res, error } = await supabase.rpc("validation_soumettre", { p_token: token, p_reponses: reponses, p_epingles: epingles, p_fichiers: fichiers, p_identite: identite });
     if (res?.error === "deja_repondu") {
       alert("Vous avez déjà répondu à cette demande de validation.");
       setData((d) => ({ ...d, ouvert: false }));
@@ -223,7 +231,7 @@ export default function PageValidation() {
             )}
 
             {data.ouvert ? (
-              <button className="pv-cta center" onClick={() => setEcran("step1")}>Commencer la validation →</button>
+              <button className="pv-cta center" onClick={() => setEcran("identite")}>Commencer la validation →</button>
             ) : (
               <div className="pv-closed">
                 {(data.tours || []).slice(-1)[0]?.statut === "valide"
@@ -233,6 +241,22 @@ export default function PageValidation() {
             )}
 
             <ContactCard emet={emet} nom={emetNom} societe={emetSociete} />
+          </div>
+        )}
+
+        {ecran === "identite" && (
+          <div className="pv-wrap narrow">
+            <h2 className="pv-steptitle">Vos coordonnées</h2>
+            <p className="pv-stephint">Indiquez qui remplit cette validation. Ces informations permettent à {emetSociete} de savoir qui a répondu (vous pouvez être le client ou un technicien).</p>
+            <div className="pv-idform">
+              <div className="pv-idrow">
+                <label>Prénom *<input value={idPrenom} onChange={(e) => setIdPrenom(e.target.value)} placeholder="Prénom" /></label>
+                <label>Nom *<input value={idNom} onChange={(e) => setIdNom(e.target.value)} placeholder="Nom" /></label>
+              </div>
+              <label>Email *<input type="email" value={idEmail} onChange={(e) => setIdEmail(e.target.value)} placeholder="vous@exemple.fr" /></label>
+              <label>Téléphone<input type="tel" value={idTel} onChange={(e) => setIdTel(e.target.value)} placeholder="06 12 34 56 78" /></label>
+            </div>
+            <button className="pv-cta" disabled={!identiteOk} onClick={() => setEcran("step1")}>Continuer</button>
           </div>
         )}
 
@@ -354,7 +378,7 @@ export default function PageValidation() {
 }
 
 function back(ecran) {
-  return { step1: "home", step2: "step1", step3: "step2", recap: "step3" }[ecran] || "home";
+  return { identite: "home", step1: "identite", step2: "step1", step3: "step2", recap: "step3" }[ecran] || "home";
 }
 
 function fmtDate(s) {
