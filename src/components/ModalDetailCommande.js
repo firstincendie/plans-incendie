@@ -57,6 +57,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
   const [validationEtat, setValidationEtat] = useState(null);
   const [destMode, setDestMode] = useState("client"); // client | autre
   const [emailDest, setEmailDest] = useState("");
+  const [envois, setEnvois] = useState([]); // historique des envois {email, envoye_le}
 
   const auteurNom = `${profil.prenom ?? ""} ${profil.nom ?? ""}`.trim();
   const isDessinateur = profil.role === "dessinateur";
@@ -296,6 +297,16 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
     setDestMode("client");
     setEmailDest(commande.client_email || "");
     setLienUrl(`${window.location.origin}/validation/${data}`);
+    supabase.from("validation_envois").select("email, envoye_le")
+      .eq("commande_id", commande.id).order("envoye_le", { ascending: false }).limit(20)
+      .then(({ data: e }) => setEnvois(e || []));
+  }
+
+  // Enregistre un envoi (adresse + date) pour l'historique.
+  async function enregistrerEnvoi(email) {
+    if (!email) return;
+    await supabase.from("validation_envois").insert({ commande_id: commande.id, email, envoye_par: session?.user?.id });
+    setEnvois(prev => [{ email, envoye_le: new Date().toISOString() }, ...prev]);
   }
 
   // "Marquer en non lue" depuis la vue ouverte : on quitte le détail PUIS on
@@ -781,10 +792,30 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
               ))}
             </div>
             <input type="email" value={emailDest} onChange={(e) => setEmailDest(e.target.value)} placeholder="adresse@email.fr"
+              list="hist-emails" autoComplete="off"
               style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box", marginBottom: destMode === "autre" ? 6 : 14 }} />
+            <datalist id="hist-emails">
+              {[...new Set([commande.client_email, ...envois.map(e => e.email)].filter(Boolean))].map((e) => <option key={e} value={e} />)}
+            </datalist>
             {destMode === "autre" && (
               <div style={{ fontSize: 11.5, color: "#6B7280", marginBottom: 14, lineHeight: 1.4 }}>
                 Ex. le technicien qui était sur place, pour une vérification avant l'envoi au client.
+              </div>
+            )}
+
+            {/* Historique des envois */}
+            {envois.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "#9CA3AF", marginBottom: 6 }}>Envois précédents</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 108, overflowY: "auto" }}>
+                  {envois.map((e, i) => (
+                    <button key={i} onClick={() => setEmailDest(e.email)} title="Réutiliser cette adresse"
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 7, border: "1px solid #EEF2F7", background: "#F9FBFD", fontSize: 12, color: "#374151", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                      <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.email}</span>
+                      <span style={{ color: "#9CA3AF", flexShrink: 0 }}>{formatDateCourt(e.envoye_le)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -807,7 +838,7 @@ export default function ModalDetailCommande({ retour = "/commandes" }) {
                 <button onClick={() => setLienUrl(null)}
                   style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 13, cursor: "pointer" }}>Fermer</button>
                 <a href={emailDest ? `mailto:${emailDest}?subject=${encodeURIComponent("Validation de votre plan de sécurité incendie")}&body=${encodeURIComponent(`Bonjour,\n\nVotre plan de sécurité incendie est prêt à être validé. Cliquez sur le lien ci-dessous pour le vérifier et le valider (ou signaler des modifications) :\n\n${lienUrl}\n\nCordialement,`)}` : undefined}
-                  onClick={(e) => { if (!emailDest) { e.preventDefault(); alert("Renseignez une adresse email."); } }}
+                  onClick={(e) => { if (!emailDest) { e.preventDefault(); alert("Renseignez une adresse email."); return; } enregistrerEnvoi(emailDest); }}
                   style={{ padding: "10px 18px", borderRadius: 8, background: emailDest ? "#FC6C1B" : "#F3F4F6", color: emailDest ? "#fff" : "#9CA3AF", fontSize: 13, fontWeight: 700, textDecoration: "none", cursor: emailDest ? "pointer" : "not-allowed" }}>
                   ✉️ Envoyer par email
                 </a>
