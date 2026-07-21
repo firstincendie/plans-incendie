@@ -1,6 +1,8 @@
 import { supabase } from "../supabase";
+import ReglagesEmails from "./ReglagesEmails";
 
 export default function PageReglages({ profil, onProfilUpdate }) {
+  const isAdmin = profil && profil.role !== "dessinateur" && profil.is_owner === true;
   const notifItems = profil ? [
     // --- DESSINATEUR ---
     ...(profil.role === "dessinateur" ? [
@@ -49,6 +51,9 @@ export default function PageReglages({ profil, onProfilUpdate }) {
           </select>
         </div>
       </div>
+
+      {/* Section Emails de validation (admin/owner uniquement) */}
+      {isAdmin && <ReglagesEmails profil={profil} />}
 
       {/* Section Notifications */}
       {notifItems.length > 0 && (
