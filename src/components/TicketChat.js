@@ -130,7 +130,7 @@ export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatu
                       envoyer();
                     }
                   }}
-                  placeholder="Votre message… (Ctrl+Entrée pour saut de ligne)"
+                  placeholder="Votre message…"
                   rows={1}
                   style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.4 }}
                 />
