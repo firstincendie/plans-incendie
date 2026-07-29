@@ -111,12 +111,28 @@ export default function TicketChat({ ticket, userId, auteurNom, isAdmin, onStatu
             const vide = !input.trim() && fichiers.length === 0;
             return (
               <div style={{ display: "flex", gap: 6 }}>
-                <input
+                <textarea
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") envoyer(); }}
-                  placeholder="Votre message…"
-                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box" }}
+                  onKeyDown={e => {
+                    if (e.key !== "Enter") return;
+                    if (e.ctrlKey || e.metaKey) {
+                      // Ctrl/⌘ + Entrée : saut de ligne
+                      e.preventDefault();
+                      const el = e.target;
+                      const { selectionStart: s, selectionEnd: f } = el;
+                      const nv = input.slice(0, s) + "\n" + input.slice(f);
+                      setInput(nv);
+                      requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = s + 1; });
+                    } else if (!e.shiftKey) {
+                      // Entrée : envoyer
+                      e.preventDefault();
+                      envoyer();
+                    }
+                  }}
+                  placeholder="Votre message… (Ctrl+Entrée pour saut de ligne)"
+                  rows={1}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.4 }}
                 />
                 <button onClick={envoyer} disabled={vide || envoi}
                   style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: vide ? "#F3F4F6" : "#122131", color: vide ? "#9CA3AF" : "#fff", fontSize: 13, fontWeight: 600, cursor: vide ? "not-allowed" : "pointer" }}>

@@ -230,10 +230,26 @@ export default function Messagerie({ selected, msgInput, setMsgInput, onEnvoyer,
           );
           return (
             <>
-              <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleEnvoyer()}
+              <textarea value={msgInput} onChange={e => setMsgInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key !== "Enter") return;
+                  if (e.ctrlKey || e.metaKey) {
+                    // Ctrl/⌘ + Entrée : saut de ligne
+                    e.preventDefault();
+                    const el = e.target;
+                    const { selectionStart: s, selectionEnd: f } = el;
+                    const nv = msgInput.slice(0, s) + "\n" + msgInput.slice(f);
+                    setMsgInput(nv);
+                    requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = s + 1; });
+                  } else if (!e.shiftKey) {
+                    // Entrée : envoyer
+                    e.preventDefault();
+                    handleEnvoyer();
+                  }
+                }}
                 placeholder={placeholder}
-                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${estNote ? "#FCD34D" : "#E5E7EB"}`, background: estNote ? "#FFFBEB" : "#fff", fontSize: 13, outline: "none" }} />
+                rows={1}
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${estNote ? "#FCD34D" : "#E5E7EB"}`, background: estNote ? "#FFFBEB" : "#fff", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.4 }} />
               {/* Sélecteur de mode (compact, à gauche du Envoyer) */}
               <div style={{ position: "relative", flexShrink: 0 }}>
                 <button type="button"
