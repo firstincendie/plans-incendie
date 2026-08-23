@@ -12,26 +12,26 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 
 | # | Problème | Gravité | Qui peut en profiter |
 |---|---|---|---|
-| 1 | Un simple compte peut se nommer administrateur | 🔴 Critique | Tout compte connecté |
-| 2 | L'inscription permet de créer un compte « admin » actif direct | 🔴 Critique | N'importe qui |
-| 3 | Le service d'envoi d'emails est ouvert sans mot de passe | 🔴 Critique | N'importe qui |
-| 4 | Tous les fichiers des plans sont publics | 🔴 Critique | N'importe qui avec le lien |
-| 5 | Tout compte connecté peut effacer TOUS les fichiers | 🔴 Critique | Tout compte connecté |
-| 6 | Dépôt de fichiers anonyme, sans limite de taille | 🟠 Élevé | N'importe qui |
-| 7 | Table `alertes` en accès libre (lecture + écriture) | 🟠 Élevé | N'importe qui |
-| 8 | Table `notes_clients` sans aucune protection | 🟠 Élevé | N'importe qui |
-| 9 | Bannir un compte ne coupe pas vraiment son accès | 🟠 Élevé | Compte banni / en attente |
-| 10 | Tables Odoo lisibles par tout compte connecté | 🟡 Moyen | Tout compte connecté |
-| 11 | Messages modifiables par autrui, faux auteur possible | 🟡 Moyen | Participant d'une commande |
-| 12 | Texte injectable dans les emails automatiques | 🟡 Moyen | Tout compte connecté |
-| 13 | 52 failles dans les librairies (2 critiques) | 🟡 Moyen | — |
-| 14 | Mots de passe compromis autorisés | 🔵 Faible | — |
-| 15 | Aucun en-tête de sécurité sur le site | 🔵 Faible | — |
-| 16 | Fonctions internes appelables sans être connecté | 🔵 Faible | — |
+| 1 | Un simple compte peut se nommer administrateur | CRITIQUE | Tout compte connecté |
+| 2 | L'inscription permet de créer un compte « admin » actif direct | CRITIQUE | N'importe qui |
+| 3 | Le service d'envoi d'emails est ouvert sans mot de passe | CRITIQUE | N'importe qui |
+| 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
+| 5 | Tout compte connecté peut effacer TOUS les fichiers | CRITIQUE | Tout compte connecté |
+| 6 | Dépôt de fichiers anonyme, sans limite de taille | ÉLEVÉ | N'importe qui |
+| 7 | Table `alertes` en accès libre (lecture + écriture) | ÉLEVÉ | N'importe qui |
+| 8 | Table `notes_clients` sans aucune protection | ÉLEVÉ | N'importe qui |
+| 9 | Bannir un compte ne coupe pas vraiment son accès | ÉLEVÉ | Compte banni / en attente |
+| 10 | Tables Odoo lisibles par tout compte connecté | MOYEN | Tout compte connecté |
+| 11 | Messages modifiables par autrui, faux auteur possible | MOYEN | Participant d'une commande |
+| 12 | Texte injectable dans les emails automatiques | MOYEN | Tout compte connecté |
+| 13 | 52 failles dans les librairies (2 critiques) | MOYEN | — |
+| 14 | Mots de passe compromis autorisés | FAIBLE | — |
+| 15 | Aucun en-tête de sécurité sur le site | FAIBLE | — |
+| 16 | Fonctions internes appelables sans être connecté | FAIBLE | — |
 
 ---
 
-# 🔴 Critique — à corriger en premier
+# CRITIQUE — à corriger en premier
 
 ## 1. Un simple compte peut se nommer administrateur
 
@@ -120,7 +120,7 @@ Les **779 fichiers** (plans d'évacuation, plans d'intervention, documents clien
 
 **Correction proposée.** Passer le dossier `fichiers` en **privé**, remplacer la lecture publique par une règle réservée aux personnes concernées par la commande, et faire générer par l'application des **liens temporaires** (« signed URLs », valables par exemple 1 heure). Le dossier `avatars` peut rester public, ce n'est pas sensible.
 
-⚠️ Cette correction demande une petite modification du code d'affichage des fichiers — à faire ensemble, pas à la va-vite.
+Attention : Cette correction demande une petite modification du code d'affichage des fichiers — à faire ensemble, pas à la va-vite.
 
 ---
 
@@ -146,7 +146,7 @@ create policy "fichiers_update_proprietaire" on storage.objects for update
 
 ---
 
-# 🟠 Élevé
+# ÉLEVÉ
 
 ## 6. Dépôt de fichiers anonyme, sans aucune limite
 
@@ -195,11 +195,11 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and statut = 'actif');
 $$;
 ```
-… puis l'ajouter (`and public.est_actif()`) dans les règles de `commandes`, `messages`, `versions`, `tickets`, `odoo_*` et du stockage.
+... puis l'ajouter (`and public.est_actif()`) dans les règles de `commandes`, `messages`, `versions`, `tickets`, `odoo_*` et du stockage.
 
 ---
 
-# 🟡 Moyen
+# MOYEN
 
 ## 10. Les tables Odoo sont lisibles par tout compte connecté
 `odoo_clients`, `odoo_commandes`, `odoo_factures`, `odoo_sync_state` ont une règle de lecture `true` pour tout compte connecté. Ces tables sont vides aujourd'hui, mais elles sont prévues pour contenir votre fichier clients et vos factures. Le jour où elles seront remplies, **le moindre client inscrit verra la totalité**. À restreindre aux administrateurs avant toute synchronisation.
@@ -218,7 +218,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 ---
 
-# 🔵 Faible (à faire quand il y aura le temps)
+# FAIBLE (à faire quand il y aura le temps)
 
 **14. Mots de passe compromis autorisés.** La protection Supabase qui refuse les mots de passe déjà volés sur Internet (HaveIBeenPwned) est désactivée. La longueur minimale de 8 caractères n'est vérifiée que par l'écran, pas par le serveur. → Activer dans Supabase → Authentication → Passwords.
 
@@ -232,7 +232,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 ---
 
-# Ce qui va bien 👍
+# Ce qui va bien
 
 - **Aucune faille XSS dans le site** : pas de `dangerouslySetInnerHTML`, pas de `eval`, pas de `innerHTML`. React protège correctement l'affichage.
 - **Aucun mot de passe ni clé secrète dans le code.** La clé présente dans `src/supabase.js` est la clé *publiable*, c'est normal qu'elle soit là.
