@@ -13,7 +13,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | # | Problème | Gravité | Qui peut en profiter |
 |---|---|---|---|
 | 1 | Un simple compte peut se nommer administrateur | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
-| 2 | L'inscription permet de créer un compte « admin » actif direct | CRITIQUE | N'importe qui |
+| 2 | L'inscription permet de créer un compte « admin » actif direct | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 3 | Le service d'envoi d'emails est ouvert sans mot de passe | CRITIQUE | N'importe qui |
 | 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
 | 5 | Tout compte connecté peut effacer TOUS les fichiers | CRITIQUE | Tout compte connecté |
@@ -74,7 +74,16 @@ create trigger trg_protege_champs_profil
 
 ---
 
-## 2. L'inscription permet de créer un compte « admin » déjà actif
+## 2. L'inscription permet de créer un compte « admin » déjà actif — CORRIGÉ le 23/08/2026
+
+> Correctif appliqué : `supabase/migrations/20260823060000_inscription_toujours_utilisateur_en_attente.sql`.
+> Choix de Simon : toute inscription libre donne un compte **utilisateur en attente**.
+> Vérifié avec une inscription simulée réclamant « admin » : elle ressort en
+> `utilisateur` / `en_attente`. Les invitations gardent le bon rôle.
+> Corrige aussi un bug latent : le rôle par défaut `client` violait la contrainte.
+> Conséquence : un dessinateur qui s'inscrit seul doit être promu à la main
+> depuis Gestion utilisateurs. Le choix de rôle affiché sur la page d'inscription
+> n'a plus d'effet — à retirer ou à transformer en simple souhait.
 
 **Le problème.** Au moment de l'inscription, le rôle est envoyé **par le navigateur** (`options.data.role`). La fonction `handle_new_user()` recopie ce rôle tel quel, et pire : si le rôle vaut `admin`, elle met le statut à `actif` **sans validation par un humain**.
 
@@ -251,7 +260,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 # Ordre de correction conseillé
 
-1. ~~**Aujourd'hui** — point 1 (blocage de l'auto-promotion en administrateur).~~ **FAIT.** Reste le point 2 (rôle « admin » réclamé à l'inscription).
+1. ~~**Aujourd'hui** — points 1 et 2 (blocage de l'auto-promotion en administrateur).~~ **FAIT et vérifié.**
 2. **Aujourd'hui** — point 5 (protection contre l'effacement des fichiers) et points 7 et 8 (tables ouvertes). SQL uniquement.
 3. **Cette semaine** — point 3 (fermeture de l'envoi d'emails) : réglage Supabase + petite modification des fonctions.
 4. **Cette semaine** — point 6 (limites sur les dépôts de fichiers).
