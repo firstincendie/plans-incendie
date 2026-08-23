@@ -15,7 +15,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 1 | Un simple compte peut se nommer administrateur | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 2 | L'inscription permet de créer un compte « admin » actif direct | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 3 | Le service d'envoi d'emails est ouvert sans mot de passe | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
-| 4 | Tous les fichiers des plans sont publics | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui avec le lien~~ |
+| 4 | Tous les fichiers des plans sont publics | CRITIQUE — **site prêt, bascule à refaire** | N'importe qui avec le lien |
 | 5 | Tout compte connecté peut effacer TOUS les fichiers | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 6 | Dépôt de fichiers anonyme, sans limite de taille | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 7 | Table `alertes` en accès libre (lecture + écriture) | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
@@ -145,7 +145,24 @@ Les fonctions `notify-*` sont dans le même cas : elles déclenchent des emails 
 
 ---
 
-## 4. Tous les fichiers des plans sont publics — CORRIGÉ le 23/08/2026
+## 4. Tous les fichiers des plans sont publics — EN COURS
+
+> **Le code du site est fait, testé et poussé.** La bascule du dossier en privé a
+> été tentée puis **annulée** : les plans ont cessé de s'afficher.
+>
+> **Cause identifiée par les journaux Supabase** : la seule requête de stockage
+> reçue visait `/object/public/...`, et **aucune** requête `/object/sign/`. Le
+> navigateur exécutait donc encore l'ancien code — la publication n'avait pas pris
+> effet. Le correctif du site n'était pas en cause.
+>
+> **Procédure pour retenter, sans risque :**
+> 1. Publier le site (`vercel --prod` depuis la bonne branche).
+> 2. Ouvrir un plan sur incendieplan.fr après un rafraîchissement forcé.
+> 3. **Vérifier dans les journaux Supabase qu'une requête `/object/sign/` arrive.**
+>    C'est la preuve que le nouveau code tourne — ne pas se fier à un contrôle
+>    visuel, qui ne distingue pas les deux versions tant que le dossier est public.
+> 4. Seulement ensuite, rejouer
+>    `20260823200000_fichiers_prive_lecture_reservee.sql`.
 
 > Fait en deux temps, dans l'ordre imposé.
 > **1.** Le site a été adapté (`helpers.js`, `VisuFichier.js`, `ZoneUpload.js`) pour
