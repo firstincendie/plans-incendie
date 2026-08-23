@@ -408,8 +408,9 @@ Les 4 comptes sans fiche sont `user1@test.com`, `user2@test.com`, `dessinateur1@
 et `dessinateur2@test.com`, tous créés le 23/03/2026. Vérifié : **jamais connectés,
 0 commande liée, 0 fichier déposé**. Ce sont des comptes de test.
 Ils ne sont plus dangereux depuis le constat 9 (un compte sans fiche ne voit plus rien),
-mais ils n'ont rien à faire là. **Non supprimés** : c'est irréversible et Simon ne l'a pas
-demandé. Un mot de sa part suffit.
+mais ils n'ont rien à faire là. **Supprimés le 23/08/2026** sur accord de Simon.
+Vérifié après suppression : 4 comptes pour 4 fiches, plus aucun orphelin ;
+123 commandes, 1121 messages et 778 fichiers intacts.
 
 ---
 
@@ -461,4 +462,6 @@ Avant les correctifs, ce même compte aurait pu se nommer propriétaire et tout 
 4. ~~**Cette semaine** — point 6 (limites sur les dépôts de fichiers).~~ **FAIT et vérifié.**
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
 6. ~~**Puis** — points 9, 10, 11 (partie modification), 13.~~ **FAIT.**
-7. ~~**Quand il y aura le temps** — points 14, 15, 16, 17.~~ **FAIT.** Reste le point 18 (comptes de test), en attente du feu vert de Simon.
+7. ~~**Quand il y aura le temps** — points 14 à 18.~~ **FAIT.**
+
+**Reste uniquement le point 4** (plans publics), qui demande de modifier puis republier le site.
