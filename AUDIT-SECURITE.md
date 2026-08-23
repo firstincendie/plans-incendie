@@ -20,13 +20,13 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 6 | Dépôt de fichiers anonyme, sans limite de taille | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 7 | Table `alertes` en accès libre (lecture + écriture) | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 8 | Table `notes_clients` sans aucune protection | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
-| 9 | Bannir un compte ne coupe pas vraiment son accès | ÉLEVÉ | Compte banni / en attente |
-| 10 | Tables Odoo lisibles par tout compte connecté | MOYEN | Tout compte connecté |
-| 11 | Messages modifiables par autrui, faux auteur possible | MOYEN | Participant d'une commande |
+| 9 | Bannir un compte ne coupe pas vraiment son accès | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~Compte banni / en attente~~ |
+| 10 | Tables Odoo lisibles par tout compte connecté | ~~MOYEN~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
+| 11 | Messages modifiables par autrui, faux auteur possible | **CORRIGÉ en partie** | Participant d'une commande |
 | 12 | Texte injectable dans les emails automatiques | ~~MOYEN~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 13 | 52 failles dans les librairies (2 critiques) | MOYEN | — |
 | 14 | Mots de passe compromis autorisés | FAIBLE | — |
-| 15 | Aucun en-tête de sécurité sur le site | FAIBLE | — |
+| 15 | Aucun en-tête de sécurité sur le site | **CORRIGÉ** (actif à la prochaine publication) | — |
 | 16 | Fonctions internes appelables sans être connecté | ~~FAIBLE~~ **CORRIGÉ** | — |
 
 ---
@@ -253,7 +253,16 @@ create policy "notes_clients_dessinateur" on public.notes_clients for all
   with check (dessinateur_id = auth.uid() or public.is_admin());
 ```
 
-## 9. Bannir un compte ne coupe pas vraiment son accès
+## 9. Bannir un compte ne coupe pas vraiment son accès — CORRIGÉ le 23/08/2026
+
+> Correctif : `supabase/migrations/20260823180416_exige_compte_actif_dans_la_base.sql`.
+> Fonction `est_actif()` + politiques **RESTRICTIVE** sur `commandes`, `messages`,
+> `versions` et le stockage des plans. Ces politiques se combinent en « ET » avec les
+> règles existantes sans les réécrire, donc sans risque d'avoir mal recopié une règle
+> métier.
+> Vérifié : un dessinateur temporairement banni ne lit plus aucune commande, aucun
+> message, aucune version, et ne peut plus remplacer de plan ; remis actif, il
+> retrouve tout (116 commandes, 1072 messages). Client et administrateur inchangés.
 
 Le statut du compte (`en_attente`, `refuse`, `banni`) n'est vérifié **que par l'écran React** (`RequireAuth.js`). La base de données, elle, ne le vérifie presque jamais — seule la création de commande exige `statut = 'actif'`.
 
@@ -272,10 +281,25 @@ $$;
 
 # MOYEN
 
-## 10. Les tables Odoo sont lisibles par tout compte connecté
+## 10. Les tables Odoo sont lisibles par tout compte connecté — CORRIGÉ le 23/08/2026
+
+> Lecture réservée à l'administrateur. Aucune version du site n'interroge ces tables :
+> vérifié dans `main` **et** dans la version en ligne d'avril.
 `odoo_clients`, `odoo_commandes`, `odoo_factures`, `odoo_sync_state` ont une règle de lecture `true` pour tout compte connecté. Ces tables sont vides aujourd'hui, mais elles sont prévues pour contenir votre fichier clients et vos factures. Le jour où elles seront remplies, **le moindre client inscrit verra la totalité**. À restreindre aux administrateurs avant toute synchronisation.
 
-## 11. Messages modifiables par autrui, et faux auteur possible
+## 11. Messages modifiables par autrui, et faux auteur possible — CORRIGÉ EN PARTIE le 23/08/2026
+
+> **Fait** : un trigger empêche de modifier le message de quelqu'un d'autre. Seul le
+> champ « lu par » peut changer, car le site marque comme lus les messages des autres
+> (déjà le cas dans la version en ligne d'avril).
+> Vérifié : réécrire ou s'attribuer le message d'un autre est bloqué ; marquer comme
+> lu et modifier son propre message fonctionnent toujours.
+>
+> **Reste à faire, avec Simon** : empêcher d'écrire un message sous un faux nom. Le
+> champ `auteur` est un texte libre ; le corriger proprement demande d'ajouter une
+> colonne `auteur_id` liée au compte, donc **une modification du site**. Un contrôle
+> par comparaison de nom serait fragile : il refuserait les messages d'un utilisateur
+> renommé en cours de session.
 Les règles de la table `messages` vérifient seulement que la commande est visible. Conséquences : on peut **modifier ou supprimer le message de quelqu'un d'autre** sur une commande partagée, et le champ `auteur` étant du texte libre envoyé par le navigateur, on peut **écrire un message en se faisant passer pour un autre**. Même remarque pour `versions` : tout participant peut ajouter une version.
 → Ajouter dans les règles la condition « l'auteur, c'est bien moi » et lier l'auteur à `auth.uid()` plutôt qu'à un nom en texte.
 
@@ -298,7 +322,12 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 **14. Mots de passe compromis autorisés.** La protection Supabase qui refuse les mots de passe déjà volés sur Internet (HaveIBeenPwned) est désactivée. La longueur minimale de 8 caractères n'est vérifiée que par l'écran, pas par le serveur. → Activer dans Supabase → Authentication → Passwords.
 
-**15. Aucun en-tête de sécurité.** `vercel.json` ne contient qu'une redirection. Il manque les protections standard du navigateur (`X-Frame-Options`, `Content-Security-Policy`, `Strict-Transport-Security`…). Sans `X-Frame-Options`, un site malveillant peut afficher incendieplan.fr dans un cadre invisible pour piéger les clics.
+**15. Aucun en-tête de sécurité — CORRIGÉ le 23/08/2026.** `vercel.json` ajoute désormais
+`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+`Strict-Transport-Security` et `Permissions-Policy`. **Ces protections ne seront
+actives qu'à la prochaine publication du site.** Pas de `Content-Security-Policy` :
+trop strict, il casserait l'affichage s'il n'est pas testé écran par écran.
+_Constat d'origine :_ `vercel.json` ne contient qu'une redirection. Il manque les protections standard du navigateur (`X-Frame-Options`, `Content-Security-Policy`, `Strict-Transport-Security`…). Sans `X-Frame-Options`, un site malveillant peut afficher incendieplan.fr dans un cadre invisible pour piéger les clics.
 
 **16. Fonctions internes appelables sans être connecté — CORRIGÉ le 23/08/2026.**
 `search_path` figé sur les 12 fonctions à privilèges. Les 6 fonctions qui ne sont que
@@ -339,5 +368,5 @@ _Constat d'origine :_ Neuf fonctions `SECURITY DEFINER` sont exposées à l'API 
 3. ~~**Cette semaine** — point 3 (fermeture de l'envoi d'emails).~~ **FAIT et vérifié.**
 4. ~~**Cette semaine** — point 6 (limites sur les dépôts de fichiers).~~ **FAIT et vérifié.**
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
-6. **Puis** — points 9 à 13.
+6. ~~**Puis** — points 9, 10, 11 (partie modification).~~ **FAIT.** Reste le point 13 (librairies).
 7. **Quand il y aura le temps** — points 14 à 18.
