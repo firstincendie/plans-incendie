@@ -17,7 +17,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 3 | Le service d'envoi d'emails est ouvert sans mot de passe | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
 | 5 | Tout compte connecté peut effacer TOUS les fichiers | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
-| 6 | Dépôt de fichiers anonyme, sans limite de taille | ÉLEVÉ | N'importe qui |
+| 6 | Dépôt de fichiers anonyme, sans limite de taille | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 7 | Table `alertes` en accès libre (lecture + écriture) | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 8 | Table `notes_clients` sans aucune protection | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 9 | Bannir un compte ne coupe pas vraiment son accès | ÉLEVÉ | Compte banni / en attente |
@@ -27,7 +27,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 13 | 52 failles dans les librairies (2 critiques) | MOYEN | — |
 | 14 | Mots de passe compromis autorisés | FAIBLE | — |
 | 15 | Aucun en-tête de sécurité sur le site | FAIBLE | — |
-| 16 | Fonctions internes appelables sans être connecté | FAIBLE | — |
+| 16 | Fonctions internes appelables sans être connecté | ~~FAIBLE~~ **CORRIGÉ** | — |
 
 ---
 
@@ -191,7 +191,19 @@ create policy "fichiers_update_proprietaire" on storage.objects for update
 
 # ÉLEVÉ
 
-## 6. Dépôt de fichiers anonyme, sans aucune limite
+## 6. Dépôt de fichiers anonyme, sans aucune limite — CORRIGÉ le 23/08/2026
+
+> Correctif : `supabase/migrations/20260823175303_limite_depots_fichiers_et_anonymes.sql`.
+> Limite de taille à **50 Mo** sur le bucket (le plus gros fichier existant fait 30 Mo).
+> Le dépôt anonyme n'est plus accepté que sous `validation/<id_commande>/…` **et**
+> uniquement si cette commande a un lien de validation actif et non expiré.
+> Vérifié : dépôt anonyme sur une commande sans lien → bloqué ; à la racine du
+> stockage → bloqué ; avec un lien actif → accepté ; avec un lien expiré → bloqué.
+>
+> **Pas de liste blanche de types de fichiers**, volontairement : le site accepte
+> aussi `.dwg` et `.dxf`, que les navigateurs envoient souvent en
+> `application/octet-stream`. Une liste qui inclut ce type n'apporterait rien ;
+> une liste qui l'exclut casserait le dépôt de plans CAO.
 
 La règle `validation_anon_upload` laisse **n'importe qui, sans compte**, déposer des fichiers dans `fichiers/validation/`. Et le dossier `fichiers` n'a **ni limite de taille, ni liste de types autorisés**.
 
@@ -288,7 +300,19 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 **15. Aucun en-tête de sécurité.** `vercel.json` ne contient qu'une redirection. Il manque les protections standard du navigateur (`X-Frame-Options`, `Content-Security-Policy`, `Strict-Transport-Security`…). Sans `X-Frame-Options`, un site malveillant peut afficher incendieplan.fr dans un cadre invisible pour piéger les clics.
 
-**16. Fonctions internes appelables sans être connecté.** Neuf fonctions `SECURITY DEFINER` sont exposées à l'API publique, dont `handle_new_user()` qui ne devrait être qu'un déclencheur interne. Sept fonctions n'ont pas de `search_path` fixé. → Retirer le droit d'exécution (`revoke execute ... from anon`) sur celles qui ne servent pas à la page publique de validation, et ajouter `set search_path = public` partout.
+**16. Fonctions internes appelables sans être connecté — CORRIGÉ le 23/08/2026.**
+`search_path` figé sur les 12 fonctions à privilèges. Les 6 fonctions qui ne sont que
+des déclencheurs internes (`handle_new_user`, `protege_champs_profil`, `set_updated_at`,
+`generate_invite_code`, `check_no_nested_master`, `fill_commande_ref`) ne sont plus
+joignables depuis l'API, ni par un anonyme ni par un compte connecté ; vérifié que
+l'inscription, la génération du code d'invitation et la référence automatique des
+commandes fonctionnent toujours. `set_dessinateurs_utilisateur` et
+`peut_deposer_plan_final` sont fermées aux anonymes.
+Restent volontairement ouvertes : `is_admin`, `is_owner`, `est_mon_dessinateur`
+(utilisées dans des règles RLS évaluées aussi sous anon — les fermer ferait échouer
+ces requêtes) et les 5 `validation_*` (page publique de validation).
+Le linter Supabase ne remonte plus aucun avertissement `search_path`.
+_Constat d'origine :_ Neuf fonctions `SECURITY DEFINER` sont exposées à l'API publique, dont `handle_new_user()` qui ne devrait être qu'un déclencheur interne. Sept fonctions n'ont pas de `search_path` fixé. → Retirer le droit d'exécution (`revoke execute ... from anon`) sur celles qui ne servent pas à la page publique de validation, et ajouter `set search_path = public` partout.
 
 **17. Le partage d'origine (CORS) est ouvert à `*`** sur toutes les fonctions serveur. → Le limiter à `https://incendieplan.fr`.
 
@@ -313,7 +337,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 1. ~~**Aujourd'hui** — points 1 et 2 (blocage de l'auto-promotion en administrateur).~~ **FAIT et vérifié.**
 2. ~~**Aujourd'hui** — points 5, 7 et 8 (effacement des fichiers, tables ouvertes).~~ **FAIT et vérifié.**
 3. ~~**Cette semaine** — point 3 (fermeture de l'envoi d'emails).~~ **FAIT et vérifié.**
-4. **Cette semaine** — point 6 (limites sur les dépôts de fichiers).
+4. ~~**Cette semaine** — point 6 (limites sur les dépôts de fichiers).~~ **FAIT et vérifié.**
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
 6. **Puis** — points 9 à 13.
 7. **Quand il y aura le temps** — points 14 à 18.
