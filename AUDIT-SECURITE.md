@@ -153,7 +153,39 @@ Les **779 fichiers** (plans d'évacuation, plans d'intervention, documents clien
 
 **Correction proposée.** Passer le dossier `fichiers` en **privé**, remplacer la lecture publique par une règle réservée aux personnes concernées par la commande, et faire générer par l'application des **liens temporaires** (« signed URLs », valables par exemple 1 heure). Le dossier `avatars` peut rester public, ce n'est pas sensible.
 
-Attention : Cette correction demande une petite modification du code d'affichage des fichiers — à faire ensemble, pas à la va-vite.
+### Plan précis (préparé le 23/08/2026, pas encore appliqué)
+
+**La difficulté n'est pas de rendre le dossier privé — c'est que 555 fiches en base
+stockent déjà des adresses publiques** qui cesseraient de fonctionner :
+
+| Emplacement | Fiches concernées |
+|---|---|
+| `commandes.fichiers_plan` | 123 |
+| `versions.fichiers` | 239 |
+| `messages.fichiers` | 122 |
+| `commandes.plans_finalises` | 71 |
+
+**3 endroits fabriquent une adresse publique** (à remplacer) :
+`ZoneUpload.js:17`, `Messagerie.js:212`, `ModalDetailCommande.js:316`.
+*(`PageMonCompte.js:135` concerne les avatars : à laisser tel quel, ce dossier reste public.)*
+
+**3 écrans affichent les fichiers** (à adapter) : `VisuFichier.js`, `ZoneUpload.js`, `DetailCommandeModal.js`.
+
+**Marche à suivre, dans cet ordre :**
+1. Ajouter dans `src/helpers.js` une fonction qui, à partir d'une adresse stockée,
+   extrait le chemin du fichier et demande un **lien temporaire** (`createSignedUrl`,
+   1 heure). Elle doit accepter les deux formes : anciennes adresses publiques déjà
+   en base, et nouveaux chemins.
+2. Faire passer les 3 écrans d'affichage par cette fonction.
+3. Ne plus stocker l'adresse complète mais **le chemin** pour les nouveaux dépôts.
+4. Publier le site et **vérifier qu'un plan s'affiche encore**.
+5. **Seulement ensuite** : passer le dossier `fichiers` en privé et remplacer la règle
+   « Lecture publique fichiers » par une règle réservée aux personnes concernées par
+   la commande.
+
+**L'ordre est impératif** : passer le dossier en privé avant de publier le site
+casserait l'affichage de tous les plans, y compris sur la version actuellement en
+ligne. C'est pour cela que ce point n'a pas été appliqué en autonomie.
 
 ---
 
@@ -368,7 +400,41 @@ _Constat d'origine :_ Neuf fonctions `SECURITY DEFINER` sont exposées à l'API 
 
 **17. Le partage d'origine (CORS) est ouvert à `*`** sur toutes les fonctions serveur. → Le limiter à `https://incendieplan.fr`.
 
-**18. Hygiène des comptes.** Il y a **8 comptes de connexion pour seulement 4 fiches**. Quatre comptes existent donc sans profil : ils ne peuvent pas utiliser le site, mais ils possèdent un jeton valide. À nettoyer.
+**18. Hygiène des comptes — enquête faite le 23/08/2026, suppression en attente de Simon.**
+Les 4 comptes sans fiche sont `user1@test.com`, `user2@test.com`, `dessinateur1@test.com`
+et `dessinateur2@test.com`, tous créés le 23/03/2026. Vérifié : **jamais connectés,
+0 commande liée, 0 fichier déposé**. Ce sont des comptes de test.
+Ils ne sont plus dangereux depuis le constat 9 (un compte sans fiche ne voit plus rien),
+mais ils n'ont rien à faire là. **Non supprimés** : c'est irréversible et Simon ne l'a pas
+demandé. Un mot de sa part suffit.
+
+---
+
+# Vérification de deuxième passe (23/08/2026)
+
+Après les 12 correctifs, j'ai refait un tour complet pour m'assurer qu'aucun nouveau trou
+n'avait été créé.
+
+**Les 23 tables ont la protection par ligne activée, et plus aucune règle n'est ouverte à tous.**
+
+Test le plus parlant : j'ai créé un compte neuf, actif, sans aucun lien — le pire cas d'un
+inscrit malveillant validé par erreur — et compté ce qu'il peut lire :
+
+| Table | Il voit | Il existe en base |
+|---|---|---|
+| commandes | **0** | 123 |
+| messages | **0** | 1 121 |
+| versions | **0** | 239 |
+| alertes | **0** | 5 |
+| commande_notes | **0** | 17 |
+| tickets / ticket_messages | **0** | 1 / 6 |
+| validation_liens / réponses | **0** | 6 / 12 |
+| utilisateur_dessinateurs | **0** | 3 |
+| tables Odoo | **0** | 0 |
+| profiles | 1 (la sienne) | 5 |
+| annonces | 3 | 3 — *normal, les annonces s'adressent à tous* |
+
+Avant les correctifs, ce même compte aurait pu se nommer propriétaire et tout lire.
 
 ---
 
