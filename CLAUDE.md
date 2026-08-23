@@ -28,17 +28,47 @@ Règle : on travaille sur **`main`** sauf demande contraire. On ne mélange pas 
 - **Vercel** = l'hébergeur qui met le site en ligne. Le domaine **incendieplan.fr** est branché dessus.
 - **GitHub** = le « coffre-fort » du code (source + historique). Même si on déploie autrement, on garde GitHub à jour pour ne rien perdre.
 
-## 📱💻 Ordinateur ET téléphone
-Le site est surtout utilisé sur **ordinateur** (admins, dessinateurs), mais il doit **aussi** rester correct sur **téléphone**. Avant de publier une modif visuelle, **vérifier les deux** : ~1280 px (ordinateur) et ~375 px (téléphone). Jamais de défilement horizontal sur téléphone.
-(Si un doute sur l'appareil principal, demander à Simon.)
+---
 
-## ✂️ Aller à l'essentiel — peu de texte à l'écran
-Simon sait ce qu'il crée : ne pas réexpliquer l'appli à l'écran. Mettre le **minimum d'infos**, des titres de colonnes courts. Une précision utile → en **info-bulle** (`title`), pas en gros texte.
+# 🎨 LES RÈGLES DE STYLE (à respecter TOUJOURS)
+
+## 📱 Mobile first (RÈGLE TRÈS IMPORTANTE)
+On pense **téléphone d'abord**, puis on **adapte vraiment** à l'ordinateur (obligatoire aussi) — pas juste une bande étroite perdue au milieu du grand écran.
+- **Téléphone** : boutons/zones assez grands (doigt), texte lisible sans zoomer, **jamais** de défilement horizontal.
+- **Ordinateur** : utiliser toute la largeur intelligemment (menu latéral fixe, infos sur 2 colonnes…), pas de bande étroite centrée.
+- **Toujours vérifier les DEUX rendus avant de publier** : ~375 px (téléphone) **et** ~1280 px (ordinateur).
+
+## 🚫 Zéro emoji dans l'appli — de vraies icônes (RÈGLE IMPORTANTE)
+Dans l'appli, **aucun emoji** : Simon les trouve horribles. On utilise de **vraies icônes** (SVG propre) — pour les boutons, les pastilles, les statuts, les menus…
+- Remplacer les emojis existants (📄, 📁, 🔒…) par des icônes SVG **au fil de l'eau**, quand on touche un écran.
+- Icônes sobres et cohérentes (trait fin, couleur `currentColor`, taille régulière).
+- (Cette règle concerne l'appli, **pas** ce fichier de notes — ici les emojis servent juste de repères.)
+
+## ✂️ Aller à l'essentiel — zéro texte explicatif (RÈGLE IMPORTANTE)
+Simon **sait ce qu'il crée** : ne jamais réexpliquer l'appli à l'écran. Mettre le **minimum d'infos**.
+- **Pas de phrases d'explication** dans l'appli (« à quoi sert cet onglet », modes d'emploi sous les champs…). Un écran bien fait se comprend sans notice.
+- **Noms de colonnes courts** : un seul mot quand c'est possible.
+- Une précision vraiment utile → en **info-bulle** (`title`), pas en texte visible.
+
+## 📊 Tous les tableaux se ressemblent (RÈGLE IMPORTANTE)
+Chaque tableau doit être fait **exactement pareil** (même recette), en prenant comme modèle le tableau principal du site (la **liste des commandes**) :
+- des **colonnes** avec un titre en haut ;
+- **cliquer sur un titre de colonne pour trier** (croissant / décroissant) ;
+- **pagination** (composant `Pagination.js`) : jamais 500 lignes d'un coup, on tourne les pages ;
+- **même look** (couleurs, espacement, boutons) que les autres tableaux ;
+- et bien sûr **mobile + ordinateur**.
+But : tous les tableaux ont la même tête et se manipulent pareil.
+
+## 🗂️ Couper en onglets (RÈGLE IMPORTANTE)
+Dès qu'une page a **beaucoup d'infos**, on la **découpe en plusieurs onglets** — jamais tout empilé sur une seule page.
+- Même look et même façon de changer d'onglet partout.
+- On garde en mémoire **quel onglet est ouvert**, et bien sûr **mobile + ordinateur**.
+But : ne jamais noyer Simon sous trop d'infos d'un coup ; une page = une idée à la fois.
 
 ## 🎨 Couleurs des statuts (source unique)
 Les statuts des commandes ont **toujours** la même couleur, définie **une seule fois** dans `src/constants.js` (`STATUT_STYLE`). Toujours réutiliser cette source, **jamais** une couleur écrite en dur ailleurs.
 
-| Statut | (défini dans `STATUT_STYLE`) |
+| Statut | Couleur (dans `STATUT_STYLE`) |
 |---|---|
 | En attente | jaune |
 | Commencé | bleu |
@@ -47,38 +77,52 @@ Les statuts des commandes ont **toujours** la même couleur, définie **une seul
 | Validation en cours | vert clair |
 | Validé | vert |
 
-Les listes de choix (types de plan, formats, matières, motifs de ticket…) sont aussi dans `src/constants.js` : les modifier **là**, pas en dur dans un écran.
+Les listes de choix (types de plan, formats, matières, motifs…) sont aussi dans `src/constants.js` : les modifier **là**, pas en dur dans un écran.
 
-## 🚫 Préférence : éviter les emojis dans l'appli
-Simon n'aime pas les emojis dans l'interface. Il en reste quelques-uns (📄, 📁, 🔒…) : les **remplacer petit à petit par de vraies icônes** (SVG propre) quand on retouche un écran. (Cette règle concerne l'appli, **pas** ce fichier de notes.)
+## ⚙️ Toujours penser « Réglages » (RÈGLE IMPORTANTE)
+À **chaque** modif, se poser 2 questions avant de coder :
+1. **Est-ce réglable ?** (un texte, un lien, un délai, un on/off…) → si oui, ça a plutôt sa place dans la page **« Réglages »**, pas en dur dans le code.
+2. **À quel niveau ?** Qui peut le régler et qui est concerné (l'admin ? chaque utilisateur ? toute l'appli ?).
+Toujours **proposer la question à Simon** (« on met ça dans les Réglages ? et pour qui ? ») au lieu de décider tout seul.
+
+## ⚡ Toujours optimiser la vitesse (RÈGLE IMPORTANTE)
+La rapidité est primordiale (souvent utilisé au téléphone, parfois en 4G). Principe : **aucune dépendance extérieure au chargement**.
+- Le site est construit avec React (`npm run build`) : les librairies sont déjà **empaquetées dans le build** et servies par Vercel — ne pas ajouter de `<script>`/`<link>` vers un site tiers (CDN, `fonts.googleapis.com`, `unpkg`, `jsdelivr`, `esm.sh`).
+- **Polices** : à héberger avec le site, pas de lien Google Fonts.
+- **Charger à la demande** ce qui est lourd et ne sert pas au démarrage.
+- **Vérifier après coup** : la page se charge avec **0 ressource externe**.
+But : premier chargement rapide **et** appli qui marche même si un site tiers tombe.
+
+---
 
 ## 🔢 Système de version
 La version de l'appli est le champ `"version"` de **`package.json`** (aujourd'hui **2.12.0**). Elle est affichée en bas de la barre latérale (`src/components/Sidebar.js` lit `package.json`).
 Format `MAJEUR.MINEUR.CORRECTIF`. **À chaque vraie livraison, augmenter la version** puis faire un commit clair `release: vX.Y.Z — ...` :
-- **Correctif** (ex. `2.12.0`→`2.12.1`) : petite retouche (bug, ajustement, texte).
-- **Mineur** (ex. `2.12.3`→`2.13.0`) : une nouveauté.
-- **Majeur** (ex. `2.14.1`→`3.0.0`) : très gros changement / refonte.
+- **Correctif** (`2.12.0`→`2.12.1`) : petite retouche (bug, ajustement, texte).
+- **Mineur** (`2.12.3`→`2.13.0`) : une nouveauté.
+- **Majeur** (`2.14.1`→`3.0.0`) : très gros changement / refonte.
 
 ## 🚀 Publier en ligne (Vercel) — DEUX niveaux
-- 🧪 **TEST** : pour essayer une modif en ligne sans toucher au site officiel → publier une version **preview**. Deux façons : pousser sur une branche autre que `main` (Vercel crée une URL de test), ou en local `vercel` (Vercel CLI).
-- ✅ **OFFICIEL / incendieplan.fr** : **seulement si Simon le demande** (« passe en prod », « publie en officiel »). **Jamais automatiquement.** Concrètement : amener le code voulu sur la branche de production Vercel, ou `vercel --prod` en local.
-- ⚠️ **À confirmer une fois avec Simon** : la « Production Branch » réglée dans Vercel (le dernier déploiement officiel venait de `staging`, en avril). Vérifier dans Vercel → Settings → Git avant la première vraie mise en prod, pour publier la bonne branche sur incendieplan.fr.
+- 🧪 **TEST** : essayer une modif en ligne sans toucher au site officiel → version **preview** (pousser sur une branche autre que `main`, ou `vercel` en local).
+- ✅ **OFFICIEL / incendieplan.fr** : **seulement si Simon le demande** (« passe en prod », « publie en officiel »). **Jamais automatiquement.**
+- ⚠️ **À confirmer une fois avec Simon** : la « Production Branch » dans Vercel (le dernier déploiement officiel venait de `staging`, en avril). Vérifier Vercel → Settings → Git avant la première vraie mise en prod.
 - Détails pas-à-pas (Windows) : `DEPLOIEMENT.md` à la racine.
 
 ## 📌 Règle « dernière version »
-Ce dépôt fait foi. On modifie les fichiers **sur place** (jamais de copie « fichier-v2 » à côté). On fait des commits clairs, et on garde GitHub à jour (sauvegarde).
+Ce dépôt fait foi. On modifie les fichiers **sur place** (jamais de copie « fichier-v2 » à côté). Commits clairs, et on garde GitHub à jour (sauvegarde).
 
 ## 🗂️ Où se trouve quoi (ouvrir seulement si besoin)
-- `src/components/` — tous les écrans et morceaux d'écran (React). Points d'entrée utiles :
-  - `AppRouter.js` — la liste des pages (routes) : `/commandes`, `/commandes/archives`, `/reglages`, `/mon-compte`, `/utilisateurs`, `/gestion`, + pages de connexion.
-  - `ListeCommandes.js`, `ModalDetailCommande.js`, `NouvelleCommandeModal.js` — le cœur : les commandes de plans.
-  - `Messagerie.js`, `TicketChat.js` — les discussions / le support.
-  - `PageReglages.js` — les réglages. **Réflexe** : si une modif touche un texte, un lien, un délai, un on/off → se demander si ça a sa place dans les Réglages plutôt qu'en dur.
-  - `GestionUtilisateurs.js`, `RequireAuth.js`, `RequireRole.js` — les comptes et les accès (rôles `admin` / `utilisateur`).
-  - `HistoriqueVersions.js`, `ZoneUpload.js`, `PiecesJointes.js` — le dépôt et l'affichage des fichiers de plans.
+- `src/components/` — tous les écrans (React) :
+  - `AppRouter.js` — la liste des pages : `/commandes`, `/commandes/archives`, `/reglages`, `/mon-compte`, `/utilisateurs`, `/gestion`, + connexion.
+  - `ListeCommandes.js`, `ModalDetailCommande.js`, `NouvelleCommandeModal.js` — le cœur : les commandes de plans. **Le tableau des commandes est le modèle pour tous les tableaux.**
+  - `Pagination.js`, `BarreFiltres.js`, `TableauPlans.js` — briques de tableau/filtre réutilisables.
+  - `Messagerie.js`, `TicketChat.js` — discussions / support.
+  - `PageReglages.js` — les réglages (penser à y mettre tout ce qui est réglable).
+  - `GestionUtilisateurs.js`, `RequireAuth.js`, `RequireRole.js` — comptes et accès (rôles `admin` / `utilisateur`).
+  - `HistoriqueVersions.js`, `ZoneUpload.js`, `PiecesJointes.js` — dépôt et affichage des fichiers de plans.
 - `src/constants.js` — statuts, couleurs, types de plan, formats, matières, motifs (à modifier ici en priorité).
 - `src/supabase.js` — connexion à la base.
-- `supabase/functions/` — les emails et notifications automatiques (côté serveur).
+- `supabase/functions/` — emails et notifications automatiques (côté serveur).
 - `DEPLOIEMENT.md` — comment publier (local → test → incendieplan.fr).
 
 ## ⚙️ Comment lancer en local (rappel)
