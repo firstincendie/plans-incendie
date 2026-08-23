@@ -25,7 +25,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 11 | Messages modifiables par autrui, faux auteur possible | **CORRIGÉ en partie** | Participant d'une commande |
 | 12 | Texte injectable dans les emails automatiques | ~~MOYEN~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 13 | 52 failles dans les librairies (2 critiques) | ~~MOYEN~~ **CORRIGÉ** (côté visiteur) | — |
-| 14 | Mots de passe compromis autorisés | FAIBLE | — |
+| 14 | Mots de passe compromis autorisés | ~~FAIBLE~~ **CORRIGÉ** | — |
 | 15 | Aucun en-tête de sécurité sur le site | **CORRIGÉ** (actif à la prochaine publication) | — |
 | 16 | Fonctions internes appelables sans être connecté | ~~FAIBLE~~ **CORRIGÉ** | — |
 
@@ -375,7 +375,10 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 # FAIBLE (à faire quand il y aura le temps)
 
-**14. Mots de passe compromis autorisés.** La protection Supabase qui refuse les mots de passe déjà volés sur Internet (HaveIBeenPwned) est désactivée. La longueur minimale de 8 caractères n'est vérifiée que par l'écran, pas par le serveur. → Activer dans Supabase → Authentication → Passwords.
+**14. Mots de passe compromis autorisés — CORRIGÉ le 23/08/2026 par Simon.**
+Protection HaveIBeenPwned activée et longueur minimale portée à 8 dans Supabase.
+Vérifié : l'avertissement `auth_leaked_password_protection` a disparu du contrôle Supabase.
+_Constat d'origine :_ La protection Supabase qui refuse les mots de passe déjà volés sur Internet (HaveIBeenPwned) est désactivée. La longueur minimale de 8 caractères n'est vérifiée que par l'écran, pas par le serveur. → Activer dans Supabase → Authentication → Passwords.
 
 **15. Aucun en-tête de sécurité — CORRIGÉ le 23/08/2026.** `vercel.json` ajoute désormais
 `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
@@ -458,4 +461,4 @@ Avant les correctifs, ce même compte aurait pu se nommer propriétaire et tout 
 4. ~~**Cette semaine** — point 6 (limites sur les dépôts de fichiers).~~ **FAIT et vérifié.**
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
 6. ~~**Puis** — points 9, 10, 11 (partie modification), 13.~~ **FAIT.**
-7. **Quand il y aura le temps** — points 14 à 18.
+7. ~~**Quand il y aura le temps** — points 14, 15, 16, 17.~~ **FAIT.** Reste le point 18 (comptes de test), en attente du feu vert de Simon.
