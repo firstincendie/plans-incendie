@@ -14,7 +14,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 |---|---|---|---|
 | 1 | Un simple compte peut se nommer administrateur | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 2 | L'inscription permet de créer un compte « admin » actif direct | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
-| 3 | Le service d'envoi d'emails est ouvert sans mot de passe | CRITIQUE | N'importe qui |
+| 3 | Le service d'envoi d'emails est ouvert sans mot de passe | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
 | 5 | Tout compte connecté peut effacer TOUS les fichiers | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 6 | Dépôt de fichiers anonyme, sans limite de taille | ÉLEVÉ | N'importe qui |
@@ -23,7 +23,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 9 | Bannir un compte ne coupe pas vraiment son accès | ÉLEVÉ | Compte banni / en attente |
 | 10 | Tables Odoo lisibles par tout compte connecté | MOYEN | Tout compte connecté |
 | 11 | Messages modifiables par autrui, faux auteur possible | MOYEN | Participant d'une commande |
-| 12 | Texte injectable dans les emails automatiques | MOYEN | Tout compte connecté |
+| 12 | Texte injectable dans les emails automatiques | ~~MOYEN~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 13 | 52 failles dans les librairies (2 critiques) | MOYEN | — |
 | 14 | Mots de passe compromis autorisés | FAIBLE | — |
 | 15 | Aucun en-tête de sécurité sur le site | FAIBLE | — |
@@ -110,7 +110,26 @@ end $$;
 
 ---
 
-## 3. Le service d'envoi d'emails est ouvert à tout Internet
+## 3. Le service d'envoi d'emails est ouvert à tout Internet — CORRIGÉ le 23/08/2026
+
+> Les 7 fonctions concernées ont été réécrites et redéployées (`supabase/functions/`).
+> - `send-email` n'accepte plus que la **clé de service**, que seules les autres fonctions
+>   serveur possèdent : elle n'est plus joignable depuis un navigateur.
+> - Les 6 `notify-*` exigent un utilisateur **connecté et actif** ; `notify-activation`
+>   exige en plus d'être **propriétaire**, et `notify-inscription` lit le nom et l'email
+>   dans la fiche de l'appelant au lieu du corps de la requête.
+> - `verify_jwt` reste volontairement désactivé : il laisserait passer n'importe quel
+>   utilisateur connecté, donc moins strict que le contrôle fait dans le code.
+> Corrige en même temps les constats **12** (échappement du HTML des emails), **11 en partie**
+> (l'auteur d'un message est l'utilisateur authentifié, plus une valeur du navigateur)
+> et **17** (CORS limité à incendieplan.fr, ses previews Vercel et localhost:3000).
+>
+> **Vérifié en conditions réelles**, en appelant les fonctions depuis l'extérieur :
+> les 10 tentatives sans compte ou avec la clé publique du site sont refusées (401/403) ;
+> un compte de test *en attente* est refusé ; le même compte *actif* est accepté ;
+> un compte actif non-propriétaire est refusé sur `notify-activation` ; et la chaîne
+> complète `notify-commande` → `send-email` → Resend a bien envoyé (`envoyes: 1`).
+> Compte de test et outils de test supprimés ensuite ; base identique à l'avant-test.
 
 **Le problème.** Les **10 fonctions serveur** sont configurées avec `verify_jwt: false` — autrement dit, elles répondent à n'importe qui, sans connexion.
 
@@ -248,7 +267,12 @@ $$;
 Les règles de la table `messages` vérifient seulement que la commande est visible. Conséquences : on peut **modifier ou supprimer le message de quelqu'un d'autre** sur une commande partagée, et le champ `auteur` étant du texte libre envoyé par le navigateur, on peut **écrire un message en se faisant passer pour un autre**. Même remarque pour `versions` : tout participant peut ajouter une version.
 → Ajouter dans les règles la condition « l'auteur, c'est bien moi » et lier l'auteur à `auth.uid()` plutôt qu'à un nom en texte.
 
-## 12. Texte injectable dans les emails automatiques
+## 12. Texte injectable dans les emails automatiques — CORRIGÉ le 23/08/2026
+
+> Corrigé avec le constat 3 : une fonction `esc()` échappe `< > & " '` avant toute
+> insertion dans le HTML. Les sujets d'emails, qui sont du texte brut, ne sont pas
+> échappés (sinon on y verrait des codes). Le nom du plan est de plus lu dans la base
+> plutôt que dans le corps de la requête.
 Dans les fonctions serveur, les valeurs `${prenom}`, `${nom_plan}`, `${auteur_nom}` sont insérées **directement** dans le HTML de l'email, sans nettoyage. Quelqu'un peut nommer un plan de façon à glisser un faux bouton ou un lien piégé dans un email qui, lui, est parfaitement authentique. Combiné au point 3, c'est un bon outil d'hameçonnage.
 → Échapper les caractères `< > & " '` avant insertion.
 
@@ -288,7 +312,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 1. ~~**Aujourd'hui** — points 1 et 2 (blocage de l'auto-promotion en administrateur).~~ **FAIT et vérifié.**
 2. ~~**Aujourd'hui** — points 5, 7 et 8 (effacement des fichiers, tables ouvertes).~~ **FAIT et vérifié.**
-3. **Cette semaine** — point 3 (fermeture de l'envoi d'emails) : réglage Supabase + petite modification des fonctions.
+3. ~~**Cette semaine** — point 3 (fermeture de l'envoi d'emails).~~ **FAIT et vérifié.**
 4. **Cette semaine** — point 6 (limites sur les dépôts de fichiers).
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
 6. **Puis** — points 9 à 13.
