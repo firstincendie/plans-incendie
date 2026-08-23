@@ -1,21 +1,19 @@
 # Guide de déploiement — Plans Incendie
 
-Ce guide explique **tout le circuit** : travailler en local → tester en ligne → publier sur
-**incendieplan.fr**. Il est écrit pour être suivi même sans connaissances techniques.
+Circuit : **travailler en local → déployer sur Vercel (test) → publier sur incendieplan.fr**,
+directement depuis ton ordinateur avec l'outil **Vercel CLI** (sans passer par GitHub).
 
-Le principe (comme une vraie application) :
-
-| Ce que tu fais              | Ce qui se passe                                           |
-| --------------------------- | --------------------------------------------------------- |
-| `npm start` en local        | Le site tourne sur ton ordinateur (http://localhost:3000) |
-| Push sur une branche `test` | Vercel crée une **URL de test** (preview), site officiel intact |
-| Push sur la branche `main`  | Met à jour la **version officielle → incendieplan.fr**    |
+| Commande        | Ce qui se passe                                              |
+| --------------- | ----------------------------------------------------------- |
+| `npm start`     | Le site tourne sur ton ordinateur (http://localhost:3000)   |
+| `vercel`        | Déploie une **version de TEST** (URL preview) — officiel intact |
+| `vercel --prod` | Publie la **version officielle → incendieplan.fr**          |
 
 ---
 
 ## 1. Installer le projet en local (une seule fois)
 
-Prérequis : installer [Node.js](https://nodejs.org) (version 18 ou plus) et [Git](https://git-scm.com).
+Prérequis : [Node.js](https://nodejs.org) (v18+) et [Git](https://git-scm.com).
 
 ```bash
 git clone https://github.com/firstincendie/plans-incendie.git
@@ -24,89 +22,70 @@ npm install
 npm start        # ouvre http://localhost:3000
 ```
 
-> Aucune configuration secrète à ajouter : la connexion Supabase est déjà incluse
-> dans `src/supabase.js` (clé publique).
+> Aucune configuration secrète : la connexion Supabase est déjà incluse dans
+> `src/supabase.js` (clé publique).
 
 ---
 
-## 2. Connecter le projet à Vercel (une seule fois)
+## 2. Installer et connecter Vercel CLI (une seule fois)
 
-Vercel est l'hébergeur qui met le site en ligne automatiquement à chaque `git push`. C'est gratuit.
+Dans le terminal, **à la racine du dossier plans-incendie** :
 
-1. Aller sur **https://vercel.com** → **Sign Up**.
-2. Choisir **« Continue with GitHub »** et se connecter avec le compte GitHub qui possède
-   le dépôt `firstincendie/plans-incendie`. Autoriser Vercel à accéder au dépôt.
-3. Dans le tableau de bord Vercel : **Add New… → Project**.
-4. Choisir le dépôt **plans-incendie** → **Import**.
-5. Vercel reconnaît automatiquement « Create React App ». Ne rien changer :
-   - Framework Preset : **Create React App**
-   - Build Command : `npm run build`
-   - Output Directory : `build`
-6. Cliquer **Deploy**. Au bout d'~1 minute, le site est en ligne sur une adresse du type
-   `plans-incendie-xxxx.vercel.app`.
+```bash
+npm i -g vercel      # installe l'outil Vercel
+vercel login         # connexion (Continue with GitHub, ou par email)
+vercel link          # relie ce dossier au projet Vercel existant
+```
 
-À partir de là, **chaque push GitHub redéploie tout seul.**
+Réponses pour `vercel link` :
+- *Set up and deploy?* → **yes**
+- *Which scope?* → ton compte
+- *Link to existing project?* → **yes** → choisir le projet **plans-incendie**
+
+Cela crée un dossier `.vercel/` (déjà ignoré par Git) qui mémorise le lien.
 
 ---
 
-## 3. Comprendre « test » vs « officiel »
+## 3. Déployer
 
-Vercel déploie automatiquement à chaque push, différemment selon la branche :
+```bash
+vercel           # → VERSION DE TEST : donne une URL de preview unique
+vercel --prod    # → VERSION OFFICIELLE : publie sur incendieplan.fr
+```
 
-- **Branche `main`** = **Production** → c'est ce qui sera visible sur **incendieplan.fr**.
-- **Toute autre branche** (ex. `test`) = **Preview** → une URL de test unique
-  (`plans-incendie-git-test-...vercel.app`) qui **ne touche pas** au site officiel.
-
-Ainsi tu peux tout essayer en ligne sans risque avant de publier.
+- `vercel` sert à vérifier en ligne sans risque avant de publier.
+- `vercel --prod` met à jour le site officiel.
 
 ---
 
 ## 4. Brancher le domaine incendieplan.fr (une seule fois)
 
-1. Dans Vercel : ouvrir le projet → **Settings → Domains**.
-2. Taper `incendieplan.fr` → **Add**. Ajouter aussi `www.incendieplan.fr`.
-3. Vercel affiche les **enregistrements DNS** à créer. En général :
-   - Domaine principal `incendieplan.fr` → enregistrement **A** vers `76.76.21.21`
+À faire une fois dans le tableau de bord Vercel :
+
+1. Ouvrir le projet sur **vercel.com** → **Settings → Domains**.
+2. Ajouter `incendieplan.fr` (et `www.incendieplan.fr`).
+3. Vercel affiche les **enregistrements DNS** à créer, en général :
+   - `incendieplan.fr` → enregistrement **A** vers `76.76.21.21`
    - `www` → enregistrement **CNAME** vers `cname.vercel-dns.com`
-   > ⚠️ Utiliser **exactement** les valeurs affichées par Vercel (elles peuvent différer).
-4. Se connecter chez le **registrar** où incendieplan.fr a été acheté (OVH, Gandi, IONOS…),
+   > ⚠️ Utiliser **exactement** les valeurs affichées par Vercel.
+4. Chez ton **registrar** (où le domaine a été acheté : OVH, Gandi, IONOS…),
    ouvrir la **zone DNS** et créer ces enregistrements.
-5. Attendre la propagation (quelques minutes à quelques heures). Vercel affiche
-   **« Valid Configuration »** quand c'est bon. Le **HTTPS (cadenas) est automatique**.
+5. Attendre la propagation. Vercel affiche **« Valid Configuration »** quand c'est bon.
+   Le **HTTPS est automatique**.
+
+Une fois le domaine rattaché, chaque `vercel --prod` met à jour incendieplan.fr.
 
 ---
 
-## 5. Le travail au quotidien
+## Récapitulatif du quotidien
 
 ```bash
-# 1. Récupérer la dernière version officielle
-git checkout main
-git pull
-
-# 2. Créer une branche de travail (ou réutiliser "test")
-git checkout -b test
-
-# 3. Modifier le code, tester en local
+# développer et tester en local
 npm start
 
-# 4. Envoyer sur la branche de test → URL de preview Vercel
-git add -A
-git commit -m "Description de la modification"
-git push -u origin test
-#    → Vercel donne une URL de test dans le tableau de bord (ou via GitHub)
+# déployer une version de test en ligne
+vercel
 
-# 5. Quand c'est validé, publier sur incendieplan.fr :
-git checkout main
-git merge test
-git push
-#    → incendieplan.fr est mis à jour automatiquement
+# publier la version officielle sur incendieplan.fr
+vercel --prod
 ```
-
----
-
-## Récapitulatif
-
-- **Local** : `npm start` pour développer.
-- **Tester en ligne** : push sur `test` → URL de preview Vercel.
-- **Publier** : push (ou merge) sur `main` → **incendieplan.fr**.
-- Vercel s'occupe du build, de la mise en ligne et du HTTPS automatiquement.
