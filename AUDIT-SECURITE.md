@@ -18,8 +18,8 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
 | 5 | Tout compte connecté peut effacer TOUS les fichiers | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 6 | Dépôt de fichiers anonyme, sans limite de taille | ÉLEVÉ | N'importe qui |
-| 7 | Table `alertes` en accès libre (lecture + écriture) | ÉLEVÉ | N'importe qui |
-| 8 | Table `notes_clients` sans aucune protection | ÉLEVÉ | N'importe qui |
+| 7 | Table `alertes` en accès libre (lecture + écriture) | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
+| 8 | Table `notes_clients` sans aucune protection | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 9 | Bannir un compte ne coupe pas vraiment son accès | ÉLEVÉ | Compte banni / en attente |
 | 10 | Tables Odoo lisibles par tout compte connecté | MOYEN | Tout compte connecté |
 | 11 | Messages modifiables par autrui, faux auteur possible | MOYEN | Participant d'une commande |
@@ -180,7 +180,16 @@ Conséquence : quelqu'un peut y stocker autant de fichiers qu'il veut, de n'impo
 
 **Correction :** fixer une limite de taille (ex. 20 Mo) et une liste de types autorisés (PDF, images) sur le dossier `fichiers`, et n'autoriser le dépôt anonyme que si un jeton de validation valide est présenté.
 
-## 7. La table `alertes` est en accès totalement libre
+## 7. La table `alertes` est en accès totalement libre — CORRIGÉ le 23/08/2026
+
+> Correctif : `supabase/migrations/20260823063000_fermeture_tables_alertes_et_notes_clients.sql`.
+> Lecture, modification et suppression réservées à l'administrateur. L'insertion
+> reste ouverte aux comptes connectés — `Messagerie.js` enregistre l'alerte au
+> moment où le message est bloqué, et n'inspecte pas l'erreur : un refus serait
+> passé inaperçu et la modération n'aurait plus rien tracé.
+> Vérifié : un visiteur non connecté ne lit ni n'écrit plus rien ; un utilisateur
+> normal ne lit rien et n'efface rien mais déclenche bien une alerte ;
+> l'administrateur lit les 5 alertes.
 
 Une règle nommée `Allow all` autorise **tout le monde** (même sans compte) à lire, ajouter, modifier et supprimer les 5 lignes de cette table. Elle contient les messages bloqués par la modération (colonnes `auteur`, `message_bloque`) — donc du contenu privé de conversations.
 
@@ -191,7 +200,14 @@ create policy "alertes_admin" on public.alertes for all
   to authenticated using (public.is_admin()) with check (public.is_admin());
 ```
 
-## 8. La table `notes_clients` n'a aucune protection
+## 8. La table `notes_clients` n'a aucune protection — CORRIGÉ le 23/08/2026
+
+> Correctif : même migration. RLS activée, chaque dessinateur ne voit que ses
+> propres notes ; l'administrateur voit tout.
+> Vérifié : un visiteur non connecté ne peut plus écrire ; un dessinateur écrit
+> et relit sa note ; un autre dessinateur ne la voit pas.
+> L'erreur « RLS Disabled in Public » a disparu du contrôle Supabase — il ne
+> reste plus aucune erreur, uniquement des avertissements (constats 14 et 16).
 
 La sécurité par ligne (RLS) est **désactivée** sur cette table, et elle n'a aucune règle. Elle est donc entièrement exposée en lecture, écriture et suppression à toute personne possédant la clé publique du site — clé qui est visible dans le code du navigateur.
 
@@ -271,7 +287,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 # Ordre de correction conseillé
 
 1. ~~**Aujourd'hui** — points 1 et 2 (blocage de l'auto-promotion en administrateur).~~ **FAIT et vérifié.**
-2. ~~**Aujourd'hui** — point 5 (protection contre l'effacement des fichiers).~~ **FAIT et vérifié.** Restent les points 7 et 8 (tables ouvertes). SQL uniquement.
+2. ~~**Aujourd'hui** — points 5, 7 et 8 (effacement des fichiers, tables ouvertes).~~ **FAIT et vérifié.**
 3. **Cette semaine** — point 3 (fermeture de l'envoi d'emails) : réglage Supabase + petite modification des fonctions.
 4. **Cette semaine** — point 6 (limites sur les dépôts de fichiers).
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
