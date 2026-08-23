@@ -12,7 +12,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 
 | # | Problème | Gravité | Qui peut en profiter |
 |---|---|---|---|
-| 1 | Un simple compte peut se nommer administrateur | CRITIQUE | Tout compte connecté |
+| 1 | Un simple compte peut se nommer administrateur | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 2 | L'inscription permet de créer un compte « admin » actif direct | CRITIQUE | N'importe qui |
 | 3 | Le service d'envoi d'emails est ouvert sans mot de passe | CRITIQUE | N'importe qui |
 | 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
@@ -33,7 +33,12 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 
 # CRITIQUE — à corriger en premier
 
-## 1. Un simple compte peut se nommer administrateur
+## 1. Un simple compte peut se nommer administrateur — CORRIGÉ le 23/08/2026
+
+> Correctif appliqué : `supabase/migrations/20260823053854_protege_champs_sensibles_profil.sql`.
+> Vérifié : l'auto-promotion est bloquée, et la modification du prénom, le rattachement
+> à un groupe, la gestion des comptes par le propriétaire et les fonctions serveur
+> fonctionnent toujours.
 
 **Le problème.** La règle qui autorise quelqu'un à modifier sa fiche personnelle (`profiles`) dit seulement « tu peux modifier la ligne qui est la tienne ». Elle ne dit **pas** « mais tu n'as pas le droit de toucher aux cases *rôle*, *propriétaire* et *statut* ». Aucun garde-fou n'existe non plus côté base.
 
@@ -246,7 +251,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 
 # Ordre de correction conseillé
 
-1. **Aujourd'hui** — points 1 et 2 (blocage de l'auto-promotion en administrateur). Deux commandes SQL, effet immédiat, aucun changement dans le site.
+1. ~~**Aujourd'hui** — point 1 (blocage de l'auto-promotion en administrateur).~~ **FAIT.** Reste le point 2 (rôle « admin » réclamé à l'inscription).
 2. **Aujourd'hui** — point 5 (protection contre l'effacement des fichiers) et points 7 et 8 (tables ouvertes). SQL uniquement.
 3. **Cette semaine** — point 3 (fermeture de l'envoi d'emails) : réglage Supabase + petite modification des fonctions.
 4. **Cette semaine** — point 6 (limites sur les dépôts de fichiers).
