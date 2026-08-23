@@ -16,7 +16,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 2 | L'inscription permet de créer un compte « admin » actif direct | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 3 | Le service d'envoi d'emails est ouvert sans mot de passe | CRITIQUE | N'importe qui |
 | 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
-| 5 | Tout compte connecté peut effacer TOUS les fichiers | CRITIQUE | Tout compte connecté |
+| 5 | Tout compte connecté peut effacer TOUS les fichiers | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 6 | Dépôt de fichiers anonyme, sans limite de taille | ÉLEVÉ | N'importe qui |
 | 7 | Table `alertes` en accès libre (lecture + écriture) | ÉLEVÉ | N'importe qui |
 | 8 | Table `notes_clients` sans aucune protection | ÉLEVÉ | N'importe qui |
@@ -138,7 +138,17 @@ Attention : Cette correction demande une petite modification du code d'affichage
 
 ---
 
-## 5. Tout compte connecté peut effacer ou remplacer TOUS les fichiers
+## 5. Tout compte connecté peut effacer ou remplacer TOUS les fichiers — CORRIGÉ le 23/08/2026
+
+> Correctif appliqué : `supabase/migrations/20260823061500_storage_fichiers_suppression_restreinte.sql`.
+> Suppression réservée au propriétaire du fichier et à l'administrateur ;
+> remplacement idem, plus le dessinateur assigné pour les `finals/<id_commande>/…`
+> (nécessaire car `deposerPlanFinal()` dépose en `upsert` et une commande peut
+> changer de dessinateur).
+> Vérifié : un compte client ne peut plus effacer que ses 2 propres fichiers,
+> les 776 autres sont protégés. Un dessinateur non assigné ne peut plus remplacer
+> un plan final ; le dessinateur assigné et l'administrateur le peuvent toujours.
+> Le site ne supprime jamais de fichier : aucune fonctionnalité restreinte.
 
 **Le problème.** Les règles `Suppression authentifiée fichiers` et `Update authentifié fichiers` disent seulement « il faut être connecté ». Elles ne vérifient **pas** que le fichier appartient à la personne.
 
@@ -261,7 +271,7 @@ Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-
 # Ordre de correction conseillé
 
 1. ~~**Aujourd'hui** — points 1 et 2 (blocage de l'auto-promotion en administrateur).~~ **FAIT et vérifié.**
-2. **Aujourd'hui** — point 5 (protection contre l'effacement des fichiers) et points 7 et 8 (tables ouvertes). SQL uniquement.
+2. ~~**Aujourd'hui** — point 5 (protection contre l'effacement des fichiers).~~ **FAIT et vérifié.** Restent les points 7 et 8 (tables ouvertes). SQL uniquement.
 3. **Cette semaine** — point 3 (fermeture de l'envoi d'emails) : réglage Supabase + petite modification des fonctions.
 4. **Cette semaine** — point 6 (limites sur les dépôts de fichiers).
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
