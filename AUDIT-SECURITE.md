@@ -15,7 +15,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 1 | Un simple compte peut se nommer administrateur | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 2 | L'inscription permet de créer un compte « admin » actif direct | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 3 | Le service d'envoi d'emails est ouvert sans mot de passe | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui~~ |
-| 4 | Tous les fichiers des plans sont publics | CRITIQUE | N'importe qui avec le lien |
+| 4 | Tous les fichiers des plans sont publics | ~~CRITIQUE~~ **CORRIGÉ** | ~~N'importe qui avec le lien~~ |
 | 5 | Tout compte connecté peut effacer TOUS les fichiers | ~~CRITIQUE~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 6 | Dépôt de fichiers anonyme, sans limite de taille | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
 | 7 | Table `alertes` en accès libre (lecture + écriture) | ~~ÉLEVÉ~~ **CORRIGÉ** | ~~N'importe qui~~ |
@@ -145,7 +145,24 @@ Les fonctions `notify-*` sont dans le même cas : elles déclenchent des emails 
 
 ---
 
-## 4. Tous les fichiers des plans sont publics
+## 4. Tous les fichiers des plans sont publics — CORRIGÉ le 23/08/2026
+
+> Fait en deux temps, dans l'ordre imposé.
+> **1.** Le site a été adapté (`helpers.js`, `VisuFichier.js`, `ZoneUpload.js`) pour
+> demander des **liens temporaires d'une heure**, puis publié par Simon et vérifié.
+> Les 705 adresses publiques déjà en base ne sont pas réécrites : on en extrait le
+> chemin à chaque affichage.
+> **2.** Le dossier est ensuite passé en **privé**, lecture réservée aux comptes
+> connectés et actifs.
+> Vérifié : un visiteur sans compte ne lit plus rien ; client et dessinateur
+> connectés lisent les 778 fichiers ; un compte banni est bloqué ; les avatars sont
+> intacts.
+>
+> **Limite connue.** 597 fichiers sont déposés à la racine du dossier, sans
+> rattachement à une commande dans leur chemin. Impossible donc de cloisonner par
+> client sans revoir l'organisation des chemins. **Tout compte actif peut lire les
+> fichiers du dossier** — sans commune mesure avec « tout Internet », mais ce n'est
+> pas un cloisonnement client par client. À traiter dans un second temps.
 
 **Le problème.** Le dossier de stockage `fichiers` est marqué **public**, et la règle `Lecture publique fichiers` autorise la lecture à tout le monde, connecté ou non.
 
@@ -460,7 +477,7 @@ Avant les correctifs, ce même compte aurait pu se nommer propriétaire et tout 
 2. ~~**Aujourd'hui** — points 5, 7 et 8 (effacement des fichiers, tables ouvertes).~~ **FAIT et vérifié.**
 3. ~~**Cette semaine** — point 3 (fermeture de l'envoi d'emails).~~ **FAIT et vérifié.**
 4. ~~**Cette semaine** — point 6 (limites sur les dépôts de fichiers).~~ **FAIT et vérifié.**
-5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
+5. ~~**Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires).~~ **FAIT.**
 6. ~~**Puis** — points 9, 10, 11 (partie modification), 13.~~ **FAIT.**
 7. ~~**Quand il y aura le temps** — points 14 à 18.~~ **FAIT.**
 
