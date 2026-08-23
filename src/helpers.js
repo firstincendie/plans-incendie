@@ -1,4 +1,63 @@
+import { useEffect, useState } from "react";
 import { PATTERNS_CONTACTS } from "./constants";
+import { supabase } from "./supabase";
+
+const BUCKET_FICHIERS = "fichiers";
+
+// ---------------------------------------------------------------------------
+// Liens temporaires vers les fichiers (constat 4 de AUDIT-SECURITE.md)
+//
+// Le dossier de stockage des plans passe en privé : une adresse ne fonctionne
+// plus toute seule, il faut demander un lien signé valable un temps limité.
+//
+// 555 fiches en base contiennent déjà d'anciennes adresses publiques. On ne les
+// réécrit pas : on en extrait le chemin du fichier, et on redemande un lien à
+// chaque affichage. Les deux formes fonctionnent donc, anciennes et nouvelles.
+// ---------------------------------------------------------------------------
+
+// Extrait le chemin de stockage d'une adresse enregistrée en base.
+// Renvoie null si l'adresse ne concerne pas le dossier des plans (avatar,
+// lien externe…) : dans ce cas on la laisse telle quelle.
+export function cheminStockage(url) {
+  if (!url) return null;
+  const s = String(url);
+  const m = s.match(/\/storage\/v1\/object\/(?:public|sign)\/fichiers\/([^?]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  if (!/^https?:\/\//i.test(s)) return s.replace(/^\/+/, ""); // déjà un chemin
+  return null;
+}
+
+// Transforme une adresse enregistrée en lien temporaire (1 heure par défaut).
+// En cas de souci, renvoie l'adresse d'origine plutôt que rien : le fichier
+// reste accessible tant que le dossier n'est pas passé en privé.
+export async function lienFichier(url, secondes = 3600) {
+  const chemin = cheminStockage(url);
+  if (!chemin) return url;
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_FICHIERS)
+      .createSignedUrl(chemin, secondes);
+    if (error || !data?.signedUrl) return url;
+    return data.signedUrl;
+  } catch {
+    return url;
+  }
+}
+
+// Version pour l'affichage (<img>, <iframe>) : renvoie null tant que le lien
+// n'est pas prêt, pour ne pas afficher une image cassée entre-temps.
+export function useLienFichier(url) {
+  const [lien, setLien] = useState(null);
+  useEffect(() => {
+    let annule = false;
+    setLien(null);
+    if (!url) return undefined;
+    lienFichier(url).then(u => { if (!annule) setLien(u); });
+    return () => { annule = true; };
+  }, [url]);
+  return lien;
+}
+
 
 // Télécharge un fichier de façon fiable : on récupère les octets bruts via
 // fetch (le stockage Supabase autorise le CORS) puis on sauvegarde le blob.
@@ -6,8 +65,9 @@ import { PATTERNS_CONTACTS } from "./constants";
 // garantit un fichier identique à l'original.
 export async function telechargerFichier(fichier) {
   if (!fichier?.url) return;
+  const lien = await lienFichier(fichier.url);
   try {
-    const res = await fetch(fichier.url);
+    const res = await fetch(lien);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const blob = await res.blob();
     const objUrl = URL.createObjectURL(blob);
@@ -21,7 +81,7 @@ export async function telechargerFichier(fichier) {
   } catch (e) {
     console.error("Téléchargement:", e);
     // Repli : ouvrir dans un nouvel onglet
-    window.open(fichier.url, "_blank", "noopener");
+    window.open(lien, "_blank", "noopener");
   }
 }
 

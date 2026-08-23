@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { supabase } from "../supabase";
-import { fichierAvecDate } from "../helpers";
+import { fichierAvecDate, lienFichier } from "../helpers";
 
 export default function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, accept, maxFichiers = 10, unique = false }) {
   const inputRef = useRef();
@@ -39,7 +39,17 @@ export default function ZoneUpload({ label, fichiers, onAjouter, onSupprimer, ac
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff" }}>
               <span style={{ fontSize: 18 }}>{isImage(f) ? "🖼️" : "📄"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <a href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: "#122131", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</a>
+                <a href={f.url} target="_blank" rel="noreferrer"
+                  onClick={async (e) => {
+                    // Le dossier étant privé, il faut demander un lien temporaire.
+                    // On ouvre l'onglet tout de suite (sinon le navigateur le bloque),
+                    // puis on l'envoie sur le bon lien.
+                    e.preventDefault();
+                    const onglet = window.open("", "_blank");
+                    const lien = await lienFichier(f.url);
+                    if (onglet) { onglet.opener = null; onglet.location = lien; }
+                    else window.open(lien, "_blank", "noopener");
+                  }} style={{ fontSize: 12, fontWeight: 600, color: "#122131", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.nom}</a>
                 <div style={{ fontSize: 10, color: "#9CA3AF" }}>{f.taille} · {f.ajouteLe || "—"}</div>
               </div>
               <button onClick={() => onSupprimer(i)}

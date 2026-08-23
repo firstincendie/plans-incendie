@@ -1,7 +1,17 @@
 import { useState } from "react";
-import { telechargerFichier } from "../helpers";
+import { telechargerFichier, useLienFichier } from "../helpers";
+
+function Chargement() {
+  return (
+    <div style={{ padding: 40, color: "#94A3B8", fontSize: 13, textAlign: "center" }}>
+      Ouverture du fichier...
+    </div>
+  );
+}
 
 export default function VisuFichier({ fichier, onClose }) {
+  // Lien temporaire : appelé avant tout retour anticipé (règle des hooks React).
+  const lien = useLienFichier(fichier?.url);
   if (!fichier) return null;
   const isPdf   = fichier.type === "application/pdf" || fichier.nom?.toLowerCase().endsWith(".pdf");
   const isImage = fichier.type && fichier.type.startsWith("image/");
@@ -23,11 +33,13 @@ export default function VisuFichier({ fichier, onClose }) {
           </div>
         </div>
         {/* Contenu */}
-        {isPdf && (
-          <iframe src={fichier.url} title={fichier.nom} style={{ flex: 1, width: "100%", border: "none" }} />
+        {isPdf && (lien
+          ? <iframe src={lien} title={fichier.nom} style={{ flex: 1, width: "100%", border: "none" }} />
+          : <Chargement />
         )}
-        {isImage && (
-          <img src={fichier.url} alt={fichier.nom} style={{ maxWidth: "88vw", maxHeight: "80vh", objectFit: "contain" }} />
+        {isImage && (lien
+          ? <img src={lien} alt={fichier.nom} style={{ maxWidth: "88vw", maxHeight: "80vh", objectFit: "contain" }} />
+          : <Chargement />
         )}
         {!isPdf && !isImage && (
           <div style={{ padding: 32, color: "#94A3B8", fontSize: 14, textAlign: "center" }}>
@@ -42,13 +54,14 @@ export default function VisuFichier({ fichier, onClose }) {
 
 export function LogoCliquable({ fichier }) {
   const [visu, setVisu] = useState(false);
+  const lien = useLienFichier(fichier?.url);
   if (!fichier) return null;
   const isImage = fichier.type && fichier.type.startsWith("image/");
   return (
     <>
       <div style={{ display: "inline-block", cursor: "pointer" }} onClick={() => setVisu(true)}>
-        {isImage
-          ? <img src={fichier.url} alt="logo" style={{ height: 56, maxWidth: 140, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 8, padding: 6, background: "#fff" }} />
+        {isImage && lien
+          ? <img src={lien} alt="logo" style={{ height: 56, maxWidth: 140, objectFit: "contain", border: "1px solid #E5E7EB", borderRadius: 8, padding: 6, background: "#fff" }} />
           : <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 12, color: "#374151" }}>📄 {fichier.nom}</div>
         }
       </div>
