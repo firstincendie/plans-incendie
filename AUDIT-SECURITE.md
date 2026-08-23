@@ -24,7 +24,7 @@ Chiffres concernés : **123 commandes**, **779 fichiers**, **8 comptes**.
 | 10 | Tables Odoo lisibles par tout compte connecté | ~~MOYEN~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
 | 11 | Messages modifiables par autrui, faux auteur possible | **CORRIGÉ en partie** | Participant d'une commande |
 | 12 | Texte injectable dans les emails automatiques | ~~MOYEN~~ **CORRIGÉ** | ~~Tout compte connecté~~ |
-| 13 | 52 failles dans les librairies (2 critiques) | MOYEN | — |
+| 13 | 52 failles dans les librairies (2 critiques) | ~~MOYEN~~ **CORRIGÉ** (côté visiteur) | — |
 | 14 | Mots de passe compromis autorisés | FAIBLE | — |
 | 15 | Aucun en-tête de sécurité sur le site | **CORRIGÉ** (actif à la prochaine publication) | — |
 | 16 | Fonctions internes appelables sans être connecté | ~~FAIBLE~~ **CORRIGÉ** | — |
@@ -312,7 +312,30 @@ Les règles de la table `messages` vérifient seulement que la commande est visi
 Dans les fonctions serveur, les valeurs `${prenom}`, `${nom_plan}`, `${auteur_nom}` sont insérées **directement** dans le HTML de l'email, sans nettoyage. Quelqu'un peut nommer un plan de façon à glisser un faux bouton ou un lien piégé dans un email qui, lui, est parfaitement authentique. Combiné au point 3, c'est un bon outil d'hameçonnage.
 → Échapper les caractères `< > & " '` avant insertion.
 
-## 13. 52 failles connues dans les librairies
+## 13. 52 failles connues dans les librairies — CORRIGÉ le 23/08/2026 (côté visiteur)
+
+> **Le chiffre de 52 était trompeur.** `react-scripts` et toute sa chaîne sont déclarés
+> comme dépendances normales alors que ce sont des **outils de construction** : ils ne
+> partent jamais chez le visiteur. Le site n'embarque en réalité que 4 paquets :
+> `react`, `react-dom`, `react-router-dom` et `@supabase/supabase-js`.
+>
+> **Fait :**
+> - `react-router-dom` passé de **7.14.2 à 7.18.2** — c'était le seul paquet livré au
+>   navigateur qui portait des avis de sécurité (CSRF, déni de service).
+> - `yaml` retiré : déclaré mais **utilisé nulle part** dans le projet.
+>
+> **Résultat : plus aucun paquet vulnérable dans ce qui tourne chez le visiteur.**
+> Vérifié : le site se construit toujours (162,8 ko contre 162,5 ko avant), les 15 pages
+> sont là, les tests passent, et la page produite ne charge **aucune ressource externe**
+> (règle du projet).
+>
+> **Reste (sans urgence)** : 50 avis subsistent, tous sur les outils de construction —
+> ils concernent l'ordinateur qui compile, pas les visiteurs. La vraie sortie est de
+> quitter `react-scripts`, qui n'est plus maintenu, pour un outil moderne (Vite). C'est
+> un chantier à part entière, à planifier calmement.
+>
+> À noter aussi : le projet ne contient **qu'un seul test**, et il ne vérifie rien
+> (`expect(true)`). Il n'y a donc pas de filet de sécurité automatique.
 `npm audit` remonte **52 vulnérabilités : 2 critiques, 28 élevées**. La grande majorité vient de `react-scripts 5.0.1`, un outil de construction qui n'est plus maintenu — ces failles concernent surtout votre ordinateur au moment de la compilation, pas les visiteurs.
 Deux exceptions à traiter, car elles tournent chez le visiteur : `react-router-dom` (avis CSRF et déni de service). À mettre à jour.
 
@@ -368,5 +391,5 @@ _Constat d'origine :_ Neuf fonctions `SECURITY DEFINER` sont exposées à l'API 
 3. ~~**Cette semaine** — point 3 (fermeture de l'envoi d'emails).~~ **FAIT et vérifié.**
 4. ~~**Cette semaine** — point 6 (limites sur les dépôts de fichiers).~~ **FAIT et vérifié.**
 5. **Ensuite, ensemble** — point 4 (fichiers privés avec liens temporaires) : c'est le seul qui demande de toucher au site, donc à tester avant.
-6. ~~**Puis** — points 9, 10, 11 (partie modification).~~ **FAIT.** Reste le point 13 (librairies).
+6. ~~**Puis** — points 9, 10, 11 (partie modification), 13.~~ **FAIT.**
 7. **Quand il y aura le temps** — points 14 à 18.
